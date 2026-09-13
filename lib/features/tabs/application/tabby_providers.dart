@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/config/supabase_config.dart';
 import '../data/mock_tabby_repository.dart';
 import '../data/supabase_tabby_repository.dart';
 import '../domain/models.dart';
@@ -10,17 +11,36 @@ import 'tabby_state.dart';
 class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   TabbyNotifier()
       : super(
-          TabbyDashboardState(
-            tabs: MockTabbyRepository.getInitialTabs(),
-            activities: MockTabbyRepository.getInitialActivities(),
-            reminders: MockTabbyRepository.getInitialReminders(),
-          ),
-        );
+          // When Supabase is initialized, start with an empty live state.
+          // When running unit tests (Supabase not initialized), use mock data.
+          SupabaseConfig.isInitialized
+              ? const TabbyDashboardState(tabs: [], activities: [], reminders: [])
+              : TabbyDashboardState(
+                  tabs: MockTabbyRepository.getInitialTabs(),
+                  activities: MockTabbyRepository.getInitialActivities(),
+                  reminders: MockTabbyRepository.getInitialReminders(),
+                ),
+        ) {
+    _loadTabs();
+  }
+
+  Future<void> _loadTabs() async {
+    String currentUserId = MockTabbyRepository.currentUser.id;
+    if (SupabaseConfig.isInitialized) {
+      try {
+        currentUserId = SupabaseConfig.currentUserId ?? currentUserId;
+      } catch (_) {}
+    }
+
+    final tabs = await SupabaseTabbyRepository.instance.fetchTabs(currentUserId);
+    if (mounted) {
+      state = state.copyWith(tabs: tabs);
+    }
+  }
 
   Timer? _emotionTimer;
 
-  /// Rapid expense entry (<5s logging)
-  void addExpense({
+  Future<void> addExpense({
     required String counterpartId,
     required String counterpartName,
     required String title,
@@ -29,8 +49,10 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required bool paidByMe,
     required bool isEqualSplit,
     DateTime? dueDate,
-  }) {
-    const currentUser = MockTabbyRepository.currentUser;
+  }) async {
+    final currentUserId = SupabaseConfig.isInitialized ? (SupabaseConfig.currentUserId ?? MockTabbyRepository.currentUser.id) : MockTabbyRepository.currentUser.id;
+    final currentUserDisplayName = SupabaseConfig.isInitialized && SupabaseConfig.currentUser != null ? (SupabaseConfig.currentUser!.userMetadata?['display_name'] ?? MockTabbyRepository.currentUser.displayName) : MockTabbyRepository.currentUser.displayName;
+
     final now = DateTime.now();
 
     int myShare;
@@ -59,8 +81,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       totalAmountCentavos: totalAmountCentavos,
       myShareCentavos: myShare,
       counterpartShareCentavos: counterpartShare,
-      paidByUserId: paidByMe ? currentUser.id : counterpartId,
-      paidByName: paidByMe ? currentUser.displayName : counterpartName,
+      paidByUserId: paidByMe ? currentUserId : counterpartId,
+      paidByName: paidByMe ? currentUserDisplayName : counterpartName,
       date: now,
       dueDate: dueDate,
       status: TransactionStatus.acknowledged,
@@ -78,7 +100,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       final updatedEntries = [newEntry, ...existingTab.entries];
       final newNetBalance = MockTabbyRepository.calculateNetBalance(
         updatedEntries,
-        currentUser.id,
+        currentUserId,
       );
 
       final updatedTab = existingTab.copyWith(
@@ -111,7 +133,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     // Add activity log
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
-      actorName: currentUser.displayName,
+      actorName: currentUserDisplayName,
       description: 'logged $title with $counterpartName',
       amountCentavos: totalAmountCentavos,
       timestamp: now,
@@ -143,30 +165,53 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       emotionCustomMessage: 'Tab logged successfully! Calculating balances...',
     );
 
-    // Asynchronously synchronize with Supabase backend
-    SupabaseTabbyRepository.instance.logExpense(
-      tabId: counterpartId,
-      title: title.trim().isEmpty ? category.displayName : title.trim(),
-      totalAmountCentavos: totalAmountCentavos,
-      category: category,
-      paidByUserId: paidByMe ? currentUser.id : counterpartId,
-      myShareCentavos: myShare,
-      counterpartShareCentavos: counterpartShare,
-      dueDate: dueDate,
-    );
+    // Synchronize with Supabase backend
+    if (SupabaseConfig.isInitialized) {
+      try {
+        // Ensure counterpart exists in public.users (handles typed-name friends with synthetic IDs)
+        final resolvedCounterpartId = await SupabaseTabbyRepository.instance
+            .ensureUserExists(counterpartId, counterpartName);
+
+        String realTabId = resolvedCounterpartId;
+        if (existingTabIndex < 0) {
+          realTabId = await SupabaseConfig.getOrCreateBilateralTab(
+            userA: currentUserId,
+            userB: resolvedCounterpartId,
+          );
+        }
+
+        await SupabaseTabbyRepository.instance.logExpense(
+          tabId: realTabId,
+          title: title.trim().isEmpty ? category.displayName : title.trim(),
+          totalAmountCentavos: totalAmountCentavos,
+          category: category,
+          paidByUserId: paidByMe ? currentUserId : resolvedCounterpartId,
+          myShareCentavos: myShare,
+          counterpartShareCentavos: counterpartShare,
+          currentUserId: currentUserId,
+          counterpartId: resolvedCounterpartId,
+          dueDate: dueDate,
+        );
+
+        await _loadTabs();
+      } catch (e) {
+        debugPrint('[TabbyNotifier] Supabase sync error: $e');
+      }
+    }
 
     _scheduleEmotionReset();
   }
 
-  /// Settle or partially pay a tab ("Record Settlement" or "Confirm Payment")
-  void settleTab({
+  Future<void> settleTab({
     required String tabId,
     required int amountCentavos,
     required PaymentMethod method,
     required bool isPayingMe, // true if counterpart paid user; false if user paid counterpart
     String? note,
-  }) {
-    const currentUser = MockTabbyRepository.currentUser;
+  }) async {
+    final currentUserId = SupabaseConfig.isInitialized ? (SupabaseConfig.currentUserId ?? MockTabbyRepository.currentUser.id) : MockTabbyRepository.currentUser.id;
+    final currentUserDisplayName = SupabaseConfig.isInitialized && SupabaseConfig.currentUser != null ? (SupabaseConfig.currentUser!.userMetadata?['display_name'] ?? MockTabbyRepository.currentUser.displayName) : MockTabbyRepository.currentUser.displayName;
+
     final now = DateTime.now();
 
     final tabIndex = state.tabs.indexWhere((t) => t.id == tabId);
@@ -184,8 +229,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       totalAmountCentavos: amountCentavos,
       myShareCentavos: 0,
       counterpartShareCentavos: 0,
-      paidByUserId: isPayingMe ? tab.counterpart.id : currentUser.id,
-      paidByName: isPayingMe ? tab.counterpart.displayName : currentUser.displayName,
+      paidByUserId: isPayingMe ? tab.counterpart.id : currentUserId,
+      paidByName: isPayingMe ? tab.counterpart.displayName : currentUserDisplayName,
       date: now,
       status: TransactionStatus.settled,
       isPayment: true,
@@ -196,7 +241,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     final updatedEntries = [paymentEntry, ...tab.entries];
     final newNetBalance = MockTabbyRepository.calculateNetBalance(
       updatedEntries,
-      currentUser.id,
+      currentUserId,
     );
 
     final updatedTab = tab.copyWith(
@@ -214,7 +259,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
-      actorName: isPayingMe ? tab.counterpart.displayName : currentUser.displayName,
+      actorName: isPayingMe ? tab.counterpart.displayName : currentUserDisplayName,
       description: 'settled ₱${(amountCentavos / 100).toStringAsFixed(2)} via ${method.label}',
       amountCentavos: amountCentavos,
       timestamp: now,
@@ -231,16 +276,25 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           : 'Payment recorded! Remaining balance updated.',
     );
 
-    // Asynchronously synchronize payment with Supabase backend
-    SupabaseTabbyRepository.instance.recordPayment(
-      tabId: tabId,
-      amountCentavos: amountCentavos,
-      method: method,
-      paidByUserId: isPayingMe ? tab.counterpart.id : currentUser.id,
-      receivedByUserId: isPayingMe ? currentUser.id : tab.counterpart.id,
-    );
+    // Synchronize payment with Supabase backend
+    if (SupabaseConfig.isInitialized) {
+      try {
+        await SupabaseTabbyRepository.instance.recordPayment(
+          tabId: tabId,
+          amountCentavos: amountCentavos,
+          method: method,
+          paidByUserId: isPayingMe ? tab.counterpart.id : currentUserId,
+          receivedByUserId: isPayingMe ? currentUserId : tab.counterpart.id,
+          note: note,
+        );
+        await _loadTabs();
+      } catch (e) {
+        debugPrint('[TabbyNotifier] Supabase sync error: $e');
+      }
+    }
 
     _scheduleEmotionReset(seconds: 4);
+
   }
 
   /// Sends a gentle reminder to a friend
