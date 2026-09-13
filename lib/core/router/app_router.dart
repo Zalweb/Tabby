@@ -17,7 +17,7 @@ final GlobalKey<NavigatorState> _profileNavigatorKey = GlobalKey<NavigatorState>
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/home',
+  initialLocation: '/onboarding',
   refreshListenable: Listenable.merge([
     AppState.isAuthenticated,
     AppState.hasSeenOnboarding,
