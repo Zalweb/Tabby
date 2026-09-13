@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
 import '../domain/models.dart';
@@ -69,6 +69,22 @@ class SupabaseTabbyRepository {
       return response;
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] Sign in error: $e');
+      rethrow;
+    }
+  }
+
+  /// User Authentication: Sign In with Google OAuth
+  Future<bool> signInWithGoogle() async {
+    if (!isConnected) return false;
+
+    try {
+      final success = await SupabaseConfig.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: kIsWeb ? null : 'io.supabase.tabby://login-callback/',
+      );
+      return success;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] Google sign in error: $e');
       rethrow;
     }
   }

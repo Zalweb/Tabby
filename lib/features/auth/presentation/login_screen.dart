@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
@@ -38,6 +39,32 @@ class _LoginScreenState extends State<LoginScreen> {
       }
     } catch (e) {
       debugPrint('[LoginScreen] Live Supabase auth notice: $e');
+    }
+
+    AppState.isAuthenticated.value = true;
+    if (mounted) context.go('/home');
+  }
+
+  Future<void> _loginWithGoogle() async {
+    try {
+      if (SupabaseTabbyRepository.instance.isConnected) {
+        final initiated = await SupabaseTabbyRepository.instance.signInWithGoogle();
+        if (initiated && kIsWeb) {
+          // On Web, browser redirects to Google's authentication page
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('[LoginScreen] Google sign-in note: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In: ${e.toString().split("\n").first}'),
+            backgroundColor: TabbyColors.brandDarkTeal,
+          ),
+        );
+      }
+      return;
     }
 
     AppState.isAuthenticated.value = true;
@@ -140,11 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 label: 'Continue with Google',
                 variant: TabbyButtonVariant.outline,
                 icon: const Icon(Icons.g_mobiledata_rounded, color: TabbyColors.brandEmerald),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Google Sign-In coming soon')),
-                  );
-                },
+                onPressed: _loginWithGoogle,
               ),
               const SizedBox(height: 32),
               Row(

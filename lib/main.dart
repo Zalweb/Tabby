@@ -2,6 +2,7 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/config/app_state.dart';
 import 'core/config/supabase_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/tabby_theme.dart';
@@ -11,6 +12,17 @@ void main() async {
 
   try {
     await SupabaseConfig.initialize();
+    if (SupabaseConfig.isInitialized) {
+      if (SupabaseConfig.auth.currentUser != null) {
+        AppState.isAuthenticated.value = true;
+      }
+      SupabaseConfig.auth.onAuthStateChange.listen((data) {
+        final session = data.session;
+        if (session != null) {
+          AppState.isAuthenticated.value = true;
+        }
+      });
+    }
   } catch (e) {
     debugPrint('[Main] Supabase initialization notice: $e');
   }
