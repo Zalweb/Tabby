@@ -28,8 +28,7 @@ void main() {
 
     // Verify My Tabs screen headers (one in top bar, one in bottom navigation)
     expect(find.text('My Tabs'), findsNWidgets(2));
-    expect(find.textContaining('THEY OWE YOU'), findsOneWidget);
-    expect(find.textContaining('YOU OWE'), findsOneWidget);
+    expect(find.text('No Active Tabs'), findsOneWidget);
 
     // Tap on 'Profile' navigation item
     await tester.tap(find.text('Profile'));
@@ -38,6 +37,7 @@ void main() {
     // Verify Profile screen elements
     expect(find.text('Profile & Settings'), findsOneWidget);
     expect(find.text('My Payment QR Ph'), findsOneWidget);
+    expect(find.text('No friends added yet'), findsOneWidget);
     expect(find.text('Currency Precision'), findsOneWidget);
   });
 }

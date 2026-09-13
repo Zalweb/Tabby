@@ -238,11 +238,11 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Padding(
-                              padding: EdgeInsets.only(left: 18),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 18),
                               child: Text(
-                                '30%',
-                                style: TextStyle(
+                                dashboardState.tabs.isEmpty ? '0%' : '100%',
+                                style: const TextStyle(
                                   color: TabbyColors.bgCanvas,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 13,
@@ -276,18 +276,20 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                       const SizedBox(height: 12),
 
                       // FinWise Status Check Line
-                      const Row(
+                      Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.check_box_outlined,
                             size: 16,
                             color: TabbyColors.brandDarkTeal,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '30% Of Your Expenses, Looks Good.',
-                              style: TextStyle(
+                              dashboardState.tabs.isEmpty
+                                  ? 'All tabs cleared. Ready for your first expense.'
+                                  : 'Active tabs in progress. Keep tabs and settle up.',
+                              style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: TabbyColors.brandDarkTeal,
@@ -747,10 +749,28 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-
                       // FinWise 3-Column Transaction / Activity List (home_7033_352)
-                      ...dashboardState.activities.map((act) {
+                      if (dashboardState.activities.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: TabbyColors.surfaceWhite,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: TabbyColors.borderMint),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'No recent activity yet. Log an expense to get started!',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: TabbyColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        ...dashboardState.activities.map((act) {
                         final displayName = act.actorName == 'Frienzal' ? 'You' : act.actorName;
                         return Container(
                           margin: const EdgeInsets.only(bottom: 8),

@@ -330,3 +330,18 @@ final tabDetailProvider = Provider.family<BilateralTab?, String>((ref, tabId) {
     return null;
   }
 });
+
+/// Dynamic list of friends derived from active tabs
+final friendsProvider = Provider<List<TabbyUser>>((ref) {
+  final tabs = ref.watch(tabbyProvider).tabs;
+  final seenIds = <String>{};
+  final friends = <TabbyUser>[];
+  for (final tab in tabs) {
+    if (!seenIds.contains(tab.counterpart.id)) {
+      seenIds.add(tab.counterpart.id);
+      friends.add(tab.counterpart);
+    }
+  }
+  return friends;
+});
+

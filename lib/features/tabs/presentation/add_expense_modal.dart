@@ -5,7 +5,6 @@ import '../../../core/theme/tabby_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../application/tabby_providers.dart';
-import '../data/mock_tabby_repository.dart';
 import '../domain/models.dart';
 
 class AddExpenseModal extends ConsumerStatefulWidget {
@@ -32,6 +31,7 @@ class AddExpenseModal extends ConsumerStatefulWidget {
 class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   late String _selectedFriendId;
   late String _selectedFriendName;
+  final TextEditingController _friendNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
@@ -46,22 +46,35 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   @override
   void initState() {
     super.initState();
-    final friends = MockTabbyRepository.sampleFriends;
     if (widget.initialCounterpartId != null) {
-      final match = friends.firstWhere(
-        (f) => f.id == widget.initialCounterpartId,
-        orElse: () => friends.first,
-      );
-      _selectedFriendId = match.id;
-      _selectedFriendName = match.displayName;
+      final tabs = ref.read(tabbyProvider).tabs;
+      final match = tabs.where((t) => t.id == widget.initialCounterpartId || t.counterpart.id == widget.initialCounterpartId).firstOrNull;
+      if (match != null) {
+        _selectedFriendId = match.counterpart.id;
+        _selectedFriendName = match.counterpart.displayName;
+        _friendNameController.text = match.counterpart.displayName;
+      } else {
+        _selectedFriendId = widget.initialCounterpartId!;
+        _selectedFriendName = widget.initialCounterpartId!;
+        _friendNameController.text = widget.initialCounterpartId!;
+      }
     } else {
-      _selectedFriendId = friends.first.id;
-      _selectedFriendName = friends.first.displayName;
+      final friends = ref.read(friendsProvider);
+      if (friends.isNotEmpty) {
+        _selectedFriendId = friends.first.id;
+        _selectedFriendName = friends.first.displayName;
+        _friendNameController.text = friends.first.displayName;
+      } else {
+        _selectedFriendId = '';
+        _selectedFriendName = '';
+        _friendNameController.text = '';
+      }
     }
   }
 
   @override
   void dispose() {
+    _friendNameController.dispose();
     _amountController.dispose();
     _descriptionController.dispose();
     _messageController.dispose();
@@ -69,6 +82,22 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   }
 
   void _submitExpense() {
+    final name = _friendNameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a friend or group name'),
+          backgroundColor: TabbyColors.alertRed,
+        ),
+      );
+      return;
+    }
+
+    _selectedFriendName = name;
+    if (_selectedFriendId.isEmpty || !_selectedFriendId.startsWith('user-')) {
+      _selectedFriendId = 'user-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}';
+    }
+
     final centavos = CurrencyFormatter.parseToCentavos(_amountController.text);
     if (centavos <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -165,7 +194,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
 
   @override
   Widget build(BuildContext context) {
-    final friends = MockTabbyRepository.sampleFriends;
+    final friends = ref.watch(friendsProvider);
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -221,9 +250,9 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             ),
             const SizedBox(height: 12),
 
-            // 1. Participant Picker (Friend / Group)
+            // 1. Participant Input (Friend / Group)
             const Text(
-              'Friend or Group',
+              'Friend or Group Name',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
@@ -232,36 +261,77 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
               ),
             ),
             const SizedBox(height: 6),
-            SizedBox(
-              height: 42,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: friends.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final f = friends[index];
-                  final isSelected = f.id == _selectedFriendId;
-                  return ChoiceChip(
-                    label: Text(f.displayName),
-                    selected: isSelected,
-                    selectedColor: TabbyColors.brandEmerald,
-                    labelStyle: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                      color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
-                      fontSize: 12,
-                    ),
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedFriendId = f.id;
-                          _selectedFriendName = f.displayName;
-                        });
-                      }
-                    },
-                  );
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: TabbyColors.brandMintAccent,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: TextField(
+                controller: _friendNameController,
+                onChanged: (val) {
+                  setState(() {
+                    _selectedFriendName = val;
+                    final match = friends.where((f) => f.displayName.toLowerCase() == val.trim().toLowerCase()).firstOrNull;
+                    if (match != null) {
+                      _selectedFriendId = match.id;
+                    } else {
+                      _selectedFriendId = 'user-${val.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}';
+                    }
+                  });
                 },
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: TabbyColors.brandDarkTeal,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Enter name (e.g. Alex, Maria, Weekend Group)',
+                  hintStyle: TextStyle(color: TabbyColors.textSecondary),
+                  prefixIcon: Icon(Icons.person_outline_rounded, size: 18, color: TabbyColors.textSecondary),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  filled: false,
+                ),
               ),
             ),
+            if (friends.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 38,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: friends.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final f = friends[index];
+                    final isSelected = f.id == _selectedFriendId ||
+                        f.displayName.toLowerCase() == _friendNameController.text.trim().toLowerCase();
+                    return ChoiceChip(
+                      label: Text(f.displayName),
+                      selected: isSelected,
+                      selectedColor: TabbyColors.brandEmerald,
+                      labelStyle: TextStyle(
+                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                        color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
+                        fontSize: 12,
+                      ),
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedFriendId = f.id;
+                            _selectedFriendName = f.displayName;
+                            _friendNameController.text = f.displayName;
+                          });
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             // 2. Large Amount Input Container (Figma Soft Mint Pill)

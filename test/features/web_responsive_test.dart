@@ -42,7 +42,7 @@ void main() {
       await tester.tap(find.text('My Tabs'));
       await tester.pumpAndSettle();
       expect(find.text('My Tabs'), findsNWidgets(2));
-      expect(find.textContaining('THEY OWE YOU'), findsOneWidget);
+      expect(find.text('No Active Tabs'), findsOneWidget);
 
       // Navigate to Profile
       await tester.tap(find.text('Profile'));

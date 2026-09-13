@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/config/app_state.dart';
+import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/mock_tabby_repository.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _notificationsEnabled = true;
   bool _biometricsEnabled = true;
 
   @override
   Widget build(BuildContext context) {
     const user = MockTabbyRepository.currentUser;
+    final friends = ref.watch(friendsProvider);
 
     return Scaffold(
       backgroundColor: TabbyColors.brandEmerald,
@@ -390,7 +393,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         Text(
-                          '${MockTabbyRepository.sampleFriends.length} friends',
+                          '${friends.length} ${friends.length == 1 ? 'friend' : 'friends'}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: TabbyColors.textSecondary,
@@ -400,64 +403,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Material(
-                      color: TabbyColors.surfaceWhite,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: const BorderSide(color: TabbyColors.borderMint),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Column(
-                        children: MockTabbyRepository.sampleFriends.map((friend) {
-                          return Column(
+                    if (friends.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.surfaceWhite,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: TabbyColors.borderMint),
+                        ),
+                        child: const Center(
+                          child: Column(
                             children: [
-                              ListTile(
-                                leading: CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: TabbyColors.iconBgBlue,
-                                  child: Text(
-                                    friend.displayName.substring(0, 1).toUpperCase(),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14,
-                                      color: TabbyColors.accentLightBlue,
+                              Icon(Icons.people_outline_rounded, size: 36, color: TabbyColors.textSecondary),
+                              SizedBox(height: 8),
+                              Text(
+                                'No friends added yet',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Log your first shared expense to start keeping tabs.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: TabbyColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      Material(
+                        color: TabbyColors.surfaceWhite,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: const BorderSide(color: TabbyColors.borderMint),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          children: friends.map((friend) {
+                            return Column(
+                              children: [
+                                ListTile(
+                                  leading: CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: TabbyColors.iconBgBlue,
+                                    child: Text(
+                                      friend.displayName.isNotEmpty
+                                          ? friend.displayName.substring(0, 1).toUpperCase()
+                                          : '?',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                        color: TabbyColors.accentLightBlue,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                title: Text(
-                                  friend.displayName,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: TabbyColors.brandDarkTeal,
+                                  title: Text(
+                                    friend.displayName,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: TabbyColors.brandDarkTeal,
+                                    ),
                                   ),
-                                ),
-                                subtitle: Text(
-                                  friend.phone,
-                                  style: const TextStyle(
-                                    fontSize: 11,
+                                  subtitle: Text(
+                                    friend.phone.isNotEmpty ? friend.phone : 'Connected Friend',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: TabbyColors.textSecondary,
+                                    ),
+                                  ),
+                                  trailing: const Icon(
+                                    Icons.chevron_right_rounded,
                                     color: TabbyColors.textSecondary,
+                                    size: 20,
                                   ),
+                                  onTap: () {
+                                    context.go('/tabs/${friend.id}');
+                                  },
                                 ),
-                                trailing: const Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: TabbyColors.textSecondary,
-                                  size: 20,
-                                ),
-                                onTap: () {
-                                  // Navigate to the bilateral tab for this friend
-                                  // Mock tab IDs follow the convention: tab-{friendId segment}
-                                  final friendKey = friend.id.replaceFirst('user-', '');
-                                  context.go('/tabs/tab-$friendKey');
-                                },
-                              ),
-                              if (friend != MockTabbyRepository.sampleFriends.last)
-                                const Divider(height: 1),
-                            ],
-                          );
-                        }).toList(),
+                                if (friend != friends.last)
+                                  const Divider(height: 1),
+                              ],
+                            );
+                          }).toList(),
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 24),
 
                     // Version & App Info Footer

@@ -341,18 +341,18 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                     // Content Area
                     Expanded(
                       child: filteredTabs.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32),
+                          ? SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              child: Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     const TabbyMascotWidget(
                                       emotion: MascotEmotion.sleeping,
-                                      size: 80,
+                                      size: 70,
                                       showBubble: false,
                                     ),
-                                    const SizedBox(height: 16),
+                                    const SizedBox(height: 12),
                                     const Text(
                                       'No Active Tabs',
                                       style: TextStyle(
@@ -361,7 +361,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                                         color: TabbyColors.brandDarkTeal,
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 4),
                                     const Text(
                                       'No active tabs found. You are completely settled up.',
                                       textAlign: TextAlign.center,
@@ -370,7 +370,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                                         color: TabbyColors.textSecondary,
                                       ),
                                     ),
-                                    const SizedBox(height: 20),
+                                    const SizedBox(height: 16),
                                     ElevatedButton.icon(
                                       onPressed: () => AddExpenseModal.show(context),
                                       icon: const Icon(Icons.add, size: 18),

@@ -122,7 +122,12 @@ void main() {
         tabs: [
           BilateralTab(
             id: 'tab-mark',
-            counterpart: MockTabbyRepository.sampleFriends[2],
+            counterpart: const TabbyUser(
+              id: 'user-mark',
+              displayName: 'Mark Villanueva',
+              email: 'mark@gmail.com',
+              phone: '+63 919 333 4455',
+            ),
             netBalanceCentavos: -25000, // user owes Mark ₱250.00
             itemCount: 1,
             entries: const [],
@@ -139,7 +144,12 @@ void main() {
         tabs: [
           BilateralTab(
             id: 'tab-juan',
-            counterpart: MockTabbyRepository.sampleFriends[0],
+            counterpart: const TabbyUser(
+              id: 'user-juan',
+              displayName: 'Juan Dela Cruz',
+              email: 'juan@gmail.com',
+              phone: '+63 917 111 2233',
+            ),
             netBalanceCentavos: 50000, // Juan owes user ₱500.00
             itemCount: 1,
             entries: const [],
