@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-ios:
     name: Build IPA (No-Codesign)
@@ -48,27 +51,55 @@ jobs:
           pod install --repo-update
           cd ..
 
-      - name: Build IPA
+      - name: Build iOS archive (no-codesign)
         run: flutter build ipa --no-codesign --release
+
+      - name: Package IPA from xcarchive
+        run: |
+          echo "=== Listing build/ios ==="
+          find build/ios -maxdepth 4 -name "*.ipa" -o -name "*.xcarchive" 2>/dev/null | sort
+
+          # flutter build ipa --no-codesign puts the .ipa here on newer Flutter
+          IPA=$(find build/ios -name "*.ipa" | head -1)
+
+          if [ -n "$IPA" ]; then
+            echo "Found IPA directly: $IPA"
+            mkdir -p output
+            cp "$IPA" output/Tabby.ipa
+          else
+            echo "No .ipa found, packaging from xcarchive..."
+            ARCHIVE=$(find build/ios/archive -name "*.xcarchive" | head -1)
+            echo "Archive: $ARCHIVE"
+            mkdir -p /tmp/Payload
+            cp -R "$ARCHIVE/Products/Applications/Runner.app" /tmp/Payload/
+            cd /tmp
+            zip -r Tabby.ipa Payload/
+            cd -
+            mkdir -p output
+            cp /tmp/Tabby.ipa output/Tabby.ipa
+          fi
+
+          echo "Final output:"
+          ls -lh output/
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: Tabby-${{ github.ref_name }}-ipa
-          path: build/ios/ipa/*.ipa
+          path: output/Tabby.ipa
           retention-days: 30
 
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/ios/ipa/*.ipa
+          files: output/Tabby.ipa
           name: Tabby ${{ github.ref_name }}
           body: |
             ## Tabby ${{ github.ref_name }}
 
             ### Install via Sideloadly
-            1. Download the .ipa file below.
+            1. Download Tabby.ipa below.
             2. Open Sideloadly on your PC.
             3. Connect your iPhone via USB.
             4. Drag the .ipa into Sideloadly and click Start.
