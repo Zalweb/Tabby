@@ -4,6 +4,7 @@ import '../../../core/theme/tabby_colors.dart';
 import '../../../core/config/app_state.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
+import '../../tabs/data/supabase_tabby_repository.dart';
 import '../../tabs/domain/models.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,13 +20,28 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   String? _errorText;
 
-  void _login() {
-    if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
       setState(() => _errorText = 'Please enter email and password');
       return;
     }
+
+    try {
+      if (SupabaseTabbyRepository.instance.isConnected) {
+        await SupabaseTabbyRepository.instance.signIn(
+          email: email,
+          password: password,
+        );
+      }
+    } catch (e) {
+      debugPrint('[LoginScreen] Live Supabase auth notice: $e');
+    }
+
     AppState.isAuthenticated.value = true;
-    context.go('/home');
+    if (mounted) context.go('/home');
   }
 
   @override

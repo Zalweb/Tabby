@@ -2,11 +2,18 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/config/supabase_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/tabby_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await SupabaseConfig.initialize();
+  } catch (e) {
+    debugPrint('[Main] Supabase initialization notice: $e');
+  }
 
   runApp(
     const ProviderScope(

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/mock_tabby_repository.dart';
+import '../data/supabase_tabby_repository.dart';
 import '../domain/models.dart';
 import 'tabby_state.dart';
 
@@ -142,6 +143,18 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       emotionCustomMessage: 'Tab logged successfully! Calculating balances...',
     );
 
+    // Asynchronously synchronize with Supabase backend
+    SupabaseTabbyRepository.instance.logExpense(
+      tabId: counterpartId,
+      title: title.trim().isEmpty ? category.displayName : title.trim(),
+      totalAmountCentavos: totalAmountCentavos,
+      category: category,
+      paidByUserId: paidByMe ? currentUser.id : counterpartId,
+      myShareCentavos: myShare,
+      counterpartShareCentavos: counterpartShare,
+      dueDate: dueDate,
+    );
+
     _scheduleEmotionReset();
   }
 
@@ -216,6 +229,15 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       emotionCustomMessage: newNetBalance == 0
           ? 'Nice! That tab is completely settled!'
           : 'Payment recorded! Remaining balance updated.',
+    );
+
+    // Asynchronously synchronize payment with Supabase backend
+    SupabaseTabbyRepository.instance.recordPayment(
+      tabId: tabId,
+      amountCentavos: amountCentavos,
+      method: method,
+      paidByUserId: isPayingMe ? tab.counterpart.id : currentUser.id,
+      receivedByUserId: isPayingMe ? currentUser.id : tab.counterpart.id,
     );
 
     _scheduleEmotionReset(seconds: 4);

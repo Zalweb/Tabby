@@ -13,12 +13,12 @@ class SupabaseConfig {
   // --------------------------------------------------------------------------
   static const String defaultUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://your-project-ref.supabase.co',
+    defaultValue: 'https://ziaqrkagsvozhotremsx.supabase.co',
   );
 
   static const String defaultAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: '',
+    defaultValue: 'sb_publishable_3oqHm0yg7oetZTuIJ27NNA_4yy8VK8O',
   );
 
   static const String storageBucketName = 'payment-proofs';

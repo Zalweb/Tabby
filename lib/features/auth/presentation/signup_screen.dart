@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/config/app_state.dart';
 import '../../../shared/widgets/tabby_button.dart';
+import '../../tabs/data/supabase_tabby_repository.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -21,21 +22,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _obscureConfirmPassword = true;
   String? _errorText;
 
-  void _signup() {
-    if (_nameController.text.trim().isEmpty ||
-        _emailController.text.trim().isEmpty ||
-        _phoneController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty ||
-        _confirmPasswordController.text.trim().isEmpty) {
+  Future<void> _signup() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text.trim();
+    final confirm = _confirmPasswordController.text.trim();
+
+    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty || confirm.isEmpty) {
       setState(() => _errorText = 'Please fill in all fields');
       return;
     }
-    if (_passwordController.text != _confirmPasswordController.text) {
+    if (password != confirm) {
       setState(() => _errorText = 'Passwords do not match');
       return;
     }
+
+    try {
+      if (SupabaseTabbyRepository.instance.isConnected) {
+        await SupabaseTabbyRepository.instance.signUp(
+          email: email,
+          password: password,
+          displayName: name,
+          phone: phone,
+        );
+      }
+    } catch (e) {
+      debugPrint('[SignUpScreen] Live Supabase auth notice: $e');
+    }
+
     AppState.isAuthenticated.value = true;
-    context.go('/home');
+    if (mounted) context.go('/home');
   }
 
   @override
