@@ -6,6 +6,13 @@ import 'tabby_colors.dart';
 class TabbyTheme {
   TabbyTheme._();
 
+  // Design Tokens extracted from Figma Node 7020:3430 (FinWise Reference)
+  static const double kpiCardRadius = 16.0;      // Rectangle 272/273: 14.89px ≈ 16px
+  static const double iconSquircleRadius = 8.5;  // Rectangle 31: 6.25px squircle
+  static const double pillBadgeRadius = 14.0;    // Rectangle 29/157: 13.5px capsule
+  static const double containerRadius = 22.0;    // Frame modules: 22.0px
+  static const double sheetRadius = 32.0;        // Bottom container: 31.0px - 70.0px
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -39,8 +46,16 @@ class TabbyTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
+          borderRadius: BorderRadius.all(Radius.circular(kpiCardRadius)),
           side: BorderSide(color: TabbyColors.borderGray, width: 1),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: TabbyColors.surfaceWhite,
+        modalBackgroundColor: TabbyColors.surfaceWhite,
+        constraints: BoxConstraints(maxWidth: 430),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

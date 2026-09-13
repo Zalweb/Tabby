@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tabby/features/tabs/application/tabby_providers.dart';
 import 'package:tabby/features/tabs/application/tabby_state.dart';
 import 'package:tabby/features/tabs/data/mock_tabby_repository.dart';
 import 'package:tabby/features/tabs/domain/models.dart';

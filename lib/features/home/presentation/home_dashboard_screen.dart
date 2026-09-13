@@ -166,7 +166,7 @@ class HomeDashboardScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Net Balance Highlight Banner
+              // Net Balance Highlight Banner (Figma Node 7020:3680 pill status geometry)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -174,55 +174,101 @@ class HomeDashboardScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: dashboardState.netBalanceCentavos >= 0
-                          ? TabbyColors.successLight
-                          : TabbyColors.debtLight,
-                      borderRadius: BorderRadius.circular(14),
+                          ? TabbyColors.successLight.withValues(alpha: 0.6)
+                          : TabbyColors.debtLight.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: dashboardState.netBalanceCentavos >= 0
-                            ? TabbyColors.successGreen.withValues(alpha: 0.3)
-                            : TabbyColors.debtRed.withValues(alpha: 0.3),
+                            ? TabbyColors.successGreen.withValues(alpha: 0.25)
+                            : TabbyColors.debtRed.withValues(alpha: 0.25),
+                        width: 1.2,
                       ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              dashboardState.netBalanceCentavos >= 0
-                                  ? Icons.account_balance_wallet_outlined
-                                  : Icons.receipt_long_outlined,
-                              size: 18,
+                        Expanded(
+                          child: Row(
+                            children: [
+                              // Figma check/status icon container (rounded squircle)
+                              Container(
+                                width: 22,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: dashboardState.netBalanceCentavos >= 0
+                                      ? TabbyColors.successGreen
+                                      : TabbyColors.debtRed,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  dashboardState.netBalanceCentavos >= 0
+                                      ? Icons.check_rounded
+                                      : Icons.priority_high_rounded,
+                                  size: 14,
+                                  color: TabbyColors.surfaceWhite,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'NET POSITION',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.6,
+                                        color: dashboardState.netBalanceCentavos >= 0
+                                            ? TabbyColors.successGreen
+                                            : TabbyColors.debtRed,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      dashboardState.netBalanceCentavos >= 0
+                                          ? 'They owe you overall'
+                                          : 'You owe overall',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: TabbyColors.primaryCharcoal,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Pill badge showing formatted net balance
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: TabbyColors.surfaceWhite,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: dashboardState.netBalanceCentavos >= 0
+                                  ? TabbyColors.successGreen.withValues(alpha: 0.3)
+                                  : TabbyColors.debtRed.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            CurrencyFormatter.formatCentavos(
+                              dashboardState.netBalanceCentavos,
+                              showSign: true,
+                            ),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
                               color: dashboardState.netBalanceCentavos >= 0
                                   ? TabbyColors.successGreen
                                   : TabbyColors.debtRed,
+                              fontFamily: 'Inter',
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              dashboardState.netBalanceCentavos >= 0
-                                  ? 'Net Position (They owe you overall)'
-                                  : 'Net Position (You owe overall)',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: dashboardState.netBalanceCentavos >= 0
-                                    ? TabbyColors.successGreen
-                                    : TabbyColors.debtRed,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Text(
-                          CurrencyFormatter.formatCentavos(
-                            dashboardState.netBalanceCentavos,
-                            showSign: true,
-                          ),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: dashboardState.netBalanceCentavos >= 0
-                                ? TabbyColors.successGreen
-                                : TabbyColors.debtRed,
                           ),
                         ),
                       ],
@@ -266,16 +312,18 @@ class HomeDashboardScreen extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     child: Card(
                       child: Padding(
-                        padding: EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(16),
                         child: Row(
-                          children: [
+                          children: const [
                             Text('😴', style: TextStyle(fontSize: 20)),
                             SizedBox(width: 12),
-                            Text(
-                              'Walang pending dues! All caught up.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: TabbyColors.secondaryMuted,
+                            Expanded(
+                              child: Text(
+                                'Walang pending dues! All caught up.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: TabbyColors.secondaryMuted,
+                                ),
                               ),
                             ),
                           ],

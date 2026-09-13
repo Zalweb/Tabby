@@ -322,12 +322,15 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                             ),
                             const SizedBox(width: 6),
                           ],
-                          Text(
-                            '${tab.itemCount} ${tab.itemCount == 1 ? 'item' : 'items'}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: TabbyColors.secondaryMuted,
-                              fontWeight: FontWeight.w500,
+                          Flexible(
+                            child: Text(
+                              '${tab.itemCount} ${tab.itemCount == 1 ? 'item' : 'items'}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: TabbyColors.secondaryMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],

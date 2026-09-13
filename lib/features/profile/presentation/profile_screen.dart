@@ -116,23 +116,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.qr_code_2_rounded, color: TabbyColors.primaryCharcoal),
-                            SizedBox(width: 8),
-                            Text(
-                              'My Payment QR Ph',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: TabbyColors.primaryCharcoal,
+                      children: const [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Icon(Icons.qr_code_2_rounded, color: TabbyColors.primaryCharcoal),
+                              SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  'My Payment QR Ph',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: TabbyColors.primaryCharcoal,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        SizedBox(width: 8),
                         Chip(
                           label: Text('GCash / Maya', style: TextStyle(fontSize: 10)),
                           padding: EdgeInsets.zero,
@@ -142,7 +148,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                     Container(
-                      height: 120,
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                       decoration: BoxDecoration(
                         color: TabbyColors.backgroundLight,
                         borderRadius: BorderRadius.circular(12),
@@ -152,13 +158,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.add_a_photo_outlined, size: 32, color: TabbyColors.secondaryMuted),
+                            const Icon(Icons.add_a_photo_outlined, size: 30, color: TabbyColors.secondaryMuted),
                             const SizedBox(height: 6),
                             const Text(
                               'Upload your GCash or Maya QR code',
                               style: TextStyle(fontSize: 12, color: TabbyColors.textMuted),
+                              textAlign: TextAlign.center,
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             TextButton(
                               onPressed: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
