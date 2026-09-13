@@ -45,6 +45,34 @@ jobs:
           echo "SUPABASE_URL=$SUPABASE_URL" > .env
           echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
 
+      # ── CRITICAL: Inject Google Sign-In reversed URL scheme into Info.plist ──
+      # google_sign_in on iOS requires the reversed client ID as a URL scheme
+      # so that Google can redirect back to the app after authentication.
+      - name: Patch Info.plist with Google URL scheme
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+        run: |
+          # Derive the reversed client ID from the full client ID
+          # e.g. "12345-abc.apps.googleusercontent.com" -> "com.googleusercontent.apps.12345-abc"
+          REVERSED_CLIENT_ID=$(echo "$GOOGLE_IOS_CLIENT_ID" | awk -F'.' '{
+            for(i=NF;i>0;i--) printf "%s%s", $i, (i>1 ? "." : "")
+          }')
+
+          echo "Reversed Client ID: $REVERSED_CLIENT_ID"
+
+          INFO_PLIST="ios/Runner/Info.plist"
+
+          # Insert CFBundleURLTypes with Google reversed client ID before </dict> at end
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$INFO_PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$INFO_PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleTypeRole string Editor" "$INFO_PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string google" "$INFO_PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$INFO_PLIST"
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" "$INFO_PLIST"
+
+          echo "Info.plist patched successfully."
+          /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" "$INFO_PLIST"
+
       - name: Pod install
         run: |
           cd ios
