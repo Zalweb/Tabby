@@ -27,6 +27,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredTabs = ref.watch(filteredTabsProvider);
+    final dashboardState = ref.watch(tabbyProvider);
 
     // Group tabs into "They Owe You", "You Owe", and "Settled"
     final theyOweYouTabs = filteredTabs.where((t) => t.netBalanceCentavos > 0).toList();
@@ -43,163 +44,410 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
     );
 
     return Scaffold(
-      backgroundColor: TabbyColors.backgroundLight,
-      appBar: AppBar(
-        title: const Text(
-          'My Tabs',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: TabbyColors.primaryCharcoal,
-            letterSpacing: -0.5,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () => AddExpenseModal.show(context),
-            icon: const Icon(Icons.add_circle_outline_rounded, color: TabbyColors.primaryCharcoal),
-            tooltip: 'Add Tab',
-          ),
-        ],
-      ),
+      backgroundColor: TabbyColors.brandEmerald,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            // Search & Filter Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: TabbyColors.surfaceWhite,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: TabbyColors.borderGray),
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (val) {
-                    ref.read(tabSearchQueryProvider.notifier).state = val;
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search friend, barkada, or tab...',
-                    prefixIcon: const Icon(Icons.search_rounded, color: TabbyColors.secondaryMuted, size: 20),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              ref.read(tabSearchQueryProvider.notifier).state = '';
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            // Top Green Hero Section (Figma transactions_7035_978)
+            Container(
+              color: TabbyColors.brandEmerald,
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: Column(
+                children: [
+                  // App Bar Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'My Tabs',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: TabbyColors.brandDarkTeal,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: TabbyColors.surfaceWhite,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.add_rounded, size: 22, color: TabbyColors.brandDarkTeal),
+                              onPressed: () => AddExpenseModal.show(context),
+                              tooltip: 'Add Tab',
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: TabbyColors.surfaceWhite,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none_rounded,
+                              size: 22,
+                              color: TabbyColors.brandDarkTeal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 14),
+
+                  // Total Balance Card (Figma transactions_7035_978)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: TabbyColors.surfaceWhite,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Total Balance',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyColors.textSecondary,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          CurrencyFormatter.formatCentavos(dashboardState.netBalanceCentavos.abs()),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: dashboardState.netBalanceCentavos >= 0
+                                ? TabbyColors.brandDarkTeal
+                                : TabbyColors.accentBlue,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Dual Cards: Income (They Owe You) & Expense (You Owe) matching Figma 7110:3203 & 7110:3210
+                  Row(
+                    children: [
+                      // Card 1: They Owe You (Income style)
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: TabbyColors.surfaceWhite,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  color: TabbyColors.iconBgMint,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.north_east_rounded,
+                                  size: 16,
+                                  color: TabbyColors.brandEmerald,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'They Owe You',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  CurrencyFormatter.formatCentavos(totalTheyOweCentavos),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: TabbyColors.brandDarkTeal,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Card 2: You Owe (Expense style)
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: TabbyColors.surfaceWhite,
+                            borderRadius: BorderRadius.circular(18),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  color: TabbyColors.iconBgBlue,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.south_west_rounded,
+                                  size: 16,
+                                  color: TabbyColors.accentBlue,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'You Owe',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '-${CurrencyFormatter.formatCentavos(totalYouOweCentavos)}',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: TabbyColors.accentBlue,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
 
-            // Content Area
+            // Main Curved Content Container
             Expanded(
-              child: filteredTabs.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const TabbyMascotWidget(
-                              emotion: MascotEmotion.sleeping,
-                              size: 84,
-                              showBubble: false,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Walang active tabs!',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: TabbyColors.primaryCharcoal,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'No active tabs found. You are completely settled up! Time for a cat nap. 😴',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: TabbyColors.secondaryMuted,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: () => AddExpenseModal.show(context),
-                              icon: const Icon(Icons.add, size: 18),
-                              label: const Text('Log a New Tab'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: TabbyColors.primaryCharcoal,
-                                foregroundColor: TabbyColors.surfaceWhite,
-                              ),
-                            ),
-                          ],
+              child: Material(
+                color: TabbyColors.bgCanvas,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    // Search Bar & Calendar Quick Filter (Figma 7043:3390)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: TabbyColors.brandMintAccent,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (val) {
+                            ref.read(tabSearchQueryProvider.notifier).state = val;
+                          },
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Search friends or tabs...',
+                            prefixIcon: const Icon(Icons.search_rounded, color: TabbyColors.textSecondary, size: 22),
+                            suffixIcon: _searchController.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      ref.read(tabSearchQueryProvider.notifier).state = '';
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            filled: false,
+                          ),
                         ),
                       ),
-                    )
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 90),
-                      children: [
-                        // Section 1: THEY OWE YOU
-                        if (theyOweYouTabs.isNotEmpty) ...[
-                          _buildSectionHeader(
-                            title: 'THEY OWE YOU',
-                            totalCentavos: totalTheyOweCentavos,
-                            color: TabbyColors.successGreen,
-                            count: theyOweYouTabs.length,
-                          ),
-                          const SizedBox(height: 8),
-                          ...theyOweYouTabs.map((tab) => _buildTabCard(context, tab)),
-                          const SizedBox(height: 20),
-                        ],
-
-                        // Section 2: YOU OWE
-                        if (youOweTabs.isNotEmpty) ...[
-                          _buildSectionHeader(
-                            title: 'YOU OWE',
-                            totalCentavos: totalYouOweCentavos,
-                            color: TabbyColors.debtRed,
-                            count: youOweTabs.length,
-                          ),
-                          const SizedBox(height: 8),
-                          ...youOweTabs.map((tab) => _buildTabCard(context, tab)),
-                          const SizedBox(height: 20),
-                        ],
-
-                        // Section 3: SETTLED TABS
-                        if (settledTabs.isNotEmpty) ...[
-                          _buildSectionHeader(
-                            title: 'FULLY SETTLED (BAYAD NA)',
-                            totalCentavos: 0,
-                            color: TabbyColors.secondaryMuted,
-                            count: settledTabs.length,
-                          ),
-                          const SizedBox(height: 8),
-                          ...settledTabs.map((tab) => _buildTabCard(context, tab)),
-                        ],
-                      ],
                     ),
+
+                    // Content Area
+                    Expanded(
+                      child: filteredTabs.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const TabbyMascotWidget(
+                                      emotion: MascotEmotion.sleeping,
+                                      size: 80,
+                                      showBubble: false,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'No Active Tabs',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: TabbyColors.brandDarkTeal,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'No active tabs found. You are completely settled up.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: TabbyColors.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    ElevatedButton.icon(
+                                      onPressed: () => AddExpenseModal.show(context),
+                                      icon: const Icon(Icons.add, size: 18),
+                                      label: const Text('Log a New Tab'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: TabbyColors.brandEmerald,
+                                        foregroundColor: TabbyColors.surfaceWhite,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Section 1: THEY OWE YOU
+                                  if (theyOweYouTabs.isNotEmpty) ...[
+                                    _buildSectionHeader(
+                                      title: 'THEY OWE YOU',
+                                      totalCentavos: totalTheyOweCentavos,
+                                      color: TabbyColors.brandEmerald,
+                                      count: theyOweYouTabs.length,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...theyOweYouTabs.map((tab) => _buildTabCard(context, tab)),
+                                    const SizedBox(height: 20),
+                                  ],
+
+                                  // Section 2: YOU OWE
+                                  if (youOweTabs.isNotEmpty) ...[
+                                    _buildSectionHeader(
+                                      title: 'YOU OWE',
+                                      totalCentavos: totalYouOweCentavos,
+                                      color: TabbyColors.accentBlue,
+                                      count: youOweTabs.length,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...youOweTabs.map((tab) => _buildTabCard(context, tab)),
+                                    const SizedBox(height: 20),
+                                  ],
+
+                                  // Section 3: FULLY SETTLED
+                                  if (settledTabs.isNotEmpty) ...[
+                                    _buildSectionHeader(
+                                      title: 'FULLY SETTLED',
+                                      totalCentavos: 0,
+                                      color: TabbyColors.textSecondary,
+                                      count: settledTabs.length,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...settledTabs.map((tab) => _buildTabCard(context, tab)),
+                                  ],
+                                ],
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => AddExpenseModal.show(context),
-        backgroundColor: TabbyColors.primaryCharcoal,
+        backgroundColor: TabbyColors.brandEmerald,
         foregroundColor: TabbyColors.surfaceWhite,
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         icon: const Icon(Icons.add_rounded),
         label: const Text(
           'Add Tab',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
         ),
       ),
     );
@@ -232,7 +480,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    color: TabbyColors.primaryCharcoal,
+                    color: TabbyColors.brandDarkTeal,
                     letterSpacing: 0.5,
                   ),
                   maxLines: 1,
@@ -259,131 +507,139 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
     final isTheyOwe = tab.netBalanceCentavos > 0;
     final isSettled = tab.netBalanceCentavos == 0;
     final balanceColor = isSettled
-        ? TabbyColors.secondaryMuted
-        : (isTheyOwe ? TabbyColors.successGreen : TabbyColors.debtRed);
+        ? TabbyColors.textSecondary
+        : (isTheyOwe ? TabbyColors.brandEmerald : TabbyColors.accentBlue);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Card(
-        child: InkWell(
-          onTap: () => context.go('/tabs/${tab.id}'),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                // Avatar
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: tab.isGroupTab
-                      ? TabbyColors.pendingLight
-                      : TabbyColors.backgroundLight,
-                  child: Text(
-                    tab.isGroupTab
-                        ? '👥'
-                        : tab.counterpart.displayName.substring(0, 1).toUpperCase(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: tab.isGroupTab ? 16 : 14,
-                      color: tab.isGroupTab
-                          ? TabbyColors.accentAmberDark
-                          : TabbyColors.primaryCharcoal,
-                    ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: TabbyColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: TabbyColors.borderMint),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x04000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: InkWell(
+        onTap: () => context.go('/tabs/${tab.id}'),
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: tab.isGroupTab
+                    ? TabbyColors.iconBgMint
+                    : TabbyColors.iconBgBlue,
+                child: Text(
+                  tab.isGroupTab
+                      ? 'G'
+                      : tab.counterpart.displayName.substring(0, 1).toUpperCase(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: tab.isGroupTab
+                        ? TabbyColors.brandEmerald
+                        : TabbyColors.accentLightBlue,
                   ),
                 ),
-                const SizedBox(width: 12),
+              ),
+              const SizedBox(width: 12),
 
-                // Name & Item Count
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tab.isGroupTab
-                            ? (tab.groupName ?? tab.counterpart.displayName)
-                            : tab.counterpart.displayName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: TabbyColors.primaryCharcoal,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          if (tab.isGroupTab) ...[
-                            Flexible(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: TabbyColors.chipBackground,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'Group Tab',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: TabbyColors.textMuted,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          Flexible(
-                            child: Text(
-                              '${tab.itemCount} ${tab.itemCount == 1 ? 'item' : 'items'}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: TabbyColors.secondaryMuted,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Balance & Chevron
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              // Name & Item Count
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      CurrencyFormatter.formatCentavos(tab.netBalanceCentavos.abs()),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: balanceColor,
+                      tab.isGroupTab
+                          ? (tab.groupName ?? tab.counterpart.displayName)
+                          : tab.counterpart.displayName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: TabbyColors.brandDarkTeal,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      isSettled
-                          ? 'Bayad na'
-                          : (isTheyOwe ? 'Owes you' : 'You owe'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: balanceColor,
-                      ),
+                    Row(
+                      children: [
+                        if (tab.isGroupTab) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: TabbyColors.brandMintAccent,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Group',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: TabbyColors.brandDarkTeal,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Flexible(
+                          child: Text(
+                            '${tab.itemCount} ${tab.itemCount == 1 ? 'item' : 'items'}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: TabbyColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(width: 6),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: TabbyColors.secondaryMuted,
-                  size: 20,
-                ),
-              ],
-            ),
+              ),
+
+              // Balance & Subtitle
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    CurrencyFormatter.formatCentavos(tab.netBalanceCentavos.abs()),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: balanceColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isSettled
+                        ? 'Settled'
+                        : (isTheyOwe ? 'Owes you' : 'You owe'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: balanceColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: TabbyColors.textSecondary,
+                size: 20,
+              ),
+            ],
           ),
         ),
       ),

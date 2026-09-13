@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../config/app_state.dart';
 import '../../features/home/presentation/home_dashboard_screen.dart';
 import '../../features/navigation/presentation/main_scaffold.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/tabs/presentation/my_tabs_screen.dart';
 import '../../features/tabs/presentation/tab_detail_screen.dart';
+import '../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/signup_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
@@ -14,7 +18,43 @@ final GlobalKey<NavigatorState> _profileNavigatorKey = GlobalKey<NavigatorState>
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/home',
+  refreshListenable: Listenable.merge([
+    AppState.isAuthenticated,
+    AppState.hasSeenOnboarding,
+  ]),
+  redirect: (context, state) {
+    final bool auth = AppState.isAuthenticated.value;
+    final bool seenOnboarding = AppState.hasSeenOnboarding.value;
+    final String path = state.uri.path;
+
+    if (!auth) {
+      if (!seenOnboarding) {
+        if (path == '/onboarding') return null;
+        return '/onboarding';
+      } else {
+        if (path == '/login' || path == '/signup') return null;
+        return '/login';
+      }
+    } else {
+      if (path == '/login' || path == '/signup' || path == '/onboarding') {
+        return '/home';
+      }
+    }
+    return null;
+  },
   routes: [
+    GoRoute(
+      path: '/onboarding',
+      builder: (context, state) => const OnboardingScreen(),
+    ),
+    GoRoute(
+      path: '/login',
+      builder: (context, state) => const LoginScreen(),
+    ),
+    GoRoute(
+      path: '/signup',
+      builder: (context, state) => const SignUpScreen(),
+    ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return MainScaffold(navigationShell: navigationShell);

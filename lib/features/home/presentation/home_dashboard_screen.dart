@@ -9,364 +9,603 @@ import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/domain/models.dart';
 import '../../tabs/presentation/add_expense_modal.dart';
 
-class HomeDashboardScreen extends ConsumerWidget {
+class HomeDashboardScreen extends ConsumerStatefulWidget {
   const HomeDashboardScreen({super.key});
 
-  String _getTimeOfDayGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Magandang umaga ☀️';
-    } else if (hour < 18) {
-      return 'Magandang hapon ⛅';
-    } else {
-      return 'Good evening 🌙';
-    }
-  }
+  @override
+  ConsumerState<HomeDashboardScreen> createState() => _HomeDashboardScreenState();
+}
+
+class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
+  String _selectedFilter = 'Monthly';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final dashboardState = ref.watch(tabbyProvider);
     final notifier = ref.read(tabbyProvider.notifier);
 
     return Scaffold(
-      backgroundColor: TabbyColors.backgroundLight,
+      backgroundColor: TabbyColors.brandEmerald,
       body: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           onRefresh: () async {
-            // Simulated pull-to-refresh
-            await Future.delayed(const Duration(milliseconds: 600));
+            await Future.delayed(const Duration(milliseconds: 500));
           },
-          color: TabbyColors.primaryCharcoal,
+          color: TabbyColors.brandEmerald,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // Top Bar with Greeting & Notification Bell
+              // 1. Top Header & KPI Hero Section (Figma home_7033_352)
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Container(
+                  color: TabbyColors.brandEmerald,
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Top Row: Greeting, Name, Notification Bell
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            _getTimeOfDayGreeting(),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: TabbyColors.secondaryMuted,
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hi, Welcome Back',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: TabbyColors.brandDarkTeal,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Frienzal',
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: TabbyColors.brandDarkTeal,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Frienzal 👋',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.primaryCharcoal,
-                              letterSpacing: -0.5,
+                          const SizedBox(width: 12),
+                          // Circular White Notification Button
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: TabbyColors.surfaceWhite,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.notifications_none_rounded,
+                                color: TabbyColors.brandDarkTeal,
+                                size: 22,
+                              ),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('All notifications caught up!'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],
                       ),
-                      // Notification Bell
-                      IconButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Walang bagong notifications! All tabs updated.'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                        icon: Stack(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: TabbyColors.surfaceWhite,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: TabbyColors.borderGray),
-                              ),
-                              child: const Icon(
-                                Icons.notifications_none_rounded,
-                                size: 22,
-                                color: TabbyColors.primaryCharcoal,
-                              ),
-                            ),
-                            Positioned(
-                              top: 2,
-                              right: 2,
-                              child: Container(
-                                width: 9,
-                                height: 9,
-                                decoration: const BoxDecoration(
-                                  color: TabbyColors.accentAmber,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                      const SizedBox(height: 24),
 
-              // Mascot Mood Reflection Speech Bubble
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                  child: TabbyMascotWidget(
-                    emotion: dashboardState.activeEmotion,
-                    customMessage: dashboardState.mascotMessage,
-                    size: 60,
-                    onTap: () {
-                      notifier.setTemporaryEmotion(
-                        MascotEmotion.celebrating,
-                        message: 'Meow! Keep tabs, settle up! 🐾',
-                        durationSeconds: 3,
-                      );
-                    },
-                  ),
-                ),
-              ),
-
-              // Balances Overview (You Owe / You're Owed)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CurrencyCard(
-                          title: 'YOU OWE',
-                          centavos: dashboardState.youOweCentavos,
-                          subtitle: dashboardState.youOweCentavos > 0
-                              ? 'Active tabs to settle'
-                              : 'All clear! 🎉',
-                          isDebt: true,
-                          icon: Icons.arrow_outward_rounded,
-                          onTap: () => context.go('/tabs'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: CurrencyCard(
-                          title: "YOU'RE OWED",
-                          centavos: dashboardState.youAreOwedCentavos,
-                          subtitle: dashboardState.youAreOwedCentavos > 0
-                              ? 'Across ${dashboardState.tabs.where((t) => t.netBalanceCentavos > 0).length} tabs'
-                              : 'Zero pending credits',
-                          isDebt: false,
-                          icon: Icons.arrow_downward_rounded,
-                          onTap: () => context.go('/tabs'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Net Balance Highlight Banner (Figma Node 7020:3680 pill status geometry)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: dashboardState.netBalanceCentavos >= 0
-                          ? TabbyColors.successLight.withValues(alpha: 0.6)
-                          : TabbyColors.debtLight.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: dashboardState.netBalanceCentavos >= 0
-                            ? TabbyColors.successGreen.withValues(alpha: 0.25)
-                            : TabbyColors.debtRed.withValues(alpha: 0.25),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              // Figma check/status icon container (rounded squircle)
-                              Container(
-                                width: 22,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                  color: dashboardState.netBalanceCentavos >= 0
-                                      ? TabbyColors.successGreen
-                                      : TabbyColors.debtRed,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Icon(
-                                  dashboardState.netBalanceCentavos >= 0
-                                      ? Icons.check_rounded
-                                      : Icons.priority_high_rounded,
-                                  size: 14,
-                                  color: TabbyColors.surfaceWhite,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                      // KPI Row: Total Balance vs Total Expense (Dual column)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left Column: Total Balance (You're Owed)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
                                   children: [
-                                    Text(
-                                      'NET POSITION',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.6,
-                                        color: dashboardState.netBalanceCentavos >= 0
-                                            ? TabbyColors.successGreen
-                                            : TabbyColors.debtRed,
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: TabbyColors.surfaceWhite.withValues(alpha: 0.25),
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      child: const Icon(
+                                        Icons.north_east_rounded,
+                                        size: 14,
+                                        color: TabbyColors.brandDarkTeal,
                                       ),
                                     ),
-                                    const SizedBox(height: 1),
-                                    Text(
-                                      dashboardState.netBalanceCentavos >= 0
-                                          ? 'They owe you overall'
-                                          : 'You owe overall',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: TabbyColors.primaryCharcoal,
+                                    const SizedBox(width: 6),
+                                    const Expanded(
+                                      child: Text(
+                                        'Total Balance',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: TabbyColors.brandDarkTeal,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Pill badge showing formatted net balance
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: TabbyColors.surfaceWhite,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: dashboardState.netBalanceCentavos >= 0
-                                  ? TabbyColors.successGreen.withValues(alpha: 0.3)
-                                  : TabbyColors.debtRed.withValues(alpha: 0.3),
+                                const SizedBox(height: 6),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    CurrencyFormatter.formatCentavos(dashboardState.youAreOwedCentavos),
+                                    style: const TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w900,
+                                      color: TabbyColors.brandDarkTeal,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Text(
-                            CurrencyFormatter.formatCentavos(
-                              dashboardState.netBalanceCentavos,
-                              showSign: true,
-                            ),
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: dashboardState.netBalanceCentavos >= 0
-                                  ? TabbyColors.successGreen
-                                  : TabbyColors.debtRed,
-                              fontFamily: 'Inter',
+                          // Thin Vertical Divider
+                          Container(
+                            height: 48,
+                            width: 1.2,
+                            color: TabbyColors.brandDarkTeal.withValues(alpha: 0.2),
+                            margin: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          // Right Column: Total Expense (You Owe)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: TabbyColors.surfaceWhite.withValues(alpha: 0.25),
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      child: const Icon(
+                                        Icons.south_west_rounded,
+                                        size: 14,
+                                        color: TabbyColors.accentBlue,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Expanded(
+                                      child: Text(
+                                        'Total Expense',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: TabbyColors.brandDarkTeal,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    '-${CurrencyFormatter.formatCentavos(dashboardState.youOweCentavos)}',
+                                    style: const TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w900,
+                                      color: TabbyColors.accentBlue,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Upcoming Dues & Reminders Header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Upcoming & Reminders',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: TabbyColors.primaryCharcoal,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${dashboardState.reminders.length} items',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: TabbyColors.secondaryMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+                      const SizedBox(height: 18),
 
-              // Upcoming Items List
-              if (dashboardState.reminders.isEmpty)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    child: Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(16),
+                      // FinWise Progress Bar Capsule (Figma home_7033_352 & AST 7342:2869 / 7342:2871)
+                      Container(
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: TabbyColors.brandDeepForest,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                         child: Row(
                           children: [
-                            Text('😴', style: TextStyle(fontSize: 20)),
-                            SizedBox(width: 12),
-                            Expanded(
+                            const Padding(
+                              padding: EdgeInsets.only(left: 18),
                               child: Text(
-                                'Walang pending dues! All caught up.',
+                                '30%',
                                 style: TextStyle(
+                                  color: TabbyColors.bgCanvas,
+                                  fontWeight: FontWeight.w800,
                                   fontSize: 13,
-                                  color: TabbyColors.secondaryMuted,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              height: 30,
+                              margin: const EdgeInsets.only(right: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              decoration: BoxDecoration(
+                                color: TabbyColors.bgCanvas,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  CurrencyFormatter.formatCentavos(dashboardState.netBalanceCentavos.abs()),
+                                  style: const TextStyle(
+                                    color: TabbyColors.brandDeepForest,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ),
-                )
-              else
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final reminder = dashboardState.reminders[index];
-                      final isOverdue = reminder.dueDate.isBefore(DateTime.now());
+                      const SizedBox(height: 12),
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                        child: Card(
-                          child: Padding(
+                      // FinWise Status Check Line
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.check_box_outlined,
+                            size: 16,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '30% Of Your Expenses, Looks Good.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: TabbyColors.brandDarkTeal,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // 2. Main Body with Top Rounded Sheet Geometry (FinWise Canvas)
+              SliverToBoxAdapter(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: TabbyColors.bgCanvas,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // FinWise Savings / Quick KPI Card (home_7033_352)
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.brandEmerald,
+                          borderRadius: BorderRadius.circular(28),
+                          boxShadow: [
+                            BoxShadow(
+                              color: TabbyColors.brandEmerald.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // Left: Circular Progress Ring with Mascot Indicator
+                            Expanded(
+                              flex: 4,
+                              child: Column(
+                                children: [
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: TabbyColors.surfaceWhite,
+                                        width: 3.5,
+                                      ),
+                                    ),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.receipt_long_rounded,
+                                        color: TabbyColors.surfaceWhite,
+                                        size: 28,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Text(
+                                    'Active Tabs',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: TabbyColors.brandDarkTeal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Vertical Divider
+                            Container(
+                              height: 60,
+                              width: 1,
+                              color: TabbyColors.surfaceWhite.withValues(alpha: 0.4),
+                              margin: const EdgeInsets.symmetric(horizontal: 12),
+                            ),
+                            // Right: Stats breakdown
+                            Expanded(
+                              flex: 6,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.arrow_upward_rounded, size: 16, color: TabbyColors.brandDarkTeal),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Total Owed to You',
+                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: TabbyColors.brandDarkTeal),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                CurrencyFormatter.formatCentavos(dashboardState.youAreOwedCentavos),
+                                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: TabbyColors.brandDarkTeal),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const Divider(color: Colors.white24, height: 16),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.arrow_downward_rounded, size: 16, color: TabbyColors.accentBlue),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Total You Owe',
+                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: TabbyColors.brandDarkTeal),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              alignment: Alignment.centerLeft,
+                                              child: Text(
+                                                '-${CurrencyFormatter.formatCentavos(dashboardState.youOweCentavos)}',
+                                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: TabbyColors.accentBlue),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Segmented Filter Pills (Daily, Weekly, Monthly) matching Figma Switch-2
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.brandMintAccent,
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        child: Row(
+                          children: ['Daily', 'Weekly', 'Monthly'].map((filter) {
+                            final isSelected = _selectedFilter == filter;
+                            return Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _selectedFilter = filter),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? TabbyColors.brandEmerald : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      filter,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Dual Currency Cards (YOU OWE / YOU'RE OWED)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CurrencyCard(
+                              title: 'YOU OWE',
+                              centavos: dashboardState.youOweCentavos,
+                              subtitle: dashboardState.youOweCentavos > 0
+                                  ? 'Active tabs to settle'
+                                  : 'All clear',
+                              isDebt: true,
+                              icon: Icons.arrow_outward_rounded,
+                              onTap: () => context.go('/tabs'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: CurrencyCard(
+                              title: "YOU'RE OWED",
+                              centavos: dashboardState.youAreOwedCentavos,
+                              subtitle: dashboardState.youAreOwedCentavos > 0
+                                  ? 'Across active tabs'
+                                  : 'Zero pending credits',
+                              isDebt: false,
+                              icon: Icons.arrow_downward_rounded,
+                              onTap: () => context.go('/tabs'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Tabby Mascot Companion Speech Card
+                      TabbyMascotWidget(
+                        emotion: dashboardState.activeEmotion,
+                        customMessage: dashboardState.mascotMessage,
+                        size: 56,
+                        onTap: () {
+                          notifier.setTemporaryEmotion(
+                            MascotEmotion.celebrating,
+                            message: 'All tabs in order. Keep tabs and settle up!',
+                            durationSeconds: 3,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Upcoming & Reminders Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Upcoming & Reminders',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: TabbyColors.brandDarkTeal,
+                                letterSpacing: -0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${dashboardState.reminders.length} items',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: TabbyColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Upcoming Reminders List
+                      if (dashboardState.reminders.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: TabbyColors.surfaceWhite,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: TabbyColors.borderMint),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'No pending dues. All caught up!',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: TabbyColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        ...dashboardState.reminders.map((reminder) {
+                          final isOverdue = reminder.dueDate.isBefore(DateTime.now());
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: TabbyColors.surfaceWhite,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: TabbyColors.borderMint),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x04000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
                             child: Row(
                               children: [
                                 CircleAvatar(
                                   radius: 20,
                                   backgroundColor: reminder.isIWhoOwe
-                                      ? TabbyColors.debtLight
-                                      : TabbyColors.pendingLight,
+                                      ? TabbyColors.iconBgBlue
+                                      : TabbyColors.iconBgMint,
                                   child: Text(
                                     reminder.friendName.substring(0, 1).toUpperCase(),
                                     style: TextStyle(
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w800,
                                       color: reminder.isIWhoOwe
-                                          ? TabbyColors.debtRed
-                                          : TabbyColors.accentAmberDark,
+                                          ? TabbyColors.accentBlue
+                                          : TabbyColors.brandEmerald,
                                     ),
                                   ),
                                 ),
@@ -380,7 +619,7 @@ class HomeDashboardScreen extends ConsumerWidget {
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 14,
-                                          color: TabbyColors.primaryCharcoal,
+                                          color: TabbyColors.brandDarkTeal,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -388,17 +627,17 @@ class HomeDashboardScreen extends ConsumerWidget {
                                         reminder.description,
                                         style: const TextStyle(
                                           fontSize: 12,
-                                          color: TabbyColors.secondaryMuted,
+                                          color: TabbyColors.textSecondary,
                                         ),
                                       ),
                                       if (isOverdue) ...[
                                         const SizedBox(height: 2),
                                         const Text(
-                                          '⚠️ Overdue commitment',
+                                          'Past due date',
                                           style: TextStyle(
                                             fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: TabbyColors.debtRed,
+                                            fontWeight: FontWeight.w700,
+                                            color: TabbyColors.alertRed,
                                           ),
                                         ),
                                       ],
@@ -412,28 +651,28 @@ class HomeDashboardScreen extends ConsumerWidget {
                                       CurrencyFormatter.formatCentavos(reminder.amountCentavos),
                                       style: TextStyle(
                                         fontSize: 14,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w800,
                                         color: reminder.isIWhoOwe
-                                            ? TabbyColors.debtRed
-                                            : TabbyColors.primaryCharcoal,
+                                            ? TabbyColors.accentBlue
+                                            : TabbyColors.brandDarkTeal,
                                       ),
                                     ),
                                     const SizedBox(height: 6),
                                     if (reminder.isIWhoOwe)
                                       InkWell(
                                         onTap: () => context.go('/tabs/${reminder.tabId}'),
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(12),
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: TabbyColors.primaryCharcoal,
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: TabbyColors.brandEmerald,
+                                            borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: const Text(
-                                            'Bayad na',
+                                            'Pay',
                                             style: TextStyle(
                                               fontSize: 11,
-                                              fontWeight: FontWeight.w600,
+                                              fontWeight: FontWeight.w700,
                                               color: TabbyColors.surfaceWhite,
                                             ),
                                           ),
@@ -449,27 +688,25 @@ class HomeDashboardScreen extends ConsumerWidget {
                                           );
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
-                                              content: Text(
-                                                '🐾 Gentle Nudge sent to ${reminder.friendName}!',
-                                              ),
-                                              backgroundColor: TabbyColors.primaryCharcoal,
+                                              content: Text('Friendly reminder sent to ${reminder.friendName}!'),
+                                              backgroundColor: TabbyColors.brandDarkTeal,
                                               duration: const Duration(seconds: 2),
                                             ),
                                           );
                                         },
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(12),
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: TabbyColors.accentAmber,
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: TabbyColors.brandMintAccent,
+                                            borderRadius: BorderRadius.circular(12),
                                           ),
                                           child: const Text(
-                                            'Remind 🐾',
+                                            'Remind',
                                             style: TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w700,
-                                              color: TabbyColors.primaryCharcoal,
+                                              color: TabbyColors.brandDarkTeal,
                                             ),
                                           ),
                                         ),
@@ -478,128 +715,148 @@ class HomeDashboardScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                    childCount: dashboardState.reminders.length,
-                  ),
-                ),
+                          );
+                        }),
+                      const SizedBox(height: 24),
 
-              // Recent Activity Feed Header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Recent Activity',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: TabbyColors.primaryCharcoal,
+                      // Recent Activity Feed Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Recent Activity',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: TabbyColors.brandDarkTeal,
+                                letterSpacing: -0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${dashboardState.activities.length} logs',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: TabbyColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${dashboardState.activities.length} logs',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: TabbyColors.secondaryMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      const SizedBox(height: 10),
+
+                      // FinWise 3-Column Transaction / Activity List (home_7033_352)
+                      ...dashboardState.activities.map((act) {
+                        final displayName = act.actorName == 'Frienzal' ? 'You' : act.actorName;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: TabbyColors.surfaceWhite,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: TabbyColors.borderMint),
+                          ),
+                          child: Row(
+                            children: [
+                              // Circular Icon Squircle Container (Figma 40x40)
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: TabbyColors.iconBgBlue,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    act.iconData ?? Icons.receipt_rounded,
+                                    color: TabbyColors.accentLightBlue,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Column 1: Title & Time
+                              Expanded(
+                                flex: 4,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayName,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: TabbyColors.brandDarkTeal,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatTimestamp(act.timestamp),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: TabbyColors.accentLightBlue,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Column Divider
+                              Container(
+                                height: 28,
+                                width: 1,
+                                color: TabbyColors.borderMint,
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                              // Column 2: Category / Context
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  act.description,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: TabbyColors.textSecondary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              // Column Divider
+                              Container(
+                                height: 28,
+                                width: 1,
+                                color: TabbyColors.borderMint,
+                                margin: const EdgeInsets.symmetric(horizontal: 8),
+                              ),
+                              // Column 3: Currency Amount
+                              Expanded(
+                                flex: 3,
+                                child: Text(
+                                  act.amountCentavos > 0
+                                      ? CurrencyFormatter.formatCentavos(act.amountCentavos)
+                                      : 'Settled',
+                                  textAlign: TextAlign.end,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: TabbyColors.brandDarkTeal,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
                     ],
                   ),
                 ),
-              ),
-
-              // Recent Activity Items
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final act = dashboardState.activities[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: TabbyColors.surfaceWhite,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: TabbyColors.borderGray),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: TabbyColors.backgroundLight,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: TabbyColors.borderGray),
-                              ),
-                              child: Center(
-                                child: Text(act.icon, style: const TextStyle(fontSize: 18)),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  RichText(
-                                    text: TextSpan(
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: TabbyColors.primaryCharcoal,
-                                        fontFamily: 'Inter',
-                                      ),
-                                      children: [
-                                        TextSpan(
-                                          text: act.actorName,
-                                          style: const TextStyle(fontWeight: FontWeight.w700),
-                                        ),
-                                        const TextSpan(text: ' '),
-                                        TextSpan(text: act.description),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _formatTimestamp(act.timestamp),
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: TabbyColors.secondaryMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (act.amountCentavos > 0)
-                              Text(
-                                CurrencyFormatter.formatCentavos(act.amountCentavos),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: TabbyColors.primaryCharcoal,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                  childCount: dashboardState.activities.length,
-                ),
-              ),
-
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 90),
               ),
             ],
           ),
@@ -607,17 +864,15 @@ class HomeDashboardScreen extends ConsumerWidget {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          AddExpenseModal.show(context);
-        },
-        backgroundColor: TabbyColors.primaryCharcoal,
+        onPressed: () => AddExpenseModal.show(context),
+        backgroundColor: TabbyColors.brandEmerald,
         foregroundColor: TabbyColors.surfaceWhite,
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         icon: const Icon(Icons.add_rounded, size: 22),
         label: const Text(
           'Log Expense',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
         ),
       ),
     );

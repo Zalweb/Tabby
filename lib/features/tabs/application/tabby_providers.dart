@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/mock_tabby_repository.dart';
 import '../domain/models.dart';
@@ -25,7 +26,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required int totalAmountCentavos,
     required ExpenseCategory category,
     required bool paidByMe,
-    required bool isKkbSplit,
+    required bool isEqualSplit,
     DateTime? dueDate,
   }) {
     const currentUser = MockTabbyRepository.currentUser;
@@ -34,8 +35,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     int myShare;
     int counterpartShare;
 
-    if (isKkbSplit) {
-      // 50/50 KKB split with integer centavo division (ADR-001)
+    if (isEqualSplit) {
+      // 50/50 split with integer centavo division (ADR-001)
       myShare = totalAmountCentavos ~/ 2;
       counterpartShare = totalAmountCentavos - myShare;
     } else {
@@ -113,7 +114,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       description: 'logged $title with $counterpartName',
       amountCentavos: totalAmountCentavos,
       timestamp: now,
-      icon: category.emoji,
+      iconData: category.icon,
     );
 
     // Add upcoming reminder if due date is specified
@@ -138,14 +139,13 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       activities: [newActivity, ...state.activities],
       reminders: updatedReminders,
       emotionOverride: MascotEmotion.calculating,
-      emotionCustomMessage: 'Tab logged successfully! Crunching the numbers... 🐾',
+      emotionCustomMessage: 'Tab logged successfully! Calculating balances...',
     );
 
-    // Auto-revert temporary calculating emotion after 3 seconds
     _scheduleEmotionReset();
   }
 
-  /// Settle or partially pay a tab ("Bayad na ako / I Paid" or "Confirm Payment")
+  /// Settle or partially pay a tab ("Record Settlement" or "Confirm Payment")
   void settleTab({
     required String tabId,
     required int amountCentavos,
@@ -205,23 +205,23 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       description: 'settled ₱${(amountCentavos / 100).toStringAsFixed(2)} via ${method.label}',
       amountCentavos: amountCentavos,
       timestamp: now,
-      icon: method.icon,
+      iconData: method.iconData,
     );
 
     state = state.copyWith(
       tabs: updatedTabs,
       activities: [newActivity, ...state.activities],
       reminders: updatedReminders,
-      emotionOverride: newNetBalance == 0 ? MascotEmotion.celebrating : MascotEmotion.celebrating,
+      emotionOverride: MascotEmotion.celebrating,
       emotionCustomMessage: newNetBalance == 0
-          ? 'Nice! That tab is completely settled! 🎉 Bayad na!'
-          : 'Payment recorded! Remaining balance updated. 🐾',
+          ? 'Nice! That tab is completely settled!'
+          : 'Payment recorded! Remaining balance updated.',
     );
 
     _scheduleEmotionReset(seconds: 4);
   }
 
-  /// Sends a gentle nudge reminder to a friend
+  /// Sends a gentle reminder to a friend
   void sendGentleNudge({
     required String tabId,
     required String friendName,
@@ -231,16 +231,16 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
       actorName: MockTabbyRepository.currentUser.displayName,
-      description: 'sent gentle nudge to $friendName 🐾',
+      description: 'sent friendly reminder to $friendName',
       amountCentavos: amountCentavos,
       timestamp: now,
-      icon: '🐾',
+      iconData: Icons.send_rounded,
     );
 
     state = state.copyWith(
       activities: [newActivity, ...state.activities],
       emotionOverride: MascotEmotion.gentleNudge,
-      emotionCustomMessage: 'Psst! Nudge sent to $friendName: "Pasuyo nung tab natin pag convenient sa’yo 🐱"',
+      emotionCustomMessage: 'Friendly reminder sent to $friendName for our shared tab.',
     );
 
     _scheduleEmotionReset(seconds: 5);

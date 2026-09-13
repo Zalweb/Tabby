@@ -2,8 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tabby/main.dart';
 
+import 'package:tabby/core/config/app_state.dart';
+
 void main() {
   testWidgets('TabbyApp boots up, displays dashboard, and navigates tabs', (tester) async {
+    AppState.isAuthenticated.value = true;
     await tester.pumpWidget(
       const ProviderScope(
         child: TabbyApp(),
@@ -13,8 +16,8 @@ void main() {
     // Initial pump & settle
     await tester.pumpAndSettle();
 
-    // Verify Home Dashboard header & greeting
-    expect(find.text('Frienzal 👋'), findsOneWidget);
+    // Verify Home Dashboard header & greeting (without emojis)
+    expect(find.text('Frienzal'), findsOneWidget);
     expect(find.text('YOU OWE'), findsOneWidget);
     expect(find.text("YOU'RE OWED"), findsOneWidget);
     expect(find.text('Log Expense'), findsOneWidget);
@@ -23,7 +26,7 @@ void main() {
     await tester.tap(find.text('My Tabs'));
     await tester.pumpAndSettle();
 
-    // Verify My Tabs screen headers (one in AppBar, one in BottomNavigationBar)
+    // Verify My Tabs screen headers (one in top bar, one in bottom navigation)
     expect(find.text('My Tabs'), findsNWidgets(2));
     expect(find.textContaining('THEY OWE YOU'), findsOneWidget);
     expect(find.textContaining('YOU OWE'), findsOneWidget);

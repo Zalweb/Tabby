@@ -3,7 +3,7 @@ import '../../core/theme/tabby_colors.dart';
 import '../../features/tabs/domain/models.dart';
 
 /// Tabby Mascot Companion Widget displaying the 9 emotional states
-/// defined in AGENTS.md Section 4.
+/// styled in the FinWise design language with clean Material icons (no emojis).
 class TabbyMascotWidget extends StatelessWidget {
   final MascotEmotion emotion;
   final double size;
@@ -24,18 +24,18 @@ class TabbyMascotWidget extends StatelessWidget {
     switch (emotion) {
       case MascotEmotion.userOwes:
       case MascotEmotion.overdue:
-        return TabbyColors.debtRed;
+        return TabbyColors.accentBlue;
       case MascotEmotion.userIsOwed:
       case MascotEmotion.celebrating:
-        return TabbyColors.successGreen;
+        return TabbyColors.brandEmerald;
       case MascotEmotion.calculating:
       case MascotEmotion.gentleNudge:
-        return TabbyColors.accentAmber;
+        return TabbyColors.brandEmerald;
       case MascotEmotion.paymentSubmitted:
         return TabbyColors.pendingAmber;
       case MascotEmotion.sleeping:
       case MascotEmotion.idleNeutral:
-        return TabbyColors.primaryCharcoal;
+        return TabbyColors.brandDarkTeal;
     }
   }
 
@@ -43,18 +43,18 @@ class TabbyMascotWidget extends StatelessWidget {
     switch (emotion) {
       case MascotEmotion.userOwes:
       case MascotEmotion.overdue:
-        return TabbyColors.debtLight;
+        return TabbyColors.iconBgBlue;
       case MascotEmotion.userIsOwed:
       case MascotEmotion.celebrating:
-        return TabbyColors.successLight;
+        return TabbyColors.iconBgMint;
       case MascotEmotion.calculating:
       case MascotEmotion.gentleNudge:
-        return TabbyColors.pendingLight;
+        return TabbyColors.brandMintAccent;
       case MascotEmotion.paymentSubmitted:
-        return const Color(0xFFFEF3C7);
+        return TabbyColors.pendingLight;
       case MascotEmotion.sleeping:
       case MascotEmotion.idleNeutral:
-        return const Color(0xFFF3F4F6);
+        return const Color(0xFFE8F8EE);
     }
   }
 
@@ -68,7 +68,7 @@ class TabbyMascotWidget extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          // Background glow
+          // Background ring
           Container(
             width: size,
             height: size,
@@ -76,7 +76,7 @@ class TabbyMascotWidget extends StatelessWidget {
               color: _getBackdropColor(),
               shape: BoxShape.circle,
               border: Border.all(
-                color: _getBadgeColor().withValues(alpha: 0.3),
+                color: _getBadgeColor().withValues(alpha: 0.35),
                 width: 2,
               ),
               boxShadow: [
@@ -93,9 +93,10 @@ class TabbyMascotWidget extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return Center(
-                    child: Text(
-                      emotion.emoji,
-                      style: TextStyle(fontSize: size * 0.45),
+                    child: Icon(
+                      Icons.pets_rounded,
+                      size: size * 0.5,
+                      color: _getBadgeColor(),
                     ),
                   );
                 },
@@ -103,7 +104,7 @@ class TabbyMascotWidget extends StatelessWidget {
             ),
           ),
 
-          // Emotion status badge (Bottom Right)
+          // Emotion status badge (Bottom Right) with clean Material icon (NO emojis)
           Positioned(
             right: -2,
             bottom: -2,
@@ -121,9 +122,10 @@ class TabbyMascotWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Text(
-                emotion.emoji,
-                style: const TextStyle(fontSize: 12),
+              child: Icon(
+                emotion.icon,
+                size: 12,
+                color: _getBadgeColor(),
               ),
             ),
           ),
@@ -147,7 +149,7 @@ class TabbyMascotWidget extends StatelessWidget {
             decoration: BoxDecoration(
               color: TabbyColors.surfaceWhite,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: TabbyColors.borderGray),
+              border: Border.all(color: TabbyColors.borderMint),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x08000000),
@@ -166,7 +168,7 @@ class TabbyMascotWidget extends StatelessWidget {
                       'Tabby',
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         color: _getBadgeColor(),
                         letterSpacing: 0.5,
                       ),
@@ -182,7 +184,7 @@ class TabbyMascotWidget extends StatelessWidget {
                         emotion.stateKey,
                         style: TextStyle(
                           fontSize: 9,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: _getBadgeColor(),
                         ),
                       ),
@@ -194,7 +196,7 @@ class TabbyMascotWidget extends StatelessWidget {
                   message,
                   style: const TextStyle(
                     fontSize: 13,
-                    color: TabbyColors.primaryCharcoal,
+                    color: TabbyColors.textPrimary,
                     height: 1.3,
                     fontWeight: FontWeight.w500,
                   ),

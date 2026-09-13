@@ -144,7 +144,7 @@ class SupabaseConfig {
   /// Returns:
   /// - Positive (`> 0`): Counterpart owes user ("You're owed").
   /// - Negative (`< 0`): User owes counterpart ("You owe").
-  /// - Zero (`0`): Settled up ("Bayad na!").
+  /// - Zero (`0`): Settled up ("Fully settled").
   static Future<int> getNetBalance({
     required String tabId,
     required String userId,

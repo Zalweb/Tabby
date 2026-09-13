@@ -8,10 +8,12 @@ import 'package:tabby/features/tabs/presentation/add_expense_modal.dart';
 import 'package:tabby/features/tabs/domain/models.dart';
 import 'package:tabby/shared/widgets/currency_card.dart';
 import 'package:tabby/shared/widgets/tabby_mascot_widget.dart';
+import 'package:tabby/core/config/app_state.dart';
 
 void main() {
   group('Web & Responsive Viewport Rendering', () {
     testWidgets('TabbyApp renders flawlessly on mobile viewport (390x844) without any white screen or overflow', (tester) async {
+      AppState.isAuthenticated.value = true;
       appRouter.go('/home');
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
@@ -27,8 +29,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verify Home Dashboard loaded
-      expect(find.text('Frienzal 👋'), findsOneWidget);
+      // Verify Home Dashboard loaded without emojis
+      expect(find.text('Frienzal'), findsOneWidget);
       expect(find.text('YOU OWE'), findsOneWidget);
       expect(find.text("YOU'RE OWED"), findsOneWidget);
       expect(find.text('Upcoming & Reminders'), findsOneWidget);
@@ -54,6 +56,7 @@ void main() {
     });
 
     testWidgets('TabbyApp renders flawlessly on desktop browser viewport (1200x800) inside IPhoneDeviceFrameWrapper', (tester) async {
+      AppState.isAuthenticated.value = true;
       appRouter.go('/home');
       tester.view.physicalSize = const Size(1200, 800);
       tester.view.devicePixelRatio = 1.0;
@@ -81,7 +84,7 @@ void main() {
       expect(find.byType(IPhoneDeviceFrameWrapper), findsOneWidget);
       expect(find.byType(DynamicIslandWidget), findsOneWidget);
       expect(find.byType(IPhoneHomeIndicator), findsOneWidget);
-      expect(find.text('Frienzal 👋'), findsOneWidget);
+      expect(find.text('Frienzal'), findsOneWidget);
       expect(find.text('YOU OWE'), findsOneWidget);
       expect(find.text("YOU'RE OWED"), findsOneWidget);
 
@@ -101,6 +104,7 @@ void main() {
     });
 
     testWidgets('TabbyApp renders on compact mobile viewport (360x640)', (tester) async {
+      AppState.isAuthenticated.value = true;
       appRouter.go('/home');
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1.0;
@@ -115,7 +119,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Frienzal 👋'), findsOneWidget);
+      expect(find.text('Frienzal'), findsOneWidget);
     });
   });
 
@@ -208,8 +212,8 @@ void main() {
       await tester.tap(find.text('Open Modal'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Quick Log Expense 🐾'), findsOneWidget);
-      expect(find.text('Save Tab 🐾'), findsOneWidget);
+      expect(find.text('Quick Log Expense'), findsOneWidget);
+      expect(find.text('Save Tab'), findsOneWidget);
     });
   });
 }

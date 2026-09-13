@@ -64,7 +64,7 @@ class TabbyDashboardState {
     return MascotEmotion.idleNeutral;
   }
 
-  /// Effective microcopy based on mascot state and balances
+  /// Effective microcopy based on mascot state and balances (clean English, no emojis, no Tagalog)
   String get mascotMessage {
     if (emotionCustomMessage != null && emotionCustomMessage!.isNotEmpty) {
       return emotionCustomMessage!;
@@ -72,21 +72,21 @@ class TabbyDashboardState {
 
     switch (activeEmotion) {
       case MascotEmotion.sleeping:
-        return 'All tabs cleared! Time for a cozy cat nap. 😴';
+        return 'All tabs cleared! You are completely settled up.';
       case MascotEmotion.userOwes:
-        return 'Psst... you have ₱${(youOweCentavos / 100).toStringAsFixed(2)} in active tabs to settle up. 🐾';
+        return 'You have ₱${(youOweCentavos / 100).toStringAsFixed(2)} in active tabs to settle up.';
       case MascotEmotion.userIsOwed:
-        return 'You\'re owed ₱${(youAreOwedCentavos / 100).toStringAsFixed(2)} across your barkada tabs! 👀';
+        return 'You are owed ₱${(youAreOwedCentavos / 100).toStringAsFixed(2)} across your shared tabs.';
       case MascotEmotion.celebrating:
-        return 'Nice! One less tab! Tabby approves! 🎉';
+        return 'All set! Balance updated successfully.';
       case MascotEmotion.calculating:
-        return 'Crunching the numbers with zero-centavo drift... 🐾';
+        return 'Calculating balances with exact centavo precision.';
       case MascotEmotion.gentleNudge:
-        return 'Psst! Pasuyo nung tab natin pag ready na 🐱';
+        return 'Here is a friendly reminder for our shared tab whenever you are ready.';
       case MascotEmotion.overdue:
-        return 'Some tabs are overdue... a friendly nudge might help!';
+        return 'Some tabs are past their due date. A gentle reminder can help.';
       case MascotEmotion.paymentSubmitted:
-        return 'Payment submitted! Awaiting your friend\'s confirmation. ⏳';
+        return 'Payment submitted! Awaiting your friend\'s confirmation.';
       case MascotEmotion.idleNeutral:
         return 'Good day! All your tabs are organized and up to date.';
     }

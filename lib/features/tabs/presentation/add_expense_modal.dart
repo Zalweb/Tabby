@@ -34,9 +34,10 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   late String _selectedFriendName;
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _messageController = TextEditingController();
   ExpenseCategory _selectedCategory = ExpenseCategory.food;
   bool _paidByMe = true;
-  bool _isKkbSplit = true;
+  bool _isEqualSplit = true;
   DateTime? _selectedDueDate;
 
   // Preset quick amount chips in pesos
@@ -63,6 +64,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   void dispose() {
     _amountController.dispose();
     _descriptionController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -71,14 +73,14 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
     if (centavos <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter an amount greater than ₱0.00'),
-          backgroundColor: TabbyColors.debtRed,
+          content: Text('Please enter an amount greater than PHP 0.00'),
+          backgroundColor: TabbyColors.alertRed,
         ),
       );
       return;
     }
 
-    // Check possible duplicate (ADR / Acceptance scenario 7)
+    // Check possible duplicate
     final existingTabs = ref.read(tabbyProvider).tabs;
     final matchingTab = existingTabs.where((t) => t.id == _selectedFriendId || t.counterpart.id == _selectedFriendId).firstOrNull;
     final isPossibleDuplicate = matchingTab?.entries.any(
@@ -106,7 +108,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
           totalAmountCentavos: centavos,
           category: _selectedCategory,
           paidByMe: _paidByMe,
-          isKkbSplit: _isKkbSplit,
+          isEqualSplit: _isEqualSplit,
           dueDate: _selectedDueDate,
         );
 
@@ -115,9 +117,9 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          '🐾 Logged ${CurrencyFormatter.formatCentavos(centavos)} with $_selectedFriendName!',
+          'Logged ${CurrencyFormatter.formatCentavos(centavos)} with $_selectedFriendName!',
         ),
-        backgroundColor: TabbyColors.primaryCharcoal,
+        backgroundColor: TabbyColors.brandEmerald,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -128,12 +130,12 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
-              Text('⚠️', style: TextStyle(fontSize: 20)),
+              Icon(Icons.warning_amber_rounded, color: TabbyColors.pendingAmber, size: 24),
               SizedBox(width: 8),
-              Text('Possible Duplicate', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              Text('Possible Duplicate', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
             ],
           ),
           content: Text(
@@ -146,11 +148,11 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // close dialog
+                Navigator.pop(context);
                 _commitExpense(centavos);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: TabbyColors.primaryCharcoal,
+                backgroundColor: TabbyColors.brandEmerald,
                 foregroundColor: TabbyColors.surfaceWhite,
               ),
               child: const Text('Create Anyway'),
@@ -174,7 +176,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
       ),
       decoration: const BoxDecoration(
         color: TabbyColors.surfaceWhite,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -184,47 +186,48 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             // Handle Bar
             Center(
               child: Container(
-                width: 40,
+                width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: TabbyColors.borderGray,
+                  color: TabbyColors.borderMint,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
-            // Header
+            // Header (Figma add_expense_7035_3877)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Expanded(
                   child: Text(
-                    'Quick Log Expense 🐾',
+                    'Quick Log Expense',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w800,
-                      color: TabbyColors.primaryCharcoal,
+                      color: TabbyColors.brandDarkTeal,
+                      letterSpacing: -0.5,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, size: 20),
+                  icon: const Icon(Icons.close, size: 22, color: TabbyColors.brandDarkTeal),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
             const SizedBox(height: 12),
 
-            // 1. Participant Picker
+            // 1. Participant Picker (Friend / Group)
             const Text(
-              'Friend / Barkada',
+              'Friend or Group',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: TabbyColors.secondaryMuted,
+                color: TabbyColors.textSecondary,
                 letterSpacing: 0.2,
               ),
             ),
@@ -241,10 +244,10 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                   return ChoiceChip(
                     label: Text(f.displayName),
                     selected: isSelected,
-                    selectedColor: TabbyColors.accentAmber,
+                    selectedColor: TabbyColors.brandEmerald,
                     labelStyle: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? TabbyColors.primaryCharcoal : TabbyColors.textMuted,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
                       fontSize: 12,
                     ),
                     onSelected: (selected) {
@@ -261,23 +264,22 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             ),
             const SizedBox(height: 16),
 
-            // 2. Large Amount Input Keypad Target
+            // 2. Large Amount Input Container (Figma Soft Mint Pill)
             const Text(
-              'Total Amount (₱)',
+              'Amount',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: TabbyColors.secondaryMuted,
+                color: TabbyColors.textSecondary,
                 letterSpacing: 0.2,
               ),
             ),
             const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: TabbyColors.backgroundLight,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: TabbyColors.borderGray, width: 1.5),
+                color: TabbyColors.brandMintAccent,
+                borderRadius: BorderRadius.circular(18),
               ),
               child: Row(
                 children: [
@@ -285,8 +287,8 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                     '₱',
                     style: TextStyle(
                       fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: TabbyColors.primaryCharcoal,
+                      fontWeight: FontWeight.w900,
+                      color: TabbyColors.brandDarkTeal,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -298,12 +300,12 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                       style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w800,
-                        color: TabbyColors.primaryCharcoal,
+                        color: TabbyColors.brandDarkTeal,
                         fontFamily: 'Inter',
                       ),
                       decoration: const InputDecoration(
                         hintText: '0.00',
-                        hintStyle: TextStyle(color: TabbyColors.secondaryMuted),
+                        hintStyle: TextStyle(color: TabbyColors.textSecondary),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
@@ -327,7 +329,8 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                 itemBuilder: (context, index) {
                   final amount = _quickAmounts[index];
                   return ActionChip(
-                    label: Text('+₱$amount', style: const TextStyle(fontSize: 11)),
+                    label: Text('+₱$amount', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal)),
+                    backgroundColor: const Color(0xFFE8F8EE),
                     padding: EdgeInsets.zero,
                     onPressed: () {
                       final current = CurrencyFormatter.parseToCentavos(_amountController.text);
@@ -340,13 +343,13 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             ),
             const SizedBox(height: 16),
 
-            // 3. Category Chips
+            // 3. Category Chips with Material Icons (NO EMOJIS)
             const Text(
               'Category',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: TabbyColors.secondaryMuted,
+                color: TabbyColors.textSecondary,
                 letterSpacing: 0.2,
               ),
             ),
@@ -357,13 +360,14 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
               children: ExpenseCategory.values.map((cat) {
                 final isSelected = _selectedCategory == cat;
                 return ChoiceChip(
-                  label: Text('${cat.emoji} ${cat.displayName}'),
+                  avatar: Icon(cat.icon, size: 16, color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal),
+                  label: Text(cat.displayName),
                   selected: isSelected,
-                  selectedColor: TabbyColors.accentAmber,
+                  selectedColor: TabbyColors.brandEmerald,
                   labelStyle: TextStyle(
                     fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? TabbyColors.primaryCharcoal : TabbyColors.textMuted,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
                   ),
                   onSelected: (selected) {
                     if (selected) {
@@ -377,18 +381,82 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             ),
             const SizedBox(height: 16),
 
-            // 4. Description Field
-            TextField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(
-                hintText: 'Description (e.g. Samgyupsal, Milk tea, Taxi)',
-                prefixIcon: Icon(Icons.edit_outlined, size: 18, color: TabbyColors.secondaryMuted),
-                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            // 4. Description Field (Figma Expense Title)
+            const Text(
+              'Expense Title',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: TabbyColors.textSecondary,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: TabbyColors.brandMintAccent,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: TextField(
+                controller: _descriptionController,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: TabbyColors.brandDarkTeal,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Dinner, Grocery run, Taxi fare',
+                  hintStyle: TextStyle(color: TabbyColors.textSecondary),
+                  prefixIcon: Icon(Icons.edit_outlined, size: 18, color: TabbyColors.textSecondary),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  filled: false,
+                ),
               ),
             ),
             const SizedBox(height: 16),
 
-            // 5. Payer Toggle & Split Mode (KKB)
+            // 5. Message / Notes Field (Figma "Enter Message" node 7035:3877)
+            const Text(
+              'Enter Message',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: TabbyColors.textSecondary,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: TabbyColors.brandMintAccent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: TextField(
+                controller: _messageController,
+                maxLines: 2,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: TabbyColors.brandDarkTeal,
+                ),
+                decoration: const InputDecoration(
+                  hintText: 'Enter Message or notes...',
+                  hintStyle: TextStyle(color: TabbyColors.textSecondary),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 6. Payer Toggle & Split Mode
             Row(
               children: [
                 Expanded(
@@ -400,14 +468,14 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: TabbyColors.secondaryMuted,
+                          color: TabbyColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 6),
                       SegmentedButton<bool>(
                         segments: const [
-                          ButtonSegment(value: true, label: Text('You paid', style: TextStyle(fontSize: 11))),
-                          ButtonSegment(value: false, label: Text('They paid', style: TextStyle(fontSize: 11))),
+                          ButtonSegment(value: true, label: Text('You paid', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
+                          ButtonSegment(value: false, label: Text('They paid', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
                         ],
                         selected: {_paidByMe},
                         onSelectionChanged: (set) {
@@ -429,19 +497,19 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: TabbyColors.secondaryMuted,
+                          color: TabbyColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 6),
                       SegmentedButton<bool>(
                         segments: const [
-                          ButtonSegment(value: true, label: Text('KKB (50/50)', style: TextStyle(fontSize: 11))),
-                          ButtonSegment(value: false, label: Text('Full', style: TextStyle(fontSize: 11))),
+                          ButtonSegment(value: true, label: Text('50/50 Split', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
+                          ButtonSegment(value: false, label: Text('Full Share', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700))),
                         ],
-                        selected: {_isKkbSplit},
-                        onSelectionChanged: (set) {
+                        selected: {_isEqualSplit},
+                        onSelectionChanged: (Set<bool> set) {
                           setState(() {
-                            _isKkbSplit = set.first;
+                            _isEqualSplit = set.first;
                           });
                         },
                       ),
@@ -452,24 +520,24 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             ),
             const SizedBox(height: 16),
 
-            // 6. Optional Due Date
+            // 7. Due Date (Figma calendar input)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Row(
                     children: [
-                      const Icon(Icons.event_outlined, size: 18, color: TabbyColors.secondaryMuted),
+                      const Icon(Icons.event_outlined, size: 20, color: TabbyColors.brandDarkTeal),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _selectedDueDate == null
                               ? 'Optional Due Date'
-                              : 'Due: ${DateFormat('MMM d, yyyy').format(_selectedDueDate!)}',
+                              : 'Due: ${DateFormat('MMMM d, yyyy').format(_selectedDueDate!)}',
                           style: const TextStyle(
                             fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: TabbyColors.primaryCharcoal,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyColors.brandDarkTeal,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -493,15 +561,18 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                       });
                     }
                   },
-                  child: Text(_selectedDueDate == null ? 'Set Date' : 'Change'),
+                  child: Text(
+                    _selectedDueDate == null ? 'Set Date' : 'Change',
+                    style: const TextStyle(fontWeight: FontWeight.w700, color: TabbyColors.brandEmerald),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 20),
 
-            // Submit Button (<5s entry benchmark)
+            // Submit Button
             TabbyButton(
-              label: 'Save Tab 🐾',
+              label: 'Save Tab',
               variant: TabbyButtonVariant.primary,
               onPressed: _submitExpense,
             ),

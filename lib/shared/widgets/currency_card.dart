@@ -3,8 +3,8 @@ import '../../core/theme/tabby_colors.dart';
 import '../../core/utils/currency_formatter.dart';
 
 /// Financial balance card highlighting "You Owe" or "You're Owed"
-/// with integer centavo formatting, re-architected to match Figma Node 7020:3430
-/// geometry (16px corner radius, 8.5px squircle icon badge, pill status badge).
+/// designed with Figma FinWise Reference geometry (20px corner radius,
+/// squircle icon container, capsule status badge).
 class CurrencyCard extends StatelessWidget {
   final String title;
   final int centavos;
@@ -27,158 +27,142 @@ class CurrencyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = isDebt ? TabbyColors.debtRed : TabbyColors.successGreen;
-    final bgColor = isDebt ? TabbyColors.debtLight : TabbyColors.successLight;
+    // In FinWise reference, expenses / debt highlights use clean blue #0068FF,
+    // while positive / income balances use brand teal / emerald.
+    final themeColor = isDebt ? TabbyColors.accentBlue : TabbyColors.brandEmerald;
+    final bgColor = isDebt ? TabbyColors.iconBgBlue : TabbyColors.iconBgMint;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: TabbyColors.surfaceWhite,
-            borderRadius: BorderRadius.circular(16), // Figma Rectangle 272/273 cornerRadius: 14.89px ≈ 16px
-            border: Border.all(
-              color: isDebt && centavos > 0
-                  ? TabbyColors.debtRed.withValues(alpha: 0.20)
-                  : (centavos > 0
-                      ? TabbyColors.successGreen.withValues(alpha: 0.20)
-                      : TabbyColors.borderGray),
-              width: 1.2,
-            ),
-            boxShadow: [
-              const BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-              if (centavos > 0)
-                BoxShadow(
-                  color: themeColor.withValues(alpha: 0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-            ],
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: TabbyColors.surfaceWhite,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: TabbyColors.borderMint,
+            width: 1.2,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Row: Squircle Icon Badge & Pill Status Chip
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Icon Squircle Badge (Figma Rectangle 31: 25x25, cornerRadius 6.25px / 25% ratio)
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: bgColor,
-                      borderRadius: BorderRadius.circular(8.5),
-                      border: Border.all(
-                        color: themeColor.withValues(alpha: 0.35),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        icon,
-                        size: 16,
-                        color: themeColor,
-                      ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x08000000),
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Row: Squircle Icon Badge & Capsule Status Chip
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Squircle Icon Badge
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      size: 20,
+                      color: themeColor,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  // Pill Status Badge (Figma Rectangle 29/157 capsule geometry)
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                ),
+                const SizedBox(width: 6),
+                // Capsule Status Badge
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: centavos > 0 ? bgColor : const Color(0xFFF1F5F2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      badgeText ??
+                          (isDebt
+                              ? (centavos > 0 ? 'To Pay' : 'Settled')
+                              : (centavos > 0 ? 'To Collect' : 'Settled')),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: centavos > 0 ? themeColor : TabbyColors.textSecondary,
+                        letterSpacing: 0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // Card Category Title
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: TabbyColors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Integer Centavo Currency Amount
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                CurrencyFormatter.formatCentavos(centavos),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: isDebt && centavos > 0
+                      ? TabbyColors.accentBlue
+                      : TabbyColors.brandDarkTeal,
+                  fontFamily: 'Inter',
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  if (centavos > 0) ...[
+                    Container(
+                      width: 6,
+                      height: 6,
                       decoration: BoxDecoration(
-                        color: centavos > 0 ? bgColor.withValues(alpha: 0.6) : TabbyColors.chipBackground,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: centavos > 0 ? themeColor.withValues(alpha: 0.25) : Colors.transparent,
-                          width: 1,
-                        ),
+                        color: themeColor,
+                        shape: BoxShape.circle,
                       ),
-                      child: Text(
-                        badgeText ??
-                            (isDebt
-                                ? (centavos > 0 ? 'To Pay' : 'Settled')
-                                : (centavos > 0 ? 'To Collect' : 'Settled')),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: centavos > 0 ? themeColor : TabbyColors.secondaryMuted,
-                          letterSpacing: 0.2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(width: 5),
+                  ],
+                  Expanded(
+                    child: Text(
+                      subtitle!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: TabbyColors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              // Card Category Title
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: TabbyColors.secondaryMuted,
-                  letterSpacing: 0.4,
-                ),
-              ),
-              const SizedBox(height: 4),
-              // Integer Centavo Currency Amount
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  CurrencyFormatter.formatCentavos(centavos),
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: isDebt && centavos > 0
-                        ? TabbyColors.debtRed
-                        : (centavos > 0 ? TabbyColors.primaryCharcoal : TabbyColors.secondaryMuted),
-                    fontFamily: 'Inter',
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    if (centavos > 0) ...[
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: themeColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                    ],
-                    Expanded(
-                      child: Text(
-                        subtitle!,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: TabbyColors.secondaryMuted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
             ],
-          ),
+          ],
         ),
-      );
+      ),
+    );
   }
 }

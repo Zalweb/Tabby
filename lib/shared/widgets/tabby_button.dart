@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../../core/theme/tabby_colors.dart';
 
 enum TabbyButtonVariant {
-  primary,   // Charcoal #1F1F1F
-  secondary, // Accent Amber #FFB74D
+  primary,   // FinWise Emerald #00D09E
+  secondary, // FinWise Soft Mint #DFF7E2 or Dark Teal
   outline,   // Outlined border
-  danger,    // Debt Red #EF4444
+  danger,    // Alert Red
 }
 
 class TabbyButton extends StatelessWidget {
@@ -25,7 +25,7 @@ class TabbyButton extends StatelessWidget {
     this.icon,
     this.isLoading = false,
     this.isFullWidth = true,
-    this.height = 48,
+    this.height = 52,
   });
 
   @override
@@ -36,20 +36,20 @@ class TabbyButton extends StatelessWidget {
 
     switch (variant) {
       case TabbyButtonVariant.primary:
-        backgroundColor = TabbyColors.primaryCharcoal;
+        backgroundColor = TabbyColors.brandEmerald;
         foregroundColor = TabbyColors.surfaceWhite;
         break;
       case TabbyButtonVariant.secondary:
-        backgroundColor = TabbyColors.accentAmber;
-        foregroundColor = TabbyColors.primaryCharcoal;
+        backgroundColor = TabbyColors.brandMintAccent;
+        foregroundColor = TabbyColors.brandDarkTeal;
         break;
       case TabbyButtonVariant.outline:
-        backgroundColor = Colors.transparent;
-        foregroundColor = TabbyColors.primaryCharcoal;
-        borderSide = const BorderSide(color: TabbyColors.borderGray, width: 1.5);
+        backgroundColor = TabbyColors.surfaceWhite;
+        foregroundColor = TabbyColors.brandEmerald;
+        borderSide = const BorderSide(color: TabbyColors.brandEmerald, width: 1.5);
         break;
       case TabbyButtonVariant.danger:
-        backgroundColor = TabbyColors.debtRed;
+        backgroundColor = TabbyColors.alertRed;
         foregroundColor = TabbyColors.surfaceWhite;
         break;
     }
@@ -95,7 +95,7 @@ class TabbyButton extends StatelessWidget {
           foregroundColor: foregroundColor,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             side: borderSide,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16),

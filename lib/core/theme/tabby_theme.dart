@@ -2,43 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'tabby_colors.dart';
 
-/// Tabby Material 3 Theme Definition
+/// Tabby Material 3 Theme Definition aligned with Figma FinWise Reference (Node 7020:3430)
 class TabbyTheme {
   TabbyTheme._();
 
-  // Design Tokens extracted from Figma Node 7020:3430 (FinWise Reference)
-  static const double kpiCardRadius = 16.0;      // Rectangle 272/273: 14.89px ≈ 16px
-  static const double iconSquircleRadius = 8.5;  // Rectangle 31: 6.25px squircle
-  static const double pillBadgeRadius = 14.0;    // Rectangle 29/157: 13.5px capsule
-  static const double containerRadius = 22.0;    // Frame modules: 22.0px
-  static const double sheetRadius = 32.0;        // Bottom container: 31.0px - 70.0px
+  // Design Tokens extracted from Figma FinWise App UI Kit
+  static const double kpiCardRadius = 20.0;
+  static const double iconSquircleRadius = 12.0;
+  static const double pillBadgeRadius = 24.0;
+  static const double containerRadius = 24.0;
+  static const double sheetRadius = 36.0;
 
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      scaffoldBackgroundColor: TabbyColors.backgroundLight,
+      scaffoldBackgroundColor: TabbyColors.bgCanvas,
       fontFamily: 'Inter',
       colorScheme: const ColorScheme.light(
-        primary: TabbyColors.primaryCharcoal,
-        secondary: TabbyColors.accentAmber,
+        primary: TabbyColors.brandEmerald,
+        secondary: TabbyColors.brandDarkTeal,
         surface: TabbyColors.surfaceWhite,
-        error: TabbyColors.debtRed,
+        error: TabbyColors.alertRed,
         onPrimary: TabbyColors.surfaceWhite,
-        onSecondary: TabbyColors.primaryCharcoal,
-        onSurface: TabbyColors.primaryCharcoal,
+        onSecondary: TabbyColors.surfaceWhite,
+        onSurface: TabbyColors.textPrimary,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: TabbyColors.surfaceWhite,
-        foregroundColor: TabbyColors.primaryCharcoal,
+        backgroundColor: TabbyColors.brandEmerald,
+        foregroundColor: TabbyColors.brandDarkTeal,
         elevation: 0,
-        scrolledUnderElevation: 0.5,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         titleTextStyle: TextStyle(
-          color: TabbyColors.primaryCharcoal,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
+          color: TabbyColors.brandDarkTeal,
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
           fontFamily: 'Inter',
+          letterSpacing: -0.5,
         ),
       ),
       cardTheme: const CardThemeData(
@@ -47,7 +48,7 @@ class TabbyTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(kpiCardRadius)),
-          side: BorderSide(color: TabbyColors.borderGray, width: 1),
+          side: BorderSide(color: TabbyColors.borderMint, width: 1),
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
@@ -55,85 +56,85 @@ class TabbyTheme {
         modalBackgroundColor: TabbyColors.surfaceWhite,
         constraints: BoxConstraints(maxWidth: 430),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(sheetRadius)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: TabbyColors.primaryCharcoal,
+          backgroundColor: TabbyColors.brandEmerald,
           foregroundColor: TabbyColors.surfaceWhite,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(pillBadgeRadius),
           ),
           textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
             fontFamily: 'Inter',
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: TabbyColors.primaryCharcoal,
-          side: const BorderSide(color: TabbyColors.borderGray, width: 1.5),
+          foregroundColor: TabbyColors.brandDarkTeal,
+          side: const BorderSide(color: TabbyColors.borderMint, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(pillBadgeRadius),
           ),
           textStyle: const TextStyle(
             fontSize: 15,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             fontFamily: 'Inter',
           ),
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: TabbyColors.chipBackground,
+        backgroundColor: TabbyColors.brandMintAccent,
         labelStyle: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: TabbyColors.primaryCharcoal,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: TabbyColors.brandDarkTeal,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Colors.transparent),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: TabbyColors.surfaceWhite,
+        fillColor: TabbyColors.brandMintAccent,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: TabbyColors.borderGray),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: TabbyColors.borderGray),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: TabbyColors.primaryCharcoal, width: 1.5),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: TabbyColors.brandEmerald, width: 1.5),
         ),
         hintStyle: const TextStyle(
-          color: TabbyColors.secondaryMuted,
+          color: TabbyColors.textSecondary,
           fontSize: 14,
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: TabbyColors.surfaceWhite,
-        selectedItemColor: TabbyColors.primaryCharcoal,
-        unselectedItemColor: TabbyColors.secondaryMuted,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+        backgroundColor: Color(0xFFE8F8EE),
+        selectedItemColor: TabbyColors.brandDarkTeal,
+        unselectedItemColor: TabbyColors.textSecondary,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
         unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
+        elevation: 0,
       ),
       dividerTheme: const DividerThemeData(
-        color: TabbyColors.borderGray,
+        color: TabbyColors.borderMint,
         thickness: 1,
         space: 1,
       ),

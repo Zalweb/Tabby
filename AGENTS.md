@@ -57,6 +57,7 @@ Net Balance         +₱700.00 (Juan owes you)
 | **2026-09-13** | CEO / Product Lead | Consolidate documentation into `AGENTS.md` and remove secondary markdown files. | Keep agent and team context in a unified living document to streamline workflows. | `AGENTS.md`, `README.md`, repository structure. |
 | **2026-09-13** | Product Plan / ERD | Incorporate full specifications from `PLAN.md` and `TABBY_ERD.md`. | Elevate `AGENTS.md` into the comprehensive master guide for data architecture, flows, and implementation. | `AGENTS.md` (Sections 6–12). |
 | **2026-09-13** | CEO | Adopt Flutter for Mobile Client and Supabase for Backend/Database (*"Now i'm planning to create this using the supabase of the backend and in the mobile using flutter."*). | High-performance cross-platform iOS/Android support, rich mascot animations, local-first offline capabilities, relational PostgreSQL schema with RLS, integer BIGINT centavos, storage for GCash/Maya receipts, and real-time ledger synchronization. | Mobile Client (Flutter), Backend BaaS (Supabase), Local Caching (Drift/SQLite), State Management (Riverpod), Cloud Storage & Auth. |
+| **2026-09-13** | CEO | Add Onboarding flow and Login / Sign-up authentication pages. | Introduce friendly mascot-led onboarding (3 value props) and clean auth gate before reaching dashboard. | Navigation Router, `AppState` session management, Onboarding (`/onboarding`), Login (`/login`), Sign Up (`/signup`). |
 
 ---
 
@@ -290,6 +291,34 @@ Tabby maintains a lean, focused 3-tab bottom navigation with top-level contextua
 ---
 
 ### 6.2 Screen Specifications & Layouts
+
+#### Screen 0A: Onboarding Flow (`/onboarding`)
+- **Structure:** 3-step swipeable carousel (`PageView`) showcasing core value propositions.
+- **Visuals:** Large centered `TabbyMascotWidget` (size 140) in a rounded mint (`#DFF7E2`) container.
+- **Slide 1:** Mascot `idleNeutral` — *"Keep tabs on every shared expense"* / *"Log shared meals, rides, borrowed cash, and more in under 5 seconds."*
+- **Slide 2:** Mascot `userIsOwed` — *"Always know who owes who"* / *"One running tab per friend. Net balances calculated automatically — no spreadsheets needed."*
+- **Slide 3:** Mascot `celebrating` — *"Settle up without the awkwardness"* / *"Send friendly reminders and record settlements via GCash, Maya, Cash, or Bank Transfer."*
+- **Controls:** `Skip` action (top right), active/inactive indicator dots, `Next` / `Get Started` action button.
+- **Persistence / Trigger:** Displayed on initial app launch until completion or skip sets `hasSeenOnboarding = true`.
+
+#### Screen 0B: Login Screen (`/login`)
+- **Structure:** Clean vertical card layout.
+- **Elements:**
+  - Header: Tabby wordmark + *"Keep tabs. Settle up."* tagline.
+  - Mascot avatar: `TabbyMascotWidget` (size 80) in neutral greeting mood.
+  - Input Fields: Mint container inputs for Email/Phone and Password with visibility toggle.
+  - Primary Action: Full-width `[ Log In ]` button with inline field validation.
+  - Secondary Actions: *"Forgot password?"* link, Google SSO button (`[ Continue with Google ]`), and link to Sign Up screen (`/signup`).
+
+#### Screen 0C: Sign Up Screen (`/signup`)
+- **Structure:** Scrollable account creation form.
+- **Elements:**
+  - App bar with back navigation to `/login`.
+  - Headline: *"Create your account"* / *"Start keeping tabs with your friends"*.
+  - Form Fields: Full Name, Email Address, Mobile Number (`+63 9XX XXX XXXX`), Password, and Confirm Password with visibility toggles.
+  - Validation: Non-empty verification, password match confirmation, inline error messaging.
+  - Primary Action: `[ Create Account ]` button (authenticates and routes directly to `/home`).
+  - Navigation: Link to Login screen if user already possesses an account.
 
 #### Screen 1: Home Dashboard (`/home`)
 - **Header:** Personalized greeting ("Good evening 👋") with Tabby mascot reflection state.

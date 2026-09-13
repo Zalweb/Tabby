@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 /// 9 Emotional Mascot States defined in AGENTS.md Section 4
 enum MascotEmotion {
@@ -37,65 +37,71 @@ extension MascotEmotionExtension on MascotEmotion {
     }
   }
 
-  String get emoji {
+  /// Clean empty string — Absolutely NO emojis in text anywhere in the app
+  String get emoji => '';
+
+  /// Clean Material Icon replacement for emotional status badges
+  IconData get icon {
     switch (this) {
       case MascotEmotion.idleNeutral:
-        return '🐱';
+        return Icons.check_circle_outline_rounded;
       case MascotEmotion.userOwes:
-        return '🥺';
+        return Icons.arrow_outward_rounded;
       case MascotEmotion.userIsOwed:
-        return '👀';
+        return Icons.arrow_downward_rounded;
       case MascotEmotion.calculating:
-        return '🐾';
+        return Icons.calculate_outlined;
       case MascotEmotion.gentleNudge:
-        return '🐾';
+        return Icons.send_rounded;
       case MascotEmotion.overdue:
-        return '🥺';
+        return Icons.warning_amber_rounded;
       case MascotEmotion.paymentSubmitted:
-        return '⏳';
+        return Icons.schedule_rounded;
       case MascotEmotion.celebrating:
-        return '🎉';
+        return Icons.task_alt_rounded;
       case MascotEmotion.sleeping:
-        return '😴';
+        return Icons.nightlight_round;
     }
   }
 
+  /// Professional, friendly conversational English microcopy without any Tagalog or emojis
   String get microcopy {
     switch (this) {
       case MascotEmotion.idleNeutral:
         return 'Good day! All your tabs are organized and up to date.';
       case MascotEmotion.userOwes:
-        return 'Psst... you have pending tabs to settle up.';
+        return 'You have active pending tabs to settle up.';
       case MascotEmotion.userIsOwed:
-        return 'You have friends who still need to settle up with you!';
+        return 'You have friends who still need to settle up with you.';
       case MascotEmotion.calculating:
-        return 'Crunching the numbers with zero-centavo drift... 🐾';
+        return 'Calculating balances with exact centavo precision.';
       case MascotEmotion.gentleNudge:
-        return 'Psst! Pasuyo nung tab natin pag convenient sa’yo 🐱';
+        return 'Here is a friendly reminder for our shared tab whenever you are ready.';
       case MascotEmotion.overdue:
-        return 'This one is a little past due date... maybe send a soft reminder?';
+        return 'This tab is past the due date. A friendly reminder can help.';
       case MascotEmotion.paymentSubmitted:
-        return 'Payment sent! Waiting for your friend to confirm. ⏳';
+        return 'Payment sent! Waiting for confirmation.';
       case MascotEmotion.celebrating:
-        return 'Nice! One less tab! Tabby approves! 🎉';
+        return 'All set! Tab confirmed and balance updated.';
       case MascotEmotion.sleeping:
-        return 'All tabs cleared! Tabby can take a cozy cat nap. 😴';
+        return 'All tabs cleared! You are completely settled up.';
     }
   }
 }
 
-/// Expense categories aligned with AGENTS.md
+/// Expense categories aligned with FinWise UI and AGENTS.md
 enum ExpenseCategory {
-  food('Food', '🍔'),
-  transportation('Fare / Transpo', '🚗'),
-  borrowedCash('Borrowed Cash', '💳'),
-  groceries('Groceries', '🛒'),
-  bills('Utilities / Bills', '💡'),
-  other('Other', '📦');
+  food('Food', '', Icons.restaurant_rounded),
+  transportation('Transportation', '', Icons.directions_car_rounded),
+  borrowedCash('Borrowed Cash', '', Icons.credit_card_rounded),
+  groceries('Groceries', '', Icons.shopping_basket_rounded),
+  bills('Utilities and Bills', '', Icons.lightbulb_rounded),
+  other('Other', '', Icons.inventory_2_rounded);
 
-  const ExpenseCategory(this.displayName, this.emoji);
+  const ExpenseCategory(this.displayName, this.emoji, this.icon);
   final String displayName;
   final String emoji;
+  final IconData icon;
 }
 
 /// Transaction lifecycle status
@@ -112,15 +118,16 @@ enum TransactionStatus {
 
 /// Settlement payment methods
 enum PaymentMethod {
-  gcash('GCash', '💙'),
-  maya('Maya', '💚'),
-  cash('Cash', '💵'),
-  bankTransfer('Bank Transfer', '🏦'),
-  other('Other', '🪙');
+  gcash('GCash', '', Icons.account_balance_wallet_rounded),
+  maya('Maya', '', Icons.credit_card_rounded),
+  cash('Cash', '', Icons.payments_rounded),
+  bankTransfer('Bank Transfer', '', Icons.account_balance_rounded),
+  other('Other', '', Icons.receipt_long_rounded);
 
-  const PaymentMethod(this.label, this.icon);
+  const PaymentMethod(this.label, this.icon, this.iconData);
   final String label;
   final String icon;
+  final IconData iconData;
 }
 
 /// Tabby User Profile
@@ -312,6 +319,7 @@ class TabbyActivity {
   final int amountCentavos;
   final DateTime timestamp;
   final String icon;
+  final IconData? iconData;
 
   const TabbyActivity({
     required this.id,
@@ -319,7 +327,8 @@ class TabbyActivity {
     required this.description,
     required this.amountCentavos,
     required this.timestamp,
-    required this.icon,
+    this.icon = '',
+    this.iconData,
   });
 }
 

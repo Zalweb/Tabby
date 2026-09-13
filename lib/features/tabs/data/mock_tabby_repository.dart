@@ -1,6 +1,7 @@
+import 'package:flutter/material.dart';
 import '../domain/models.dart';
 
-/// In-memory repository seeded with realistic Filipino peer expenses and bilateral relationships.
+/// In-memory repository seeded with realistic peer expenses and bilateral relationships.
 /// Implements ADR-001 integer centavos and canonical balance formulas.
 class MockTabbyRepository {
   static const TabbyUser currentUser = TabbyUser(
@@ -39,9 +40,9 @@ class MockTabbyRepository {
       mayaNumber: '0919-333-4455',
     ),
     const TabbyUser(
-      id: 'user-barkada',
-      displayName: 'Barkada Weekend Outing',
-      email: 'barkada@tabby.ph',
+      id: 'user-group',
+      displayName: 'Weekend Trip Group',
+      email: 'trip@tabby.ph',
       phone: '+63 920 444 5566',
       gcashNumber: '0920-444-5566',
     ),
@@ -56,7 +57,7 @@ class MockTabbyRepository {
       LedgerEntry(
         id: 'entry-juan-1',
         tabId: 'tab-juan',
-        title: 'BGC Dinner & Sisig',
+        title: 'Dinner with Juan',
         category: ExpenseCategory.food,
         totalAmountCentavos: 100000,
         myShareCentavos: 50000,
@@ -70,7 +71,7 @@ class MockTabbyRepository {
       LedgerEntry(
         id: 'entry-juan-2',
         tabId: 'tab-juan',
-        title: 'Grab Car to Poblacion',
+        title: 'Ride Share to Town',
         category: ExpenseCategory.transportation,
         totalAmountCentavos: 20000,
         myShareCentavos: 10000,
@@ -83,7 +84,7 @@ class MockTabbyRepository {
       LedgerEntry(
         id: 'entry-juan-3',
         tabId: 'tab-juan',
-        title: 'Iced Spanish Latte',
+        title: 'Iced Coffee',
         category: ExpenseCategory.food,
         totalAmountCentavos: 20000,
         myShareCentavos: 10000,
@@ -100,7 +101,7 @@ class MockTabbyRepository {
       LedgerEntry(
         id: 'entry-ana-1',
         tabId: 'tab-ana',
-        title: 'Milk Tea & Pastries',
+        title: 'Milk Tea and Pastries',
         category: ExpenseCategory.food,
         totalAmountCentavos: 75000,
         myShareCentavos: 0,
@@ -131,12 +132,12 @@ class MockTabbyRepository {
       ),
     ];
 
-    // 4. Barkada Tab: Tagaytay trip cottage rental (+₱2,000)
-    final barkadaEntries = [
+    // 4. Group Tab: Cottage rental (+₱2,000)
+    final groupEntries = [
       LedgerEntry(
-        id: 'entry-barkada-1',
-        tabId: 'tab-barkada',
-        title: 'Tagaytay Cottage & Meals',
+        id: 'entry-group-1',
+        tabId: 'tab-group',
+        title: 'Cottage and Meals',
         category: ExpenseCategory.other,
         totalAmountCentavos: 400000,
         myShareCentavos: 200000,
@@ -174,14 +175,14 @@ class MockTabbyRepository {
         lastUpdated: now.subtract(const Duration(days: 4)),
       ),
       BilateralTab(
-        id: 'tab-barkada',
+        id: 'tab-group',
         counterpart: sampleFriends[3],
-        netBalanceCentavos: calculateNetBalance(barkadaEntries, currentUser.id),
-        itemCount: barkadaEntries.length,
-        entries: barkadaEntries,
+        netBalanceCentavos: calculateNetBalance(groupEntries, currentUser.id),
+        itemCount: groupEntries.length,
+        entries: groupEntries,
         lastUpdated: now.subtract(const Duration(days: 5)),
         isGroupTab: true,
-        groupName: 'Barkada Weekend Outing',
+        groupName: 'Weekend Trip Group',
       ),
     ];
   }
@@ -224,34 +225,34 @@ class MockTabbyRepository {
       TabbyActivity(
         id: 'act-1',
         actorName: 'Juan Dela Cruz',
-        description: 'acknowledged BGC Dinner & Sisig (₱500.00)',
+        description: 'acknowledged Dinner with Juan (PHP 500.00)',
         amountCentavos: 50000,
         timestamp: now.subtract(const Duration(hours: 2)),
-        icon: '✅',
+        iconData: Icons.check_circle_outline_rounded,
       ),
       TabbyActivity(
         id: 'act-2',
         actorName: 'Frienzal',
-        description: 'logged Grab Car to Poblacion with Juan',
+        description: 'logged Ride Share with Juan',
         amountCentavos: 10000,
         timestamp: now.subtract(const Duration(days: 1)),
-        icon: '🚗',
+        iconData: Icons.directions_car_rounded,
       ),
       TabbyActivity(
         id: 'act-3',
         actorName: 'Ana Santos',
-        description: 'Milk Tea & Pastries pending settlement',
+        description: 'Milk Tea and Pastries pending settlement',
         amountCentavos: 75000,
         timestamp: now.subtract(const Duration(days: 2)),
-        icon: '🧋',
+        iconData: Icons.restaurant_rounded,
       ),
       TabbyActivity(
         id: 'act-4',
         actorName: 'Mark Villanueva',
-        description: 'logged Supermarket Run (You owe ₱250.00)',
+        description: 'logged Supermarket Run (You owe PHP 250.00)',
         amountCentavos: 25000,
         timestamp: now.subtract(const Duration(days: 4)),
-        icon: '🛒',
+        iconData: Icons.shopping_basket_rounded,
       ),
     ];
   }
@@ -263,7 +264,7 @@ class MockTabbyRepository {
         id: 'rem-1',
         tabId: 'tab-ana',
         friendName: 'Ana Santos',
-        description: 'Milk Tea & Pastries',
+        description: 'Milk Tea and Pastries',
         amountCentavos: 75000,
         dueDate: now.subtract(const Duration(days: 1)),
         isIWhoOwe: false, // Ana owes me
@@ -281,7 +282,7 @@ class MockTabbyRepository {
         id: 'rem-3',
         tabId: 'tab-juan',
         friendName: 'Juan Dela Cruz',
-        description: 'BGC Dinner & Sisig',
+        description: 'Dinner with Juan',
         amountCentavos: 50000,
         dueDate: now.add(const Duration(days: 3)),
         isIWhoOwe: false, // Juan owes me

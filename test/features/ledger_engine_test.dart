@@ -98,7 +98,7 @@ void main() {
       expect(net, 30000); // +₱300.00 remaining
     });
 
-    test('KKB Equal Split Integer Arithmetic with Odd Centavos', () {
+    test('Equal Split Integer Arithmetic with Odd Centavos', () {
       const oddTotalCentavos = 10001; // ₱100.01
       const myShare = oddTotalCentavos ~/ 2; // 5000
       const counterpartShare = oddTotalCentavos - myShare; // 5001
