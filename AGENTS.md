@@ -1,21 +1,36 @@
 # AGENTS.md — Tabby Operating Manual & Project Source of Truth
 
 > **Application:** Tabby  
-> **Tagline:** *"Keep tabs. Settle up."*  
-> **Target Audience:** Friends, roommates, barkadas, and social circles in the Philippines  
-> **Core Currency:** Philippine Peso (`₱` / PHP — Centavo-accurate integer arithmetic)  
+> **Tagline:** *"Keep tabs. Settle up."* (Taglish alternative: *"Para klaro ang usapan."*)  
+> **Target Audience:** Friends, classmates, roommates, barkadas, and couples in the Philippines  
+> **Core Currency:** Philippine Peso (`₱` / PHP — Centavo-accurate integer arithmetic, `1 PHP = 100 centavos`)  
 > **Repository:** [https://github.com/Zalweb/Tabby](https://github.com/Zalweb/Tabby)  
 > **Branch:** `main`  
-> **Documentation Model:** Single living document source of truth (`AGENTS.md`) per CEO directive.
+> **Documentation Model:** Single living document source of truth (`AGENTS.md`) per CEO directive.  
+> **Scope:** Financial relationship tracking and social settlement coordination. Tabby does **not** process, hold, or transfer actual funds in the MVP.
 
 ---
 
 ## 1. Executive Summary & Philosophy
 
-**Tabby** is a warm, socially frictionless personal and peer-to-peer financial tracking application built specifically for Filipino social spending habits. It eliminates the social anxiety, awkwardness ("hiya"), and friction surrounding shared expenses, dining out, borrowing ("utang"), and settling debts.
+**Tabby** is a warm, socially frictionless peer-to-peer financial relationship and shared-expense tracker built specifically for Filipino social spending habits. It eliminates the social anxiety, awkwardness ("hiya"), and friction surrounding shared meals, dining out, borrowing ("utang"), and settling debts.
 
 ### Core Philosophy: *"Friendship First, Accounting Second"*
 Traditional expense trackers feel cold, corporate, or confrontational. Tabby introduces a friendly cat mascot companion, empathetic Taglish/conversational English microcopy, and instant settlement shortcuts tailored for Philippine payment rails (GCash, Maya, Bank Transfer, and Cash).
+
+### The Tab Principle: *"One Tab = One Financial Relationship"*
+In Tabby, a **Tab** is the complete, running bilateral financial ledger between two parties. Regardless of whether two people have shared fifty dinners, grocery runs, or rides, there is only **one running Tab** between them. Tabby automatically computes the net balance from the current user's perspective, defusing interpersonal debt accounting into a single transparent number.
+
+```text
+Juan's Tab
+-----------------------------
+Dinner              +₱500.00
+Juan paid           -₱200.00
+Fare                +₱100.00
+Borrowed cash       +₱300.00
+-----------------------------
+Net Balance         +₱700.00 (Juan owes you)
+```
 
 ---
 
@@ -24,9 +39,11 @@ Traditional expense trackers feel cold, corporate, or confrontational. Tabby int
 ### Core Product Directives
 1. **Never Weaponize Debts:** The app must never sound like a debt collector, a bank, or a legal demand letter. No red warning banners for standard pending tabs.
 2. **Defuse Awkwardness with Warmth:** Asking friends for money is socially uncomfortable in the Philippines ("nakakahiya maningil"). Tabby absorbs that social tension through cute, disarming mascot animations, lighthearted reminders, and clear settlement links.
-3. **Speed is King:** Logging who paid for lunch must take under 5 seconds. If logging takes too long, users will fall back to disorganized Messenger group chats or forget entirely.
+3. **Speed is King (<5 Seconds Entry):** Logging who paid for lunch must take under 5 seconds. If logging takes too long, users will fall back to disorganized Messenger group chats or forget entirely.
 4. **Philippine-First Context:** The app is built from the ground up for the Philippine financial ecosystem (PHP `₱`, GCash, Maya, Cash, KKB dining habits).
-5. **Consolidated Documentation (`AGENTS.md` Single Source of Truth):** Keep project documentation, operational protocols, branding tokens, ADRs, conversation tracking, and roadmap consolidated in `AGENTS.md`.
+5. **Consolidated Documentation (`AGENTS.md` Single Source of Truth):** Keep project documentation, operational protocols, branding tokens, ADRs, database specifications, user flows, and roadmap consolidated in `AGENTS.md`.
+6. **Zero Floating-Point Drift:** All financial amounts must be stored and computed as integer centavos (`₱100.50` = `10050 centavos`).
+7. **Append-Only Auditability:** Never silently overwrite financial history or destroy confirmed records. Always track revisions, cancellations, and disputes.
 
 ### CEO Conversation & Decisions Log
 
@@ -37,6 +54,7 @@ Traditional expense trackers feel cold, corporate, or confrontational. Tabby int
 | **2026-09-13** | CEO / Product Lead | Prioritize GCash & Maya as primary settlement references over credit cards. | GCash & Maya are the de facto P2P payment rails for Filipino peer groups. | Settlement flow, QR code viewer, receipt sharing. |
 | **2026-09-13** | CEO / Product Lead | Enforce integer centavo calculations for all currency values. | Prevents IEEE-754 floating point rounding drift when splitting odd bills. | Ledger database, Calculation engine, API contracts. |
 | **2026-09-13** | CEO / Product Lead | Consolidate documentation into `AGENTS.md` and remove secondary markdown files. | Keep agent and team context in a unified living document to streamline workflows. | `AGENTS.md`, `README.md`, repository structure. |
+| **2026-09-13** | Product Plan / ERD | Incorporate full specifications from `PLAN.md` and `TABBY_ERD.md`. | Elevate `AGENTS.md` into the comprehensive master guide for data architecture, flows, and implementation. | `AGENTS.md` (Sections 6–12). |
 
 ---
 
@@ -133,12 +151,19 @@ module.exports = {
 ```
 
 ### Mascot Character System & State Machine (FSM)
-The Tabby cat mascot defuses the social tension surrounding money:
-1. **`IDLE_NEUTRAL` (Neutral / Welcoming):** Default dashboard companion; greets the user based on net balance state.
-2. **`CALCULATING` (Calculating / Logging):** Displayed during bill splitting, keypad input, and expense entry.
-3. **`GENTLE_NUDGE` (Reminder State):** Soft, polite mascot illustration rendered on shareable reminder cards.
-4. **`CELEBRATING` (Settled State):** Joyful mascot with confetti when a tab is settled ("Bayad na! All settled!").
-5. **`SLEEPING` (Empty State):** Relaxed cat nap illustration when all active tabs are cleared (₱0.00 balance).
+The Tabby cat mascot is an integral UX companion that defuses the social tension surrounding money:
+
+| State Key | Emotion / Pose | Context / Trigger | Microcopy Example |
+| :--- | :--- | :--- | :--- |
+| `IDLE_NEUTRAL` | Neutral / Welcoming | Default dashboard companion; greets user based on balance. | *"Good evening! All tabs up to date."* |
+| `USER_OWES` | Slightly guilt-inducing / Cute | User has active debts to settle. | 🥺 *"Psst... you still have ₱500 to settle."* |
+| `USER_IS_OWED` | Friendly / Proactive | Other parties have pending balances with user. | 👀 *"Juan still owes you ₱500. [Send reminder]"* |
+| `CALCULATING` | Thinking / Focused | Displayed during bill splitting, keypad entry, and KKB mode. | 🐾 *"Crunching the numbers..."* |
+| `GENTLE_NUDGE` | Soft / Disarming | Rendered on shareable reminder cards sent via Messenger/SMS. | 🐾 *"Psst! Pasuyo nung tab natin for dinner 🐱"* |
+| `OVERDUE` | Pleading / Cute guilt | A tab has passed its due date without payment. | 🥺 *"This one's a little overdue..."* |
+| `PAYMENT_SUBMITTED` | Hopeful / Waiting | Debtor submitted payment proof; awaiting confirmation. | ⏳ *"Payment sent! Waiting for creditor confirmation."* |
+| `CELEBRATING` | Joyful / Confetti | Tab confirmed fully settled ("Bayad na!"). | 🎉 *"Nice! One less tab! Tabby approves."* |
+| `SLEEPING` | Relaxed / Cat nap | All active tabs cleared (₱0.00 net balance). | 😴 *"All clear! Tabby can rest now."* |
 
 ---
 
@@ -152,7 +177,7 @@ Peer financial interactions in the Philippines rely heavily on cultural nuances.
 | :--- | :--- | :--- | :--- |
 | **Utang** | Debt or borrowed money. Carries social friction or shame if emphasized coldly. | Reframe as an open "Tab" or "Paki-settle". Keep it neutral and companionable. | "Delinquent debt", "Arrears", "Defaulter". |
 | **Bayad na ako** | "I have already paid" / Confirmed settlement. | Tap-to-confirm settlement banner. Triggers celebratory mascot confetti. | "Payment cleared by creditor". |
-| **KKB** | *Kanya-Kanyang Bayad* ("Each pays their own" / Go Dutch). | Dedicated 1-tap bill split mode dividing the total bill evenly or per-item with auto-tax/service charge distribution. | "Individual liability partition". |
+| **KKB** | *Kanya-Kanyang Bayad* ("Each pays their own" / Go Dutch). | Dedicated 1-tap bill split mode dividing total bill evenly or per-item with auto-tax/service charge distribution. | "Individual liability partition". |
 | **Abono / Salo** | Covering someone's share upfront when they lack cash or change. | "Covered by [Name]" tag with quick 1-click repayment tab creation. | "Credit extension", "Underwriting". |
 | **Libre** | A genuine treat/gift where repayment is explicitly NOT expected. | "Mark as Libre" toggle which removes the amount from net debt balances and files it under "Treats". | Treating it as a zero-interest loan. |
 | **Maningil / Nudge** | Asking for payment. Typically creates social hesitation ("hiya"). | Friendly pre-composed shareable cards with cute mascot saying: *"Psst! Pasuyo nung tab natin for [Lunch] 🐾"* | Aggressive collection demands or countdown timers. |
@@ -174,10 +199,711 @@ Peer financial interactions in the Philippines rely heavily on cultural nuances.
 - Always prefix Philippine currency with `₱` (U+20B1) followed by a non-breaking space or standard spacing.
 - Always display 2 decimal places for financial totals (e.g., `₱1,250.00`).
 - Use comma thousands separators: `₱12,500.50`.
+- Represent internally as integer centavos (`₱12,500.50` = `1250050` centavos).
 
 ---
 
-## 6. Architecture Decision Records (ADRs)
+## 6. Application Flow, Information Architecture & Screen Specifications
+
+### 6.1 Information Architecture & Navigation Hierarchy
+
+Tabby maintains a lean, focused 3-tab bottom navigation with top-level contextual controls:
+
+```text
+┌────────────────────────────────────────────────────────┐
+│  Tabby Mascot / Logo                                🔔 │  <- Top Header (Notifications)
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│                    ACTIVE SCREEN VIEW                  │
+│                                                        │
+├────────────────────────────────────────────────────────┤
+│     🏠 Home             💸 My Tabs          👤 Profile │  <- Bottom Navigation Bar
+└────────────────────────────────────────────────────────┘
+```
+
+#### Navigation Stack Breakdown
+1. **Header Area:**
+   - Left: Tabby Logo / Contextual Mascot Mood Avatar.
+   - Right: Notification Bell (`🔔`) with unread badge counter.
+2. **Bottom Navigation Tabs:**
+   - **`🏠 Home` (Dashboard):** High-level financial standing, upcoming dues, quick-action logging FAB, and recent activity.
+   - **`💸 My Tabs` (Running Ledgers):** Bilateral relationship tabs categorized into "They owe you" and "You owe".
+   - **`👤 Profile` (Settings & Social Network):** User profile, Friends List, Groups management, Saved GCash/Maya QR codes, Notification preferences, and Account settings.
+3. **Contextual & Floating Access:**
+   - Floating Action Button (`+` Log Tab) accessible from Home and My Tabs.
+   - Friends and Groups can be managed from Profile, but are directly selectable during transaction creation.
+
+---
+
+### 6.2 Screen Specifications & Layouts
+
+#### Screen 1: Home Dashboard (`/home`)
+- **Header:** Personalized greeting ("Good evening 👋") with Tabby mascot reflection state.
+- **Financial Cards:**
+  - **You owe:** Highlighted total amount user owes across all tabs (e.g., `₱1,250.00`).
+  - **You're owed:** Highlighted total amount owed to user across all tabs (e.g., `₱2,500.00`).
+- **Upcoming Items Section:**
+  - Sorted chronological list of transactions with imminent or overdue due dates.
+  - Quick action: `[ Remind ]` or `[ Pay / Bayad na ]`.
+- **Recent Activity Feed:**
+  - Recent audit events: "Juan acknowledged ₱500.00", "You paid Mark ₱250.00 via GCash".
+- **Primary CTA:** Centered Floating Action Button `[ + Log Expense ]`.
+
+#### Screen 2: My Tabs Screen (`/tabs`)
+- **Structure:**
+  ```text
+  MY TABS
+  
+  THEY OWE YOU (₱3,250.00)
+  -----------------------------------------
+  Juan Dela Cruz           ₱500.00  (3 items)
+  Ana Santos               ₱750.00  (2 items)
+  Barkada Dinner Tab     ₱2,000.00  (Group Tab)
+  
+  YOU OWE (₱250.00)
+  -----------------------------------------
+  Mark Villanueva          ₱250.00  (1 item)
+  ```
+- **Filter / Search:** Quick search bar by friend name, group name, or contact.
+- **Empty State:** `SLEEPING` mascot with *"No active tabs! You're completely settled up. 😴"*
+
+#### Screen 3: Individual Tab Detail Screen (`/tabs/:tabId`)
+- **Top Summary:** Counterpart name, avatar, net balance indicator (`+₱500.00` = "Juan owes you", `-₱250.00` = "You owe Juan", `₱0.00` = "All settled").
+- **Action Bar:**
+  - If user is owed: `[ Remind Juan 🐾 ]` (Triggers gentle reminder card).
+  - If user owes: `[ Bayad na ako / I Paid ]` (Submits payment record).
+  - Utility: `[ Add to Tab ]`, `[ View Shared Media/Receipts ]`.
+- **Chronological Ledger Feed:**
+  - Dated list of obligations, payments, adjustments, and acknowledged receipts.
+  - Visual badges for status: `Pending Acknowledgment`, `Acknowledged`, `Payment Submitted`, `Settled`, `Cancelled`.
+
+#### Screen 4: Quick Expense / Tab Creation Modal (`/tabs/new`)
+- **Speed Objective:** Under 5 seconds to log.
+- **Form Fields:**
+  1. **Participant Selection:** Pick an existing Friend, Group, or type a new Unregistered Contact name/phone.
+  2. **Amount Input:** Large keypad input formatted in integer centavos (`₱0.00`).
+  3. **Description / Category:** Quick category chips (🍔 Food, 🚗 Fare, 💳 Borrowed Cash, 🛒 Groceries, 💡 Bill, 📦 Other).
+  4. **Payer Selection:** "Paid by You" or "Paid by [Counterpart]".
+  5. **Split Mode (if multiple participants):** Equal Split (KKB) or Custom Split amounts.
+  6. **Optional Due Date:** Datepicker for repayment commitment.
+- **Duplicate Warning Modal:** If similar amount, counterpart, and date match within 24 hours, non-blocking warning: *"Possible duplicate found. [This is the same] [Create anyway]"*.
+
+#### Screen 5: Debt Acknowledgment & Proposal Modal
+- **Trigger:** Debtor opens a newly created transaction.
+- **Options:**
+  - `[ Acknowledge Tab ]`: Confirms obligation; shifts status to `Acknowledged / Active`.
+  - `[ Propose Different Amount ]`: Debtor inputs proposed amount and reason (e.g., *"My share was only ₱450 because I didn't drink alcohol"*). Creditor receives notification to review and accept/decline.
+
+#### Screen 6: Payment Submission & Confirmation Flow
+1. **Debtor Submission:**
+   - Amount to pay (Full balance or Partial payment).
+   - Payment method: `GCash`, `Maya`, `Cash`, `Bank Transfer`, `Other`.
+   - Optional note.
+   - Proof attachment: Photo capture or file upload of receipt / GCash screenshot.
+2. **Creditor Confirmation:**
+   - Creditor receives `PAYMENT_SUBMITTED` notification with attached proof thumbnail.
+   - Creditor taps `[ Confirm Payment ]` or `[ Reject with Note ]`.
+   - On confirmation, net balance is recalculated; celebratory mascot confetti is shown.
+
+#### Screen 7: Unregistered Contact Claiming Flow
+- User logs an expense involving an unregistered person by entering their name and phone/email.
+- A virtual `CONTACT` is created and linked to the Tab.
+- When that person installs Tabby and registers, the backend detects phone/email matches.
+- New user receives a claim banner: *"We found an existing Tab for you from Frienzal."*
+- User reviews the tab and taps `[ Claim & Acknowledge ]`, merging the virtual contact with their authenticated `USER` profile.
+
+---
+
+### 6.3 End-to-End User Journeys & State Transitions
+
+#### Financial Obligation Lifecycle State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created : Creator logs expense
+    Created --> PendingAcknowledgment : Notification dispatched
+    PendingAcknowledgment --> Acknowledged : Debtor acknowledges
+    PendingAcknowledgment --> ProposedChange : Debtor proposes different share
+    ProposedChange --> Acknowledged : Creditor accepts proposal
+    ProposedChange --> Cancelled : Mutually voided
+
+    Acknowledged --> Active : Available for settlement
+    Active --> AmountEdited : Creator adjusts amount
+    AmountEdited --> DebtorNotified : Debtor warned
+    DebtorNotified --> Active : Accepted
+    DebtorNotified --> Disputed : Debtor reports change
+
+    Active --> PaymentSubmitted : Debtor logs payment + proof
+    PaymentSubmitted --> Active : Creditor rejects payment
+    PaymentSubmitted --> PartialSettled : Partial payment confirmed
+    PartialSettled --> Active : Remaining balance open
+    PaymentSubmitted --> Settled : Full payment confirmed
+    Settled --> [*] : Balance zeroed (Cat Nap)
+
+    Active --> Cancelled : Voided / Cancelled by agreement
+    Cancelled --> [*]
+```
+
+---
+
+### 6.4 Edge Cases & Exception Handling
+
+| Edge Case | Product Rule | Technical Handling |
+| :--- | :--- | :--- |
+| **Possible Duplicate Records** | Both users log the same dinner bill. | Warning banner shown; non-blocking. User can select "This is the same" (merges) or "Create anyway". |
+| **Post-Acknowledgment Amount Edit** | Creator changes amount from ₱500 to ₱450. | No secondary acknowledgment required. System records historical record in `ACTIVITY_LOGS`, notifies debtor, and offers a `[ Report / Dispute ]` action. |
+| **Friendship Removal** | User unfriends someone on Tabby. | Friendship is removed from friends list, but **existing Tabs, transactions, and historical debts are NEVER deleted**. |
+| **Destructive Deletion vs Cancellation** | User wants to delete an accidental or contested debt. | Deletion is soft (`status = 'cancelled'`). Preserves audit trail and prevents unilateral erasure of financial history. |
+| **Overdue Debts & Anti-Spam** | Debtor has not paid after due date. | Debtor **cannot mute** reminders, but system enforces rate-limiting on manual nudges (e.g., maximum 1 nudge per 6 hours). |
+| **Offline Logging in Poor Signal** | Splitting bills in basement restaurant. | Local-first write to SQLite/IndexedDB. UI confirms immediately. Background sync syncs to Supabase once online. |
+
+---
+
+## 7. Data Architecture & Entity Relationship Diagram (ERD)
+
+### 7.1 Conceptual & Relational Data Model (Mermaid ERD)
+
+The Tabby database architecture consists of 17 relational entities. All monetary fields enforce **integer centavos** (`BIGINT`, `₱1.00 = 100 centavos`) per ADR-001.
+
+```mermaid
+erDiagram
+
+    USERS {
+        uuid id PK
+        string email UK
+        string phone UK
+        string display_name
+        string avatar_url
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CONTACTS {
+        uuid id PK
+        uuid owner_user_id FK
+        string display_name
+        string phone
+        string email
+        uuid claimed_user_id FK
+        string claim_status
+        timestamp created_at
+        timestamp claimed_at
+    }
+
+    FRIENDSHIPS {
+        uuid id PK
+        uuid requester_id FK
+        uuid addressee_id FK
+        string status
+        timestamp created_at
+        timestamp responded_at
+    }
+
+    GROUPS {
+        uuid id PK
+        uuid created_by FK
+        string name
+        string description
+        string avatar_url
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    GROUP_MEMBERS {
+        uuid id PK
+        uuid group_id FK
+        uuid user_id FK
+        string role
+        string status
+        timestamp joined_at
+    }
+
+    GROUP_PERMISSIONS {
+        uuid id PK
+        uuid group_id FK
+        string permission_key
+        boolean enabled
+    }
+
+    TABS {
+        uuid id PK
+        string tab_type
+        string status
+        uuid group_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    TAB_MEMBERS {
+        uuid id PK
+        uuid tab_id FK
+        uuid user_id FK
+        uuid contact_id FK
+        string role
+        timestamp joined_at
+    }
+
+    TRANSACTIONS {
+        uuid id PK
+        uuid tab_id FK
+        uuid created_by FK
+        uuid recurring_rule_id FK
+        string transaction_type
+        string category
+        string description
+        bigint total_amount_centavos
+        string currency
+        date transaction_date
+        date due_date
+        string status
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    TRANSACTION_PARTICIPANTS {
+        uuid id PK
+        uuid transaction_id FK
+        uuid user_id FK
+        uuid contact_id FK
+        string participant_role
+        bigint share_amount_centavos
+        numeric share_percentage
+        boolean acknowledged
+        timestamp acknowledged_at
+    }
+
+    PAYMENTS {
+        uuid id PK
+        uuid tab_id FK
+        uuid submitted_by FK
+        bigint amount_centavos
+        string payment_method
+        string note
+        string status
+        timestamp submitted_at
+        uuid confirmed_by FK
+        timestamp confirmed_at
+    }
+
+    PAYMENT_PROOFS {
+        uuid id PK
+        uuid payment_id FK
+        string file_url
+        string file_name
+        string mime_type
+        timestamp uploaded_at
+    }
+
+    RECURRING_RULES {
+        uuid id PK
+        uuid created_by FK
+        uuid tab_id FK
+        string frequency
+        bigint amount_centavos
+        date start_date
+        date end_date
+        boolean has_end_date
+        boolean active
+        string category
+        string description
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    REMINDERS {
+        uuid id PK
+        uuid transaction_id FK
+        uuid created_by FK
+        uuid recipient_user_id FK
+        string reminder_type
+        timestamp scheduled_for
+        timestamp sent_at
+        string status
+        integer repeat_interval_minutes
+    }
+
+    NOTIFICATIONS {
+        uuid id PK
+        uuid recipient_user_id FK
+        string notification_type
+        uuid related_tab_id FK
+        uuid related_transaction_id FK
+        uuid related_payment_id FK
+        uuid related_group_id FK
+        string title
+        string body
+        boolean is_read
+        timestamp created_at
+        timestamp read_at
+    }
+
+    REPORTS {
+        uuid id PK
+        uuid reported_by FK
+        uuid tab_id FK
+        uuid transaction_id FK
+        uuid payment_id FK
+        string report_type
+        string message
+        string status
+        string resolution_note
+        timestamp created_at
+        timestamp resolved_at
+    }
+
+    ACTIVITY_LOGS {
+        uuid id PK
+        uuid actor_user_id FK
+        uuid tab_id FK
+        uuid transaction_id FK
+        uuid payment_id FK
+        uuid group_id FK
+        string event_type
+        json metadata
+        timestamp created_at
+    }
+
+    USERS ||--o{ CONTACTS : "owns"
+    USERS ||--o{ FRIENDSHIPS : "requests"
+    USERS ||--o{ FRIENDSHIPS : "receives"
+    USERS ||--o{ GROUPS : "creates"
+    USERS ||--o{ GROUP_MEMBERS : "joins"
+    GROUPS ||--o{ GROUP_MEMBERS : "contains"
+    GROUPS ||--o{ GROUP_PERMISSIONS : "configures"
+
+    USERS ||--o{ CONTACTS : "claimed as"
+    USERS ||--o{ TAB_MEMBERS : "participates"
+    CONTACTS ||--o{ TAB_MEMBERS : "represents"
+
+    GROUPS o|--o{ TABS : "contextualizes"
+    TABS ||--|{ TAB_MEMBERS : "contains"
+    TABS ||--o{ TRANSACTIONS : "contains"
+    TABS ||--o{ PAYMENTS : "receives"
+
+    TRANSACTIONS ||--|{ TRANSACTION_PARTICIPANTS : "allocates"
+    USERS ||--o{ TRANSACTION_PARTICIPANTS : "participates"
+    CONTACTS ||--o{ TRANSACTION_PARTICIPANTS : "represents"
+
+    USERS ||--o{ PAYMENTS : "submits"
+    USERS ||--o{ PAYMENTS : "confirms"
+    PAYMENTS ||--o{ PAYMENT_PROOFS : "has"
+
+    USERS ||--o{ RECURRING_RULES : "creates"
+    TABS ||--o{ RECURRING_RULES : "uses"
+    RECURRING_RULES ||--o{ TRANSACTIONS : "generates"
+
+    TRANSACTIONS ||--o{ REMINDERS : "triggers"
+    USERS ||--o{ REMINDERS : "creates"
+    USERS ||--o{ REMINDERS : "receives"
+
+    USERS ||--o{ NOTIFICATIONS : "receives"
+    TABS ||--o{ NOTIFICATIONS : "relates"
+    TRANSACTIONS ||--o{ NOTIFICATIONS : "relates"
+    PAYMENTS ||--o{ NOTIFICATIONS : "relates"
+    GROUPS ||--o{ NOTIFICATIONS : "relates"
+
+    USERS ||--o{ REPORTS : "submits"
+    TABS ||--o{ REPORTS : "concerns"
+    TRANSACTIONS ||--o{ REPORTS : "concerns"
+    PAYMENTS ||--o{ REPORTS : "concerns"
+
+    USERS ||--o{ ACTIVITY_LOGS : "performs"
+    TABS ||--o{ ACTIVITY_LOGS : "records"
+    TRANSACTIONS ||--o{ ACTIVITY_LOGS : "records"
+    PAYMENTS ||--o{ ACTIVITY_LOGS : "records"
+    GROUPS ||--o{ ACTIVITY_LOGS : "records"
+```
+
+---
+
+### 7.2 Complete Entity & Field Dictionary
+
+#### 1. `USERS`
+Primary authenticated user accounts.
+- `id` (UUID, PK): Unique user identifier.
+- `email` (TEXT, UNIQUE): Registered email address.
+- `phone` (TEXT, UNIQUE): Registered mobile number (E.164 format, e.g., `+639171234567`).
+- `display_name` (TEXT, NOT NULL): User's visible profile name.
+- `avatar_url` (TEXT): CDN URL to user avatar photo.
+- `created_at` / `updated_at` (TIMESTAMPTZ, NOT NULL).
+
+#### 2. `CONTACTS`
+Virtual contacts created by a user for counterparts who have not yet registered on Tabby.
+- `id` (UUID, PK): Unique contact identifier.
+- `owner_user_id` (UUID, FK -> `USERS.id`, NOT NULL): The user who created this local contact.
+- `display_name` (TEXT, NOT NULL): Contact nickname or full name.
+- `phone` (TEXT): Phone number used for discovery and matching.
+- `email` (TEXT): Email used for discovery and matching.
+- `claimed_user_id` (UUID, FK -> `USERS.id`, NULLABLE): Populated once contact registers and claims identity.
+- `claim_status` (TEXT, NOT NULL): `'unclaimed'`, `'pending'`, `'claimed'`.
+- `created_at` / `claimed_at` (TIMESTAMPTZ).
+
+#### 3. `FRIENDSHIPS`
+Social relationship between two authenticated users. Decoupled from financial records.
+- `id` (UUID, PK): Unique friendship identifier.
+- `requester_id` (UUID, FK -> `USERS.id`, NOT NULL): User who initiated friend request.
+- `addressee_id` (UUID, FK -> `USERS.id`, NOT NULL): User who received friend request.
+- `status` (TEXT, NOT NULL): `'pending'`, `'accepted'`, `'declined'`, `'blocked'`.
+- `created_at` / `responded_at` (TIMESTAMPTZ).
+
+#### 4. `GROUPS`
+Social circles or shared contexts (e.g., "CpE Classmates", "Roommates", "Barkada").
+- `id` (UUID, PK): Unique group identifier.
+- `created_by` (UUID, FK -> `USERS.id`, NOT NULL): Group creator.
+- `name` (TEXT, NOT NULL): Group title.
+- `description` (TEXT): Group description or notes.
+- `avatar_url` (TEXT): Group photo or icon.
+- `created_at` / `updated_at` (TIMESTAMPTZ, NOT NULL).
+
+#### 5. `GROUP_MEMBERS`
+Membership roster in a group.
+- `id` (UUID, PK): Membership record identifier.
+- `group_id` (UUID, FK -> `GROUPS.id`, NOT NULL): Associated group.
+- `user_id` (UUID, FK -> `USERS.id`, NOT NULL): Member user.
+- `role` (TEXT, NOT NULL): `'admin'`, `'member'`.
+- `status` (TEXT, NOT NULL): `'active'`, `'invited'`, `'left'`.
+- `joined_at` (TIMESTAMPTZ, NOT NULL).
+
+#### 6. `GROUP_PERMISSIONS`
+Configurable permissions per group.
+- `id` (UUID, PK): Permission record identifier.
+- `group_id` (UUID, FK -> `GROUPS.id`, NOT NULL).
+- `permission_key` (TEXT, NOT NULL): E.g., `'create_expenses'`, `'edit_expenses'`, `'invite_members'`.
+- `enabled` (BOOLEAN, NOT NULL, DEFAULT true).
+
+#### 7. `TABS`
+The running bilateral or multi-party ledger.
+- `id` (UUID, PK): Unique tab identifier.
+- `tab_type` (TEXT, NOT NULL): `'individual'` (1-on-1 bilateral), `'group'`, `'shared_couple'`.
+- `status` (TEXT, NOT NULL): `'active'`, `'settled'`, `'archived'`.
+- `group_id` (UUID, FK -> `GROUPS.id`, NULLABLE): Group reference if contextualized by a group.
+- `created_at` / `updated_at` (TIMESTAMPTZ, NOT NULL).
+
+#### 8. `TAB_MEMBERS`
+Participants in a Tab. Either `user_id` or `contact_id` must be non-null.
+- `id` (UUID, PK): Membership record identifier.
+- `tab_id` (UUID, FK -> `TABS.id`, NOT NULL).
+- `user_id` (UUID, FK -> `USERS.id`, NULLABLE).
+- `contact_id` (UUID, FK -> `CONTACTS.id`, NULLABLE).
+- `role` (TEXT, NOT NULL, DEFAULT `'participant'`).
+- `joined_at` (TIMESTAMPTZ, NOT NULL).
+
+#### 9. `TRANSACTIONS`
+Financial obligations or shared expense events belonging to a Tab.
+- `id` (UUID, PK): Unique transaction identifier.
+- `tab_id` (UUID, FK -> `TABS.id`, NOT NULL).
+- `created_by` (UUID, FK -> `USERS.id`, NOT NULL).
+- `recurring_rule_id` (UUID, FK -> `RECURRING_RULES.id`, NULLABLE).
+- `transaction_type` (TEXT, NOT NULL): `'debt'`, `'shared_expense'`, `'adjustment'`.
+- `category` (TEXT, NOT NULL): `'food'`, `'transportation'`, `'borrowed_cash'`, `'bills'`, `'groceries'`, `'other'`.
+- `description` (TEXT, NOT NULL).
+- `total_amount_centavos` (BIGINT, NOT NULL): Total expense in centavos (`> 0`).
+- `currency` (TEXT, NOT NULL, DEFAULT `'PHP'`).
+- `transaction_date` (DATE, NOT NULL).
+- `due_date` (DATE, NULLABLE): Optional repayment deadline.
+- `status` (TEXT, NOT NULL): `'pending'`, `'acknowledged'`, `'disputed'`, `'cancelled'`, `'settled'`.
+- `created_at` / `updated_at` (TIMESTAMPTZ, NOT NULL).
+
+#### 10. `TRANSACTION_PARTICIPANTS`
+Individual participant allocations and acknowledgment status.
+- `id` (UUID, PK): Participant share identifier.
+- `transaction_id` (UUID, FK -> `TRANSACTIONS.id`, NOT NULL).
+- `user_id` (UUID, FK -> `USERS.id`, NULLABLE).
+- `contact_id` (UUID, FK -> `CONTACTS.id`, NULLABLE).
+- `participant_role` (TEXT, NOT NULL): `'payer'`, `'debtor'`, `'beneficiary'`.
+- `share_amount_centavos` (BIGINT, NOT NULL): Allocated share in centavos (`>= 0`).
+- `share_percentage` (NUMERIC(5,2), NULLABLE): Optional share percentage.
+- `acknowledged` (BOOLEAN, NOT NULL, DEFAULT false).
+- `acknowledged_at` (TIMESTAMPTZ, NULLABLE).
+
+#### 11. `PAYMENTS`
+Recorded settlements against a Tab. Tabby tracks proofs; does not process banking transactions.
+- `id` (UUID, PK): Unique payment record identifier.
+- `tab_id` (UUID, FK -> `TABS.id`, NOT NULL).
+- `submitted_by` (UUID, FK -> `USERS.id`, NOT NULL).
+- `amount_centavos` (BIGINT, NOT NULL): Settlement amount in centavos (`> 0`).
+- `payment_method` (TEXT, NOT NULL): `'gcash'`, `'maya'`, `'cash'`, `'bank_transfer'`, `'other'`.
+- `note` (TEXT): Optional settlement message.
+- `status` (TEXT, NOT NULL): `'submitted'`, `'confirmed'`, `'rejected'`.
+- `submitted_at` (TIMESTAMPTZ, NOT NULL).
+- `confirmed_by` (UUID, FK -> `USERS.id`, NULLABLE): Creditor who verified payment.
+- `confirmed_at` (TIMESTAMPTZ, NULLABLE).
+
+#### 12. `PAYMENT_PROOFS`
+Attached receipt screenshots or proof images.
+- `id` (UUID, PK): Proof attachment identifier.
+- `payment_id` (UUID, FK -> `PAYMENTS.id`, NOT NULL).
+- `file_url` (TEXT, NOT NULL): Secure storage URL.
+- `file_name` (TEXT, NOT NULL).
+- `mime_type` (TEXT, NOT NULL).
+- `uploaded_at` (TIMESTAMPTZ, NOT NULL).
+
+#### 13. `RECURRING_RULES`
+Configuration template that generates scheduled periodic transactions.
+- `id` (UUID, PK): Rule identifier.
+- `created_by` (UUID, FK -> `USERS.id`, NOT NULL).
+- `tab_id` (UUID, FK -> `TABS.id`, NOT NULL).
+- `frequency` (TEXT, NOT NULL): `'daily'`, `'weekly'`, `'biweekly'`, `'monthly'`.
+- `amount_centavos` (BIGINT, NOT NULL).
+- `start_date` (DATE, NOT NULL).
+- `end_date` (DATE, NULLABLE).
+- `has_end_date` (BOOLEAN, NOT NULL, DEFAULT false).
+- `active` (BOOLEAN, NOT NULL, DEFAULT true).
+- `category` (TEXT, NOT NULL).
+- `description` (TEXT, NOT NULL).
+- `created_at` / `updated_at` (TIMESTAMPTZ, NOT NULL).
+
+#### 14. `REMINDERS`
+Scheduled automated or manual nudge reminders.
+- `id` (UUID, PK): Reminder identifier.
+- `transaction_id` (UUID, FK -> `TRANSACTIONS.id`, NOT NULL).
+- `created_by` (UUID, FK -> `USERS.id`, NOT NULL).
+- `recipient_user_id` (UUID, FK -> `USERS.id`, NOT NULL).
+- `reminder_type` (TEXT, NOT NULL): `'before_due'`, `'on_due'`, `'overdue'`, `'manual_nudge'`.
+- `scheduled_for` (TIMESTAMPTZ, NOT NULL).
+- `sent_at` (TIMESTAMPTZ, NULLABLE).
+- `status` (TEXT, NOT NULL): `'scheduled'`, `'sent'`, `'cancelled'`.
+- `repeat_interval_minutes` (INTEGER, NULLABLE).
+
+#### 15. `NOTIFICATIONS`
+High-priority in-app inbox and push notification queue.
+- `id` (UUID, PK): Notification identifier.
+- `recipient_user_id` (UUID, FK -> `USERS.id`, NOT NULL).
+- `notification_type` (TEXT, NOT NULL): `'debt_created'`, `'debt_acknowledged'`, `'amount_proposed'`, `'amount_changed'`, `'payment_submitted'`, `'payment_confirmed'`, `'reminder_due'`, `'reminder_overdue'`, `'manual_nudge'`, `'friend_request'`, `'group_invite'`, `'report_filed'`.
+- `related_tab_id` (UUID, FK -> `TABS.id`, NULLABLE).
+- `related_transaction_id` (UUID, FK -> `TRANSACTIONS.id`, NULLABLE).
+- `related_payment_id` (UUID, FK -> `PAYMENTS.id`, NULLABLE).
+- `related_group_id` (UUID, FK -> `GROUPS.id`, NULLABLE).
+- `title` (TEXT, NOT NULL).
+- `body` (TEXT, NOT NULL).
+- `is_read` (BOOLEAN, NOT NULL, DEFAULT false).
+- `created_at` / `read_at` (TIMESTAMPTZ).
+
+#### 16. `REPORTS`
+Formal user disputes over amount modifications or unrecognized debts.
+- `id` (UUID, PK): Report identifier.
+- `reported_by` (UUID, FK -> `USERS.id`, NOT NULL).
+- `tab_id` (UUID, FK -> `TABS.id`, NULLABLE).
+- `transaction_id` (UUID, FK -> `TRANSACTIONS.id`, NULLABLE).
+- `payment_id` (UUID, FK -> `PAYMENTS.id`, NULLABLE).
+- `report_type` (TEXT, NOT NULL): `'amount_dispute'`, `'unrecognized_debt'`, `'payment_dispute'`, `'other'`.
+- `message` (TEXT, NOT NULL).
+- `status` (TEXT, NOT NULL): `'open'`, `'under_review'`, `'resolved'`, `'dismissed'`.
+- `resolution_note` (TEXT, NULLABLE).
+- `created_at` / `resolved_at` (TIMESTAMPTZ).
+
+#### 17. `ACTIVITY_LOGS`
+Immutable append-only audit trail recording every state mutation.
+- `id` (UUID, PK): Log event identifier.
+- `actor_user_id` (UUID, FK -> `USERS.id`, NOT NULL).
+- `tab_id` (UUID, FK -> `TABS.id`, NULLABLE).
+- `transaction_id` (UUID, FK -> `TRANSACTIONS.id`, NULLABLE).
+- `payment_id` (UUID, FK -> `PAYMENTS.id`, NULLABLE).
+- `group_id` (UUID, FK -> `GROUPS.id`, NULLABLE).
+- `event_type` (TEXT, NOT NULL): E.g., `'DEBT_CREATED'`, `'DEBT_ACKNOWLEDGED'`, `'AMOUNT_CHANGED'`, `'PAYMENT_SUBMITTED'`, `'PAYMENT_CONFIRMED'`, `'DEBT_CANCELLED'`, `'REPORT_CREATED'`.
+- `metadata` (JSONB, NOT NULL, DEFAULT `{}`): Stores before/after payload diffs (e.g., `{"old_centavos": 50000, "new_centavos": 45000}`).
+- `created_at` (TIMESTAMPTZ, NOT NULL).
+
+---
+
+### 7.3 Key ERD Architectural Invariants & Rules
+
+1. **Users vs. Contacts:** A `CONTACT` represents an unonboarded person. A `CONTACT` can be claimed by a `USER` via an explicit **Claim + Acknowledge** flow. `claimed_user_id` is nullable until resolved.
+2. **Tab Cardinality (Canonical Pair Key):** Exactly one active 1-on-1 tab exists between any two parties. Enforced by canonical indexing:
+   ```sql
+   CREATE UNIQUE INDEX idx_unique_bilateral_tab ON TABS (
+     LEAST(user_a, user_b),
+     GREATEST(user_a, user_b)
+   ) WHERE tab_type = 'individual' AND status = 'active';
+   ```
+3. **Friendship Independence:** Friendships (`FRIENDSHIPS`) are strictly social links. Unfriending a user **does not** delete historical Tabs, alter active debts, or erase audit logs.
+4. **Payments are Independent from Obligations:** A payment never overwrites a transaction amount. An obligation of `₱1,000` with a confirmed payment of `₱300` remains recorded as an obligation of `₱1,000` and a payment of `₱300`, yielding a remaining obligation of `₱700`.
+5. **Recurring Rules are Factories:** A `RECURRING_RULE` does not act as a permanent transaction. It generates distinct, individual `TRANSACTIONS` on schedule, each possessing its own independent lifecycle and payment history.
+6. **Append-Only Auditing:** Financial history is never permanently deleted. Modifications and voidings write to `ACTIVITY_LOGS` with comprehensive JSON metadata.
+
+---
+
+### 7.4 Database Constraints, Indexes & Security (RLS)
+
+#### Database Constraints
+- `total_amount_centavos > 0` on `TRANSACTIONS`.
+- `share_amount_centavos >= 0` on `TRANSACTION_PARTICIPANTS`.
+- `amount_centavos > 0` on `PAYMENTS`.
+- Total participant share centavos must equal `total_amount_centavos` (sum validation in application and database trigger).
+- Uniqueness constraints on `(requester_id, addressee_id)` in `FRIENDSHIPS`.
+- Uniqueness constraints on `(group_id, user_id)` in `GROUP_MEMBERS`.
+
+#### Row Level Security (RLS) Principles
+- **Tabs:** Users can only view or query Tabs where their `id` exists in `TAB_MEMBERS`.
+- **Transactions & Payments:** Access restricted strictly to members of the parent Tab.
+- **Group Privacy:** Group members can see shared group expenses, but **never** the private 1-on-1 bilateral Tabs of other group members.
+- **Payment Proofs:** Secure bucket access granted only to verified participants of the transaction/tab.
+- **Activity Logs:** Insert allowed via authenticated triggers/services; updates and deletes strictly forbidden.
+
+---
+
+### 7.5 API & Domain Service Modules
+
+The backend architecture is structured around clean, decoupled domain modules:
+
+```text
+/api
+  ├── /auth            (Supabase Auth & session lifecycle)
+  ├── /users           (User profiles, avatars, settings)
+  ├── /contacts        (Local contacts, match detection, claim flow)
+  ├── /friends         (Friend requests, list, removal)
+  ├── /groups          (Group creation, member roles, permissions)
+  ├── /tabs            (Ledger retrieval, bilateral tab resolution)
+  ├── /transactions    (Create expense, split allocation, acknowledge, edit)
+  ├── /payments        (Submit payment, attach proof, confirm, reject)
+  ├── /reminders       (Scheduling, push dispatch, rate limiting)
+  ├── /notifications   (In-app inbox, read state management)
+  ├── /recurring       (Recurring rules worker, occurrence generation)
+  ├── /reports         (Dispute filing, review workflow)
+  └── /activity        (Audit log stream, history retrieval)
+```
+
+---
+
+## 8. Balance Calculation Engine & Mathematical Specification
+
+### 8.1 Canonical Formula & Perspective Normalization
+
+Balances are **derived server-side** on demand from confirmed financial facts. The application layer never accepts an arbitrary balance payload from the client.
+
+For any two participants (User $A$ and Counterpart $B$), the **Net Balance from User $A$'s perspective** is computed as:
+
+$$\text{Net Balance}_A = \sum \text{Obligations Owed to } A - \sum \text{Obligations Owed by } A - \sum \text{Confirmed Payments Received by } A + \sum \text{Confirmed Payments Made by } A$$
+
+#### Perspective Conventions
+- **$\text{Net Balance} > 0$ (Positive):** The other party owes User $A$ (*"You're owed"* — Displayed in primary charcoal / green).
+- **$\text{Net Balance} < 0$ (Negative):** User $A$ owes the other party (*"You owe"* — Displayed in amber / soft red).
+- **$\text{Net Balance} == 0$ (Zero):** Fully settled (*"Bayad na! All settled"* — Triggers sleeping mascot).
+
+---
+
+### 8.2 Worked Ledger Examples
+
+#### Example 1: Multi-transaction Balance Offset
+- Transaction 1: Juan borrows cash from Frienzal: `+₱500.00`
+- Transaction 2: Frienzal orders coffee, Juan pays: `-₱100.00`
+- Payment 1: Juan pays Frienzal via GCash: `-₱200.00`
+- Payment 2: Frienzal pays Juan cash for coffee: `+₱50.00`
+
+$$\text{Net Balance}_{\text{Frienzal}} = (50000) - (10000) - (20000) + (5000) = +25000\text{ centavos} = +\text{₱}250.00$$
+- **Frienzal's UI:** *"Juan owes you ₱250.00"*
+- **Juan's UI:** *"You owe Frienzal ₱250.00"*
+
+#### Example 2: Partial Payment Tracking
+- Dinner expense: Total `₱1,000.00` (Mark owes Frienzal `₱1,000.00`).
+- Mark submits partial payment `₱300.00` via GCash; Frienzal confirms.
+- Obligation remains: `₱1,000.00` (`100000` centavos).
+- Confirmed payments total: `₱300.00` (`30000` centavos).
+- Net balance: `+₱700.00` (`70000` centavos).
+
+---
+
+## 9. Architecture Decision Records (ADRs)
 
 ### ADR-001: Integer Centavo Precision for Currency Math
 - **Status:** Accepted (2026-09-13)
@@ -191,7 +917,7 @@ Peer financial interactions in the Philippines rely heavily on cultural nuances.
 
 ### ADR-003: Emotion-Driven Financial UI with Mascot State Machine
 - **Status:** Accepted (2026-09-13)
-- **Decision:** Implement a deterministic Finite State Machine (FSM) for the mascot character (`IDLE_NEUTRAL`, `CALCULATING`, `GENTLE_NUDGE`, `CELEBRATING`, `SLEEPING`).
+- **Decision:** Implement a deterministic Finite State Machine (FSM) for the mascot character (`IDLE_NEUTRAL`, `USER_OWES`, `USER_IS_OWED`, `CALCULATING`, `GENTLE_NUDGE`, `OVERDUE`, `PAYMENT_SUBMITTED`, `CELEBRATING`, `SLEEPING`).
 - **Rationale:** Visual mascot reactions disarm social anxiety and transform financial record-keeping into a warm experience.
 
 ### ADR-004: Non-Custodial Settlement Model with GCash/Maya Intent References
@@ -204,9 +930,29 @@ Peer financial interactions in the Philippines rely heavily on cultural nuances.
 - **Decision:** Consolidate agent operating rules, design tokens, ADRs, cultural guidelines, conversation history, and roadmap into `AGENTS.md` as the single source of truth.
 - **Rationale:** Per CEO directive, eliminates multi-file synchronization overhead and ensures immediate full-context ingestion for all agents and contributors.
 
+### ADR-006: Non-Destructive Cancellation over Destructive Deletion
+- **Status:** Accepted (2026-09-13)
+- **Decision:** Financial records (transactions, payments) are never hard-deleted once acknowledged or confirmed. They transition to `'cancelled'` status, recording actor and reason in `ACTIVITY_LOGS`.
+- **Rationale:** Preserves mutual trust and an unalterable audit trail. Prevents one party from erasing financial obligations without mutual visibility.
+
+### ADR-007: Explicit Claim and Acknowledgment for Unregistered Contacts
+- **Status:** Accepted (2026-09-13)
+- **Decision:** When a newly registered user matches an existing `CONTACT` record by phone or email, the financial obligations are NOT silently auto-attached. The user must review the tabs and explicitly trigger **Claim & Acknowledge**.
+- **Rationale:** Prevents fraudulent or erroneous assignment of financial debt to new users without their consent.
+
+### ADR-008: Strict Party-to-Party Settlement (No Automated Debt Netting)
+- **Status:** Accepted (2026-09-13)
+- **Decision:** In group expenses, Tabby records explicit bilateral obligations between the payer and each participant. Tabby will **not** perform automated third-party debt simplification (e.g., A pays B to clear C's debt) in the MVP.
+- **Rationale:** Debt netting across multiple casual acquaintances creates confusion and distrust in Philippine social groups ("Bakit ako magbabayad sa kanya, ikaw ang kasama ko?").
+
+### ADR-009: Decoupled Social Friendships from Financial Ledgers
+- **Status:** Accepted (2026-09-13)
+- **Decision:** The `FRIENDSHIPS` table is purely a discovery and shortcut mechanism. Removing a friend never deletes or invalidates existing `TABS`, `TRANSACTIONS`, or `PAYMENTS`.
+- **Rationale:** Ending a social relationship does not legally or logically extinguish an outstanding financial obligation.
+
 ---
 
-## 7. Operational Protocols & Rules of Engagement
+## 10. Operational Protocols & Rules of Engagement
 
 1. **Strict Context Preservation:**
    - Always inspect `AGENTS.md` before proposing UX, copy, or architectural changes.
@@ -223,42 +969,179 @@ Peer financial interactions in the Philippines rely heavily on cultural nuances.
 
 ---
 
-## 8. Planned Feature Roadmap
+## 11. Detailed Implementation Plan, Feature Scope & Test Suite
 
-### Phase 1: MVP Core (1-on-1 Tabs & Settlements)
-- [ ] **Quick Tab Entry:** Add an expense in under 5 seconds (Amount, Who paid, Who owes, Description).
-- [ ] **1:1 Balance Tracker:** Clear running balance between two users (*"You owe Karl ₱250"* / *"Karl owes you ₱150"* -> Net: *"You owe Karl ₱100"*).
-- [ ] **Payment Settlement ("Bayad Na!"):** Mark tab settled with payment method tagged (GCash, Maya, Cash).
-- [ ] **Mascot Mood Integration:** Happy mascot on settlement; sleeping cat on zero balance.
+### 11.1 MVP Feature Scope vs. Post-MVP Boundaries
 
-### Phase 2: Group Tabs & Smart Split
-- [ ] **Group Expenses (Barkada Trips, Dinners, Bills):** Multi-person bill splitting.
-- [ ] **Split Modes:** Equal split, itemized split, and percentage/exact amounts.
-- [ ] **KKB Mode (Kanya-Kanyang Bayad):** Quick tax + service charge distributor.
-- [ ] **Gentle Reminder Links:** Shareable SMS/Messenger card with friendly mascot nudge graphic.
-
-### Phase 3: Local-First Architecture & Cloud Sync
-- [ ] **Offline-First Persistence:** SQLite / IndexedDB for instantaneous local access without internet.
-- [ ] **Cloud Backup & Peer Sync:** Supabase / Postgres integration for multi-device sync and real-time tab updates.
-- [ ] **Export & Audit:** Export tab history as CSV or shareable receipt snapshot.
-
-### Phase 4: Financial Quality of Life & Polish
-- [ ] **GCash / Maya Deep-link & QR Generator:** Display settlement QR codes directly inside the app.
-- [ ] **Spending Analytics:** Monthly breakdowns of personal vs. shared expenditures.
-- [ ] **Custom Mascot Costumes & Mood Packs:** Themed seasonal cat expressions.
+| Category | In Scope (MVP) | Out of Scope (Post-MVP / Future) |
+| :--- | :--- | :--- |
+| **Identity & Access** | Supabase Auth (Email/Password, Magic Link, Phone OTP), User profiles, Contact creation. | Social login OAuth providers (Facebook, Apple). |
+| **Social Network** | Unregistered contacts, Contact claim + acknowledge, Friends list, Groups. | Public social feed, Global search directory. |
+| **Ledger & Tabs** | Bilateral 1:1 running tabs, Net balance computation, Historical transactions feed. | Multi-currency conversions (USD, JPY). |
+| **Transactions** | Expense creation (<5s), Categories, Due dates, Duplicate warning, Acknowledgment, Proposal. | OCR receipt scanner / AI receipt parsing. |
+| **Settlement** | Manual payment submission, Proof image attachment, Creditor confirmation, GCash/Maya QR viewer. | In-app automated money movement (BSP payment rail integration). |
+| **Split Modes** | Equal Split (KKB), Custom amounts split, Tax & Service charge distribution. | Complex itemized bill OCR splitting. |
+| **Reminders** | Due-date reminders, Overdue reminders, Shareable mascot nudge cards, Manual nudges. | Automated robocalls or paid SMS gateway broadcast. |
+| **Recurring** | Periodic recurring debt rules generating individual scheduled transactions. | Auto-debiting bank accounts. |
+| **Audit & Trust** | Append-only activity logs, Amount edit notifications, Non-destructive cancellation, Reports. | Third-party legal arbitration marketplace. |
 
 ---
 
-## 9. Project Changelog & Version History
+### 11.2 Phased Engineering Roadmap
+
+```mermaid
+gantt
+    title Tabby MVP Development Phases
+    dateFormat  YYYY-MM-DD
+    section Core Engineering
+    Phase 1 — Foundation & Auth          :done,    p1, 2026-09-13, 3d
+    Phase 2 — Tabs & Core Ledger Math    :active,  p2, after p1, 4d
+    Phase 3 — Acknowledgment & Payments  :         p3, after p2, 4d
+    Phase 4 — Notifications & Reminders  :         p4, after p3, 3d
+    Phase 5 — Groups & KKB Splitting     :         p5, after p4, 4d
+    Phase 6 — Recurring Engine           :         p6, after p5, 3d
+    Phase 7 — Trust, Audit & Disputes    :         p7, after p6, 3d
+    Phase 8 — Mascot Polish & Hardening  :         p8, after p7, 3d
+```
+
+#### Phase 1 — Foundation & Identity
+- Supabase / PostgreSQL schema setup with UUIDs and integer centavo fields.
+- Auth modules (Email, Phone OTP).
+- `USERS`, `CONTACTS`, `FRIENDSHIPS` entities and initial RLS policies.
+- Global Tailwind theme, brand tokens, and design system setup.
+
+#### Phase 2 — Tabs & Core Ledger Engine
+- `TABS`, `TAB_MEMBERS`, `TRANSACTIONS`, `TRANSACTION_PARTICIPANTS` tables.
+- Server-side net balance calculation engine with integer centavo arithmetic.
+- My Tabs screen (`/tabs`) with bilateral groupings ("They owe you", "You owe").
+- Quick Expense creation modal with <5 second entry benchmark and duplicate warning check.
+
+#### Phase 3 — Acknowledgment & Settlement Flow
+- Debtor pending acknowledgment state machine.
+- Amount proposal and adjustment review workflow.
+- `PAYMENTS` and `PAYMENT_PROOFS` tables with Supabase Storage integration.
+- Creditor payment confirmation flow with celebratory mascot confetti.
+
+#### Phase 4 — Notifications & Gentle Reminders
+- In-app notification center behind top-right bell (`🔔`).
+- Scheduled cron triggers for due-date and overdue reminders.
+- Shareable gentle nudge cards with pre-composed Taglish microcopy and mascot illustration.
+- Anti-spam rate limiters on reminder dispatches.
+
+#### Phase 5 — Groups & KKB Split Engine
+- `GROUPS`, `GROUP_MEMBERS`, `GROUP_PERMISSIONS` tables.
+- Group expense creation with Equal Split (KKB) and Custom Split.
+- Tax and service charge auto-distribution algorithm.
+- Group activity feed with private settlement tab protection.
+
+#### Phase 6 — Recurring Debts Engine
+- `RECURRING_RULES` table supporting fixed end dates and ongoing recurrence.
+- Background worker generating scheduled independent `TRANSACTIONS`.
+- Recurrence management UI in Tab detail.
+
+#### Phase 7 — Trust, Audit & Dispute Resolution
+- `ACTIVITY_LOGS` table with JSONB before/after state diffs.
+- `REPORTS` dispute submission for unauthorized amount edits.
+- Soft cancellation / voiding state machine.
+
+#### Phase 8 — Mascot Emotion Engine & Production Polish
+- Mascot FSM integration with reactive UI events (`IDLE_NEUTRAL`, `CALCULATING`, `CELEBRATING`, `SLEEPING`).
+- Offline-first SQLite persistence and sync conflict resolution.
+- End-to-end security review, RLS verification, and performance audit.
+
+---
+
+### 11.3 Canonical Acceptance Test Scenarios
+
+Every database migration, ledger function, and balance calculation must pass these 8 canonical test scenarios before release:
+
+#### Test Scenario 1: Basic Debt Direction
+- **Input:** Frienzal pays ₱500.00 for Juan's dinner.
+- **Expected Outcome:**
+  - Frienzal's perspective: `Juan's Tab = +₱500.00` (Juan owes Frienzal).
+  - Juan's perspective: `Frienzal's Tab = -₱500.00` (Juan owes Frienzal).
+  - Mascot State: Frienzal = `USER_IS_OWED`; Juan = `USER_OWES`.
+
+#### Test Scenario 2: Opposite Direction Balance Offset
+- **Input:**
+  - Juan owes Frienzal ₱500.00.
+  - Later, Frienzal owes Juan ₱100.00 for fare.
+- **Expected Outcome:**
+  - Net Balance = `+₱400.00` from Frienzal's perspective.
+  - Juan owes Frienzal ₱400.00 net. Single ledger reconciliation without multiple tabs.
+
+#### Test Scenario 3: Partial Payment Ledger Tracking
+- **Input:**
+  - Obligation: Juan owes Frienzal ₱500.00.
+  - Juan submits payment of ₱200.00 with GCash receipt.
+  - Frienzal confirms payment.
+- **Expected Outcome:**
+  - Original obligation remains intact at ₱500.00.
+  - Confirmed payment record recorded at ₱200.00.
+  - Remaining net balance = `+₱300.00`.
+
+#### Test Scenario 4: Unregistered Contact Claiming
+- **Input:**
+  - Frienzal logs a ₱350.00 lunch tab for unregistered contact "Mark" (`+639171112233`).
+  - Mark registers on Tabby with phone `+639171112233`.
+- **Expected Outcome:**
+  - Mark sees claim banner: *"We found an existing Tab for you from Frienzal."*
+  - On tapping `[ Claim & Acknowledge ]`, contact is linked to Mark's `user_id`.
+  - Frienzal's tab automatically updates to show Mark's registered profile.
+
+#### Test Scenario 5: Group Expense Split Without Debt-Netting Distortion
+- **Input:**
+  - ₱1,000.00 dinner split among Frienzal, Juan, Mark, and Ana (₱250.00 each). Frienzal paid the bill.
+- **Expected Outcome:**
+  - Frienzal is owed ₱250.00 by Juan, ₱250.00 by Mark, and ₱250.00 by Ana.
+  - Group ledger displays ₱1,000.00 group expense.
+  - Bilateral tabs are created/updated strictly between Frienzal and each individual debtor. No debt netting between Juan and Mark.
+
+#### Test Scenario 6: Recurring Debt Occurrence Generation
+- **Input:**
+  - Room rental rule: ₱5,000.00/month, active from September to December (4 months).
+- **Expected Outcome:**
+  - System generates 4 distinct `TRANSACTIONS` dated on the scheduled occurrence days.
+  - Settling September's occurrence does not settle or alter October's occurrence.
+
+#### Test Scenario 7: Duplicate Detection Warning
+- **Input:**
+  - Juan creates an expense for ₱500.00 dinner with Frienzal on Sep 13.
+  - Frienzal attempts to log the same ₱500.00 dinner with Juan on Sep 13.
+- **Expected Outcome:**
+  - Non-blocking warning banner: *"Possible duplicate found"*.
+  - Frienzal can choose to merge or proceed with creation.
+
+#### Test Scenario 8: Amount Edit & Dispute Audit Trail
+- **Input:**
+  - Creator edits an acknowledged debt from ₱500.00 to ₱450.00.
+  - Debtor disagrees and files a report.
+- **Expected Outcome:**
+  - Original ₱500.00 value preserved in `ACTIVITY_LOGS`.
+  - Debtor receives notification: *"Amount changed from ₱500.00 to ₱450.00"*.
+  - Debtor files dispute report; report status is `'open'`; transaction status reflects `'disputed'` badge.
+
+---
+
+## 12. Project Changelog & Version History
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) and [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### [Unreleased]
-- MVP Core 1-on-1 tab entry and balance calculation engine.
-- Philippine Peso (`₱`) centavo-accurate transaction state machine.
+- Implementation of Supabase PostgreSQL schema with integer centavo precision.
+- Server-side net balance calculation engine.
 - Interactive bill split calculator with service charge and tax distribution (KKB mode).
-- GCash and Maya settlement reference generation.
-- Interactive mascot reaction states based on tab status.
+- GCash and Maya settlement reference generation and QR view.
+- Mascot state machine reactive bindings.
+
+### [0.2.0] - 2026-09-13
+- **Architecture & Specifications Integration:**
+  - Integrated complete product specifications, user journeys, navigation architecture, and edge-case handling from `PLAN.md`.
+  - Integrated 17-entity relational data model and Mermaid ERD from `TABBY_ERD.md`, standardizing all monetary fields to integer centavos per ADR-001.
+  - Embedded Balance Calculation Engine mathematical formulas and perspective normalization conventions.
+  - Added Architecture Decision Records ADR-006 (Non-Destructive Cancellation), ADR-007 (Contact Claim & Acknowledge), ADR-008 (Strict Party-to-Party Settlement), and ADR-009 (Decoupled Friendships).
+  - Established 8 Phased Development Roadmap and 8 Canonical Acceptance Test Scenarios.
+- Re-affirmed `AGENTS.md` as the unified, single living document source of truth across all sessions.
 
 ### [0.1.0] - 2026-09-13
 - Consolidated complete project documentation, CEO conversation logs, cultural guidelines, brand tokens, and ADRs into `AGENTS.md`.
