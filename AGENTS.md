@@ -44,6 +44,7 @@ Net Balance         +₱700.00 (Juan owes you)
 5. **Consolidated Documentation (`AGENTS.md` Single Source of Truth):** Keep project documentation, operational protocols, branding tokens, ADRs, database specifications, user flows, and roadmap consolidated in `AGENTS.md`.
 6. **Zero Floating-Point Drift:** All financial amounts must be stored and computed as integer centavos (`₱100.50` = `10050 centavos`).
 7. **Append-Only Auditability:** Never silently overwrite financial history or destroy confirmed records. Always track revisions, cancellations, and disputes.
+8. **Flutter + Supabase Native Foundation:** The client is built in Flutter for smooth, 60fps mascot animations, low-latency mobile UX, and local-first offline persistence (Drift/SQLite). The backend leverages Supabase (PostgreSQL 15+) for relational data integrity, Row Level Security (RLS), real-time synchronization, and secure receipt storage.
 
 ### CEO Conversation & Decisions Log
 
@@ -55,6 +56,7 @@ Net Balance         +₱700.00 (Juan owes you)
 | **2026-09-13** | CEO / Product Lead | Enforce integer centavo calculations for all currency values. | Prevents IEEE-754 floating point rounding drift when splitting odd bills. | Ledger database, Calculation engine, API contracts. |
 | **2026-09-13** | CEO / Product Lead | Consolidate documentation into `AGENTS.md` and remove secondary markdown files. | Keep agent and team context in a unified living document to streamline workflows. | `AGENTS.md`, `README.md`, repository structure. |
 | **2026-09-13** | Product Plan / ERD | Incorporate full specifications from `PLAN.md` and `TABBY_ERD.md`. | Elevate `AGENTS.md` into the comprehensive master guide for data architecture, flows, and implementation. | `AGENTS.md` (Sections 6–12). |
+| **2026-09-13** | CEO | Adopt Flutter for Mobile Client and Supabase for Backend/Database (*"Now i'm planning to create this using the supabase of the backend and in the mobile using flutter."*). | High-performance cross-platform iOS/Android support, rich mascot animations, local-first offline capabilities, relational PostgreSQL schema with RLS, integer BIGINT centavos, storage for GCash/Maya receipts, and real-time ledger synchronization. | Mobile Client (Flutter), Backend BaaS (Supabase), Local Caching (Drift/SQLite), State Management (Riverpod), Cloud Storage & Auth. |
 
 ---
 
@@ -88,8 +90,8 @@ graph TD
 | **Lead Architect / Orchestrator** | Task decomposition, technical direction, cross-agent workflows, code review. | Architecture roadmaps, PR reviews, workflow definitions. |
 | **Product Manager / CEO Proxy** | Voice of CEO and user, cultural validation ("utang" etiquette), feature prioritization. | User stories, acceptance criteria, CEO directive alignment. |
 | **Documentation Specialist** | Repository memory, technical guides, operating manuals, ADRs, changelog tracking. | `AGENTS.md`, `README.md`, API & architecture documentation. |
-| **Frontend / UI/UX Engineer** | Component architecture, Tailwind styling, brand tokens, mascot animation states. | UI components, page layouts, interactive split calculator. |
-| **Backend / Data Engineer** | Ledger data models, double-entry balance math, offline SQLite/Supabase synchronization. | Schema migrations, balance calculation engines, API endpoints. |
+| **Frontend / UI/UX Engineer** | Flutter mobile architecture, widget design system, Riverpod state management, Dart brand tokens, mascot animations (Rive/Lottie). | Flutter screens, reusable UI widgets, interactive split calculator, mascot state controllers. |
+| **Backend / Data Engineer** | Supabase PostgreSQL schema, RLS policies, SQL calculation engines, Drift offline sync, Supabase Storage & Realtime. | Database migrations, balance calculation functions, sync queue handlers, storage policies, Edge Functions. |
 | **QA & Reliability Engineer** | Financial rounding test cases, zero-balance verification, cross-device testing. | Unit test suites, end-to-end user journey tests, balance audit scripts. |
 
 ---
@@ -147,6 +149,58 @@ module.exports = {
       }
     }
   }
+}
+```
+
+### Flutter / Dart Theme Tokens
+
+```dart
+// lib/core/theme/tabby_colors.dart
+import 'package:flutter/material.dart';
+
+class TabbyColors {
+  // Brand Canvas
+  static const Color primaryCharcoal = Color(0xFF1F1F1F);
+  static const Color accentAmber      = Color(0xFFFFB74D);
+  static const Color backgroundLight  = Color(0xFFF8F8F8);
+  static const Color secondaryMuted   = Color(0xFF9CA3AF);
+  static const Color surfaceWhite     = Color(0xFFFFFFFF);
+
+  // Status & Financial Indicators
+  static const Color successGreen     = Color(0xFF10B981); // Confirmed settled ("Bayad na!")
+  static const Color debtRed          = Color(0xFFEF4444); // Active debt owed / alerts
+  static const Color pendingAmber     = Color(0xFFF59E0B); // Awaiting counterpart acknowledgment
+
+  // Semantic ThemeData for Flutter Client
+  static ThemeData get lightTheme => ThemeData(
+    useMaterial3: true,
+    scaffoldBackgroundColor: backgroundLight,
+    fontFamily: 'Inter',
+    colorScheme: const ColorScheme.light(
+      primary: primaryCharcoal,
+      secondary: accentAmber,
+      surface: surfaceWhite,
+      error: debtRed,
+      onPrimary: surfaceWhite,
+      onSecondary: primaryCharcoal,
+      onSurface: primaryCharcoal,
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: surfaceWhite,
+      foregroundColor: primaryCharcoal,
+      elevation: 0,
+      centerTitle: false,
+    ),
+    cardTheme: const CardTheme(
+      color: surfaceWhite,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+        side: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+      ),
+    ),
+  );
 }
 ```
 
@@ -355,7 +409,7 @@ stateDiagram-v2
 | **Friendship Removal** | User unfriends someone on Tabby. | Friendship is removed from friends list, but **existing Tabs, transactions, and historical debts are NEVER deleted**. |
 | **Destructive Deletion vs Cancellation** | User wants to delete an accidental or contested debt. | Deletion is soft (`status = 'cancelled'`). Preserves audit trail and prevents unilateral erasure of financial history. |
 | **Overdue Debts & Anti-Spam** | Debtor has not paid after due date. | Debtor **cannot mute** reminders, but system enforces rate-limiting on manual nudges (e.g., maximum 1 nudge per 6 hours). |
-| **Offline Logging in Poor Signal** | Splitting bills in basement restaurant. | Local-first write to SQLite/IndexedDB. UI confirms immediately. Background sync syncs to Supabase once online. |
+| **Offline Logging in Poor Signal** | Splitting bills in basement restaurant. | Local-first write to local Drift / SQLite database. UI confirms immediately. Background sync engine pushes mutations to Supabase once online. |
 
 ---
 
@@ -842,7 +896,195 @@ Immutable append-only audit trail recording every state mutation.
 
 ---
 
-### 7.5 API & Domain Service Modules
+### 7.5 System Architecture & Data Synchronization Engine
+
+Tabby couples a high-performance **Flutter** mobile application (compiled natively for iOS and Android) with a **Supabase (PostgreSQL 15+)** backend-as-a-service. All writes follow a **local-first paradigm**: mutations are immediately committed to a local Drift/SQLite database, delivering sub-50ms UI response times even in zero-connectivity environments, before synchronizing with Supabase.
+
+```mermaid
+flowchart TB
+    subgraph Client["Flutter Mobile Client (iOS & Android)"]
+        direction TB
+        UI["Presentation Layer<br/>• Flutter Widgets & Material 3<br/>• Mascot State Machine (Rive / Lottie)<br/>• GoRouter Declarative Routing"]
+        State["State Management<br/>• Flutter Riverpod (Notifier & AsyncValue)<br/>• Immutable Domain State<br/>• Mascot Mood Controller"]
+        LocalRepo["Repository & Sync Engine<br/>• Offline Write-Ahead Mutation Queue<br/>• Connectivity Awareness (connectivity_plus)<br/>• Drift Data Access Objects (DAOs)"]
+        LocalDB[("Local Offline Cache<br/>• SQLite (via Drift Engine)<br/>• Encrypted KeyStore (flutter_secure_storage)")]
+
+        UI --> State
+        State --> LocalRepo
+        LocalRepo <--> LocalDB
+    end
+
+    subgraph Network["Network & Security Transport Layer"]
+        HTTPS["HTTPS / PostgREST REST API<br/>Bearer JWT Auth Header"]
+        WSS["WSS / WebSockets<br/>Supabase Realtime Channel"]
+    end
+
+    subgraph SupabasePlatform["Supabase BaaS Platform (Cloud Backend)"]
+        direction TB
+        SupaAuth["Supabase Auth<br/>• Phone OTP (SMS Gateway)<br/>• Email Magic Links<br/>• JWT Session Lifecycle"]
+        
+        SupaDB[("PostgreSQL 15+ Core Ledger<br/>• 17 Relational Entities<br/>• Integer Centavos (BIGINT)<br/>• Row Level Security (RLS)<br/>• Canonical Bilateral Pair Index<br/>• Atomic Balance Calculation RPCs")]
+
+        SupaStorage["Supabase Storage<br/>• 'payment-proofs' Bucket<br/>• GCash / Maya Receipts<br/>• RLS-Guarded Signed URLs"]
+
+        SupaRealtime["Supabase Realtime<br/>• Postgres CDC Replication<br/>• Broadcast Channels per Tab"]
+
+        EdgeFunctions["Supabase Edge Functions (Deno)<br/>• Scheduled Reminders & Cron<br/>• Push Notification Dispatcher<br/>• Dispute Webhook Alerts"]
+    end
+
+    subgraph ExternalServices["External Rails & Device Hardware"]
+        GCashMaya["Philippine Payment Rails<br/>• GCash / Maya App Deep-links<br/>• QR Ph Scanners / Intent Links"]
+        PushService["Push Services<br/>• Firebase Cloud Messaging (FCM)<br/>• Apple Push Notification (APNs)"]
+        Camera["Device Hardware<br/>• Camera / Photo Library<br/>• Image Compression"]
+    end
+
+    LocalRepo <-->|PostgREST & RPC| HTTPS
+    HTTPS <--> SupaDB
+    Client <-->|Session Auth| SupaAuth
+    LocalRepo <-->|Upload Receipts| SupaStorage
+    Camera -->|Receipt Captures| UI
+    UI -.->|Launch Deep-link| GCashMaya
+    State <-->|Listen Tab Updates| WSS
+    WSS <--> SupaRealtime
+    SupaDB -->|CDC Trigger| SupaRealtime
+    EdgeFunctions --> PushService
+    PushService --> Client
+```
+
+#### Offline-First Synchronization Lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / Creditor
+    participant Flutter as Flutter App (UI & Riverpod)
+    participant Drift as Local SQLite (Drift)
+    participant Sync as Sync Manager
+    participant Supa as Supabase (PostgreSQL & RLS)
+    actor Counterpart as Counterpart (Debtor)
+
+    User->>Flutter: Log Lunch Tab (₱250.00)
+    Flutter->>Drift: Insert transaction locally (status: pending_sync)
+    Drift-->>Flutter: Immediate local commit (<50ms)
+    Flutter-->>User: Screen updates instantly! Mascot smiles 🐾
+
+    alt Device is Online
+        Sync->>Drift: Fetch pending mutation queue
+        Sync->>Supa: POST /rest/v1/transactions (with Bearer JWT)
+        Supa->>Supa: Validate RLS + Insert BIGINT centavos
+        Supa-->>Sync: 201 Created (confirmed remote UUID)
+        Sync->>Drift: Mark record synced (status: synced)
+        Supa--)Counterpart: Supabase Realtime (tab_updated event)
+        Note over Counterpart: Counterpart receives in-app alert & push notification
+    else Device is Offline / Low Signal
+        Note over Sync: Mutation safely queued in Drift local SQLite
+        Note over Sync: connectivity_plus detects network restoration
+        Sync->>Supa: Batch replay queued mutations in timestamp sequence
+        Supa-->>Sync: 200 OK batch confirmation & reconcile state
+    end
+```
+
+---
+
+### 7.6 Technical Stack Summary & Package Recommendations
+
+The following core technologies, libraries, and frameworks constitute the approved technology stack for Tabby:
+
+| Category | Technology / Package | Recommended Version | Architectural Role & Implementation Details |
+| :--- | :--- | :--- | :--- |
+| **Mobile Framework** | **Flutter** (Dart SDK) | Flutter `>=3.24.0`<br/>Dart `>=3.5.0` | Cross-platform mobile client for iOS and Android with single shared codebase. |
+| **Backend as a Service** | **Supabase** | Cloud / Self-hosted | Relational PostgreSQL 15+ engine, Auth, Storage, and Realtime WebSocket replication. |
+| **Backend Client SDK** | `supabase_flutter` | `^2.8.0` | Official Supabase Flutter client; manages JWT lifecycle, PostgREST queries, and channel subscriptions. |
+| **Local Persistence** | `drift` + `sqlite3_flutter_libs` | `^2.20.0` | Reactive, type-safe SQLite database for local-first caching, offline mutations, and instant cold starts. |
+| **State Management** | `flutter_riverpod` + `riverpod_annotation` | `^2.6.0` | Declarative, compile-safe state management with automatic caching, disposal, and dependency injection. |
+| **Routing & Deep Linking** | `go_router` | `^14.3.0` | Declarative URL routing with native deep-linking support for payment claims and invite links. |
+| **Mascot Animation** | `rive` / `lottie` | `^0.13.0` / `^3.1.0` | 60fps vector mascot animations driven by the Tabby Emotion State Machine (`IDLE`, `CELEBRATING`, etc.). |
+| **Receipt Capture & Compression** | `image_picker` + `flutter_image_compress` | `^1.1.2` / `^2.3.0` | Camera capture and gallery selection for GCash/Maya receipts; compresses images before upload. |
+| **Connectivity Monitoring** | `connectivity_plus` | `^6.0.5` | Monitors mobile cellular and Wi-Fi reachability to trigger automatic background sync queues. |
+| **Secure Key Storage** | `flutter_secure_storage` | `^9.2.2` | Encrypted hardware-backed storage for session tokens, biometric flags, and auth keys. |
+| **Currency & Number Math** | `intl` | `^0.19.0` | Formats integer centavos into standard Philippine Peso representations (`₱1,250.00`). |
+| **ID Generation** | `uuid` | `^4.5.0` | Generates RFC 4122 v4 UUIDs client-side for optimistic offline entity creation. |
+| **Cloud Storage** | **Supabase Storage** | S3-Compatible API | Private access-controlled bucket (`payment-proofs`) storing GCash and Maya transaction screenshots. |
+| **Serverless Workers** | **Supabase Edge Functions** | Deno / TypeScript | Cron workers for scheduled recurring rules, nudge reminders, and FCM push notifications. |
+
+#### Recommended `pubspec.yaml` Specification
+
+```yaml
+name: tabby
+description: "Keep tabs. Settle up. Filipino peer-to-peer financial relationship tracker."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Backend BaaS & Realtime
+  supabase_flutter: ^2.8.0
+
+  # State Management & Dependency Injection
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Local-First Offline Persistence
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # Navigation & Deep Links
+  go_router: ^14.3.0
+
+  # Mascot Animations & UI Polish
+  rive: ^0.13.4
+  lottie: ^3.1.2
+
+  # Proof of Payment (Receipts) & Media
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+
+  # Connectivity & Hardware Security
+  connectivity_plus: ^6.0.5
+  flutter_secure_storage: ^9.2.2
+
+  # Utility & Localization
+  intl: ^0.19.0
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.12
+  drift_dev: ^2.20.0
+  riverpod_generator: ^2.6.1
+```
+
+#### Flutter Client Architecture Layers
+
+1. **Presentation Layer (`lib/features/.../presentation/`):**
+   - Pure Flutter widgets, responsive layouts, and modal bottom sheets.
+   - Screen widgets consume Riverpod providers via `ConsumerWidget` or `ConsumerStatefulWidget`.
+   - Mascot animation controllers dynamically switch Rive artboards/inputs based on the current user's balance state.
+2. **Application / State Layer (`lib/features/.../application/`):**
+   - Riverpod `AsyncNotifier` and `Notifier` classes representing business logic and view models.
+   - Exposes clean immutable state models (e.g., `AsyncValue<TabDetailState>`).
+3. **Domain Layer (`lib/features/.../domain/`):**
+   - Pure Dart domain entities (e.g., `Tab`, `Transaction`, `Payment`, `Participant`).
+   - Strict centavo arithmetic calculations without floating-point primitives.
+4. **Data & Repository Layer (`lib/features/.../data/`):**
+   - Implements the **Offline-First Repository Pattern**.
+   - `LocalDataSource` communicates with Drift SQLite tables.
+   - `RemoteDataSource` communicates with Supabase PostgREST endpoints and RPC functions.
+   - `SyncManager` listens to `connectivity_plus` and flushes pending mutations to Supabase upon reconnection.
+
+---
+
+### 7.7 API & Domain Service Modules
 
 The backend architecture is structured around clean, decoupled domain modules:
 
@@ -912,7 +1154,7 @@ $$\text{Net Balance}_{\text{Frienzal}} = (50000) - (10000) - (20000) + (5000) = 
 
 ### ADR-002: Local-First Offline Storage with Background Cloud Sync
 - **Status:** Accepted (2026-09-13)
-- **Decision:** Every tab entry, settlement mark, and contact creation is written synchronously to local persistent storage (SQLite / IndexedDB) before network requests. Background workers sync to remote cloud storage (Supabase / Postgres).
+- **Decision:** Every tab entry, settlement mark, and contact creation is written synchronously to local persistent storage (Drift / SQLite) before network requests. Background workers sync to remote cloud storage (Supabase / PostgreSQL).
 - **Rationale:** Users frequently split tabs in basement food courts, crowded restaurants, and spots with spotty cellular coverage in the Philippines.
 
 ### ADR-003: Emotion-Driven Financial UI with Mascot State Machine
@@ -949,6 +1191,33 @@ $$\text{Net Balance}_{\text{Frienzal}} = (50000) - (10000) - (20000) + (5000) = 
 - **Status:** Accepted (2026-09-13)
 - **Decision:** The `FRIENDSHIPS` table is purely a discovery and shortcut mechanism. Removing a friend never deletes or invalidates existing `TABS`, `TRANSACTIONS`, or `PAYMENTS`.
 - **Rationale:** Ending a social relationship does not legally or logically extinguish an outstanding financial obligation.
+
+### ADR-010: Flutter as Cross-Platform Mobile Framework
+- **Status:** Accepted (2026-09-13)
+- **Stakeholder / Driver:** CEO Directive (*"Now i'm planning to create this using the supabase of the backend and in the mobile using flutter."*)
+- **Context:** Tabby requires cross-platform mobile delivery across both iOS and Android to serve Filipino peer groups, roommates, and barkadas. The application demands high-fidelity UI rendering, consistent 60fps mascot state machine animations, instant keypad entry (<5 seconds to log), local-first offline support, and native device hardware access (camera and gallery for GCash/Maya receipt capture).
+- **Decision:** Adopt **Flutter** (Dart SDK `>=3.5.0`, Flutter `>=3.24.0`) as the exclusive mobile client development framework for iOS and Android.
+- **Rationale:**
+  1. **Single Unified Codebase:** Eliminates logic divergence between iOS and Android clients, ensuring identical double-entry calculations and UI experiences across both ecosystems.
+  2. **High-Performance Mascot Animations:** Flutter's rendering pipeline (Impeller/Skia) provides 60fps vector animations (via Rive and Lottie) required for the Tabby emotional state machine, confetti celebrations, and interactive split interactions without frame drops on budget devices.
+  3. **Offline-First & Reactive Persistence:** Excellent integration with Drift (type-safe SQLite), enabling sub-50ms local writes before asynchronous cloud synchronization.
+  4. **Mature State Management:** First-class support for Riverpod, enabling compile-safe dependency injection, reactive view-model separation, and automatic caching.
+  5. **Rich Philippine Ecosystem Integration:** Native plugins for deep-linking (GoRouter for GCash and Maya URL schemes), image compression (`flutter_image_compress`), and biometric authentication.
+- **Consequences:** All mobile client code must be authored in Dart adhering to Riverpod state patterns and Clean Architecture layers. Web and desktop clients remain out of MVP scope to concentrate mobile execution velocity.
+
+### ADR-011: Supabase as Core BaaS & Relational PostgreSQL Ledger
+- **Status:** Accepted (2026-09-13)
+- **Stakeholder / Driver:** CEO Directive (*"Now i'm planning to create this using the supabase of the backend and in the mobile using flutter."*)
+- **Context:** Tabby requires a resilient, relational accounting backend supporting 17 relational entities, strict bilateral balance constraints, integer centavo precision (`BIGINT`), row-level authorization preventing unauthorized debt snooping, real-time sync when counterparties acknowledge tabs or confirm payments, and secure cloud storage for GCash/Maya screenshot proofs.
+- **Decision:** Adopt **Supabase** (PostgreSQL 15+) as the primary Backend-as-a-Service (BaaS), leveraging Supabase Auth, PostgreSQL with Row Level Security (RLS), Supabase Storage, and Supabase Realtime.
+- **Rationale:**
+  1. **Relational ACID Ledger Integrity:** Shared expenses and bilateral tabs inherently require relational guarantees, foreign keys, cascading rules, and check constraints (e.g., `BIGINT` centavos, sum of shares = total amount) which NoSQL/document databases cannot enforce natively.
+  2. **Engine-Level Row Level Security (RLS):** RLS ensures strict data isolation directly at the database layer. Users can only query tabs they actively participate in, and group members cannot view private bilateral tabs of others.
+  3. **Built-in S3-Compatible Storage:** Supabase Storage provides secure, private buckets (`payment-proofs`) with RLS authorization, allowing seamless upload, compression, and retrieval of GCash and Maya receipt screenshots.
+  4. **Instant Realtime Replication:** Supabase Realtime (PostgreSQL CDC over WebSockets) delivers sub-second synchronization to counterpart devices whenever transactions are acknowledged or payments confirmed.
+  5. **Simplified Identity & Auth:** Out-of-the-box support for email magic links, password auth, and phone OTP SMS gateways tailored for the Philippine mobile user base.
+  6. **Local-to-Cloud Sync Synergy:** Supabase's PostgREST REST API and RPC functions pair naturally with Flutter's Drift-based offline synchronization queues.
+- **Consequences:** Ledger business rules, double-entry mathematical validations, and balance derivations must be implemented via PostgreSQL schemas, triggers, and RPC functions (`supabase_flutter` calls). Heavy server infrastructure maintenance is avoided, enabling the team to focus on core mobile product UX.
 
 ---
 
@@ -1008,7 +1277,7 @@ gantt
 - Supabase / PostgreSQL schema setup with UUIDs and integer centavo fields.
 - Auth modules (Email, Phone OTP).
 - `USERS`, `CONTACTS`, `FRIENDSHIPS` entities and initial RLS policies.
-- Global Tailwind theme, brand tokens, and design system setup.
+- Flutter project foundation, `TabbyColors`, `ThemeData`, and design system setup.
 
 #### Phase 2 — Tabs & Core Ledger Engine
 - `TABS`, `TAB_MEMBERS`, `TRANSACTIONS`, `TRANSACTION_PARTICIPANTS` tables.
@@ -1046,7 +1315,7 @@ gantt
 
 #### Phase 8 — Mascot Emotion Engine & Production Polish
 - Mascot FSM integration with reactive UI events (`IDLE_NEUTRAL`, `CALCULATING`, `CELEBRATING`, `SLEEPING`).
-- Offline-first SQLite persistence and sync conflict resolution.
+- Offline-first Drift / SQLite persistence and sync queue conflict resolution.
 - End-to-end security review, RLS verification, and performance audit.
 
 ---
@@ -1134,6 +1403,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - GCash and Maya settlement reference generation and QR view.
 - Mascot state machine reactive bindings.
 
+### [0.3.0] - 2026-09-13
+- **Technology Stack Architecture Formalization (Flutter & Supabase):**
+  - Integrated CEO architectural directive adopting Flutter for the mobile client and Supabase for the backend BaaS (*"Now i'm planning to create this using the supabase of the backend and in the mobile using flutter."*).
+  - Added ADR-010 (Flutter as Cross-Platform Mobile Framework) establishing 60fps mascot animations, single codebase, and offline Drift/Riverpod benefits.
+  - Added ADR-011 (Supabase as Core BaaS & Relational PostgreSQL Ledger) establishing relational ACID ledger integrity, integer centavos, RLS policies, and real-time sync.
+  - Added Section 7.5: Full Flutter + Supabase System Architecture Mermaid diagram and local-first offline synchronization sequence diagram.
+  - Added Section 7.6: Comprehensive Technical Stack table, package recommendations (`supabase_flutter`, `drift`, `flutter_riverpod`, `go_router`, `rive`, `image_picker`), and `pubspec.yaml` manifest.
+  - Added Flutter / Dart `TabbyColors` and `ThemeData` tokens to Section 4.
+  - Updated Agent Role Matrix in Section 3 to specify Flutter and Supabase departmental responsibilities.
+
 ### [0.2.0] - 2026-09-13
 - **Architecture & Specifications Integration:**
   - Integrated complete product specifications, user journeys, navigation architecture, and edge-case handling from `PLAN.md`.
@@ -1141,7 +1420,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Embedded Balance Calculation Engine mathematical formulas and perspective normalization conventions.
   - Added Architecture Decision Records ADR-006 (Non-Destructive Cancellation), ADR-007 (Contact Claim & Acknowledge), ADR-008 (Strict Party-to-Party Settlement), and ADR-009 (Decoupled Friendships).
   - Established 8 Phased Development Roadmap and 8 Canonical Acceptance Test Scenarios.
-- Re-affirmed `AGENTS.md` as the unified, single living document source of truth across all sessions.
+  - Re-affirmed `AGENTS.md` as the unified, single living document source of truth across all sessions.
 
 ### [0.1.0] - 2026-09-13
 - Consolidated complete project documentation, CEO conversation logs, cultural guidelines, brand tokens, and ADRs into `AGENTS.md`.
