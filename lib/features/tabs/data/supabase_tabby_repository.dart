@@ -78,9 +78,10 @@ class SupabaseTabbyRepository {
     if (!isConnected) return false;
 
     try {
+      final redirectUrl = kIsWeb ? '${Uri.base.origin}/' : 'io.supabase.tabby://login-callback/';
       final success = await SupabaseConfig.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: kIsWeb ? null : 'io.supabase.tabby://login-callback/',
+        redirectTo: redirectUrl,
       );
       return success;
     } catch (e) {
