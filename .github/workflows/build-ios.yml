@@ -51,29 +51,33 @@ jobs:
           pod install --repo-update
           cd ..
 
-      - name: Build iOS archive (no-codesign)
-        run: flutter build ipa --no-codesign --release
+      - name: Build IPA
+        env:
+          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+        run: |
+          flutter build ipa --no-codesign --release \
+            --dart-define=GOOGLE_IOS_CLIENT_ID=$GOOGLE_IOS_CLIENT_ID \
+            --dart-define=GOOGLE_ANDROID_CLIENT_ID=$GOOGLE_ANDROID_CLIENT_ID
 
       - name: Package IPA from xcarchive
         run: |
-          echo "=== Listing build/ios ==="
-          find build/ios -maxdepth 4 -name "*.ipa" -o -name "*.xcarchive" 2>/dev/null | sort
+          echo "=== Searching for IPA/xcarchive ==="
+          find build/ios -maxdepth 4 \( -name "*.ipa" -o -name "*.xcarchive" \) 2>/dev/null | sort
 
-          # flutter build ipa --no-codesign puts the .ipa here on newer Flutter
           IPA=$(find build/ios -name "*.ipa" | head -1)
 
           if [ -n "$IPA" ]; then
-            echo "Found IPA directly: $IPA"
+            echo "Found IPA: $IPA"
             mkdir -p output
             cp "$IPA" output/Tabby.ipa
           else
-            echo "No .ipa found, packaging from xcarchive..."
+            echo "Packaging from xcarchive..."
             ARCHIVE=$(find build/ios/archive -name "*.xcarchive" | head -1)
             echo "Archive: $ARCHIVE"
             mkdir -p /tmp/Payload
             cp -R "$ARCHIVE/Products/Applications/Runner.app" /tmp/Payload/
-            cd /tmp
-            zip -r Tabby.ipa Payload/
+            cd /tmp && zip -r Tabby.ipa Payload/
             cd -
             mkdir -p output
             cp /tmp/Tabby.ipa output/Tabby.ipa

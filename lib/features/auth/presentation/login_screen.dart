@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isGoogleLoading = false;
   String? _errorText;
 
   Future<void> _login() async {
@@ -46,30 +47,43 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _loginWithGoogle() async {
+    if (_isGoogleLoading) return;
+    setState(() {
+      _isGoogleLoading = true;
+      _errorText = null;
+    });
+
     try {
       if (SupabaseTabbyRepository.instance.isConnected) {
-        final initiated = await SupabaseTabbyRepository.instance.signInWithGoogle();
-        if (initiated && kIsWeb) {
-          // On Web, browser redirects to Google's authentication page
+        final success =
+            await SupabaseTabbyRepository.instance.signInWithGoogle();
+
+        // Web: browser redirect handles the rest — nothing more to do here.
+        if (kIsWeb) return;
+
+        // Native: success = false means user cancelled the picker.
+        if (!success) {
+          setState(() => _isGoogleLoading = false);
           return;
         }
       }
     } catch (e) {
-      debugPrint('[LoginScreen] Google sign-in note: $e');
+      debugPrint('[LoginScreen] Google sign-in error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign-In: ${e.toString().split("\n").first}'),
-            backgroundColor: TabbyColors.brandDarkTeal,
-          ),
-        );
+        setState(() {
+          _isGoogleLoading = false;
+          _errorText = 'Google sign-in failed. Please try again.';
+        });
       }
       return;
     }
 
-    AppState.isAuthenticated.value = true;
-    if (mounted) context.go('/home');
+    if (mounted) {
+      AppState.isAuthenticated.value = true;
+      context.go('/home');
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -163,12 +177,31 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
               const SizedBox(height: 24),
-              TabbyButton(
-                label: 'Continue with Google',
-                variant: TabbyButtonVariant.outline,
-                icon: const Icon(Icons.g_mobiledata_rounded, color: TabbyColors.brandEmerald),
-                onPressed: _loginWithGoogle,
-              ),
+              _isGoogleLoading
+                  ? const SizedBox(
+                      height: 52,
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              TabbyColors.brandEmerald,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : TabbyButton(
+                      label: 'Continue with Google',
+                      variant: TabbyButtonVariant.outline,
+                      icon: const Icon(
+                        Icons.g_mobiledata_rounded,
+                        color: TabbyColors.brandEmerald,
+                      ),
+                      onPressed: _loginWithGoogle,
+                    ),
               const SizedBox(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

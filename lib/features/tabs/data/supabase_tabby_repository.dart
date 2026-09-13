@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
 import '../domain/models.dart';
@@ -214,23 +215,73 @@ class SupabaseTabbyRepository {
   }
 
   /// Sign in with Google OAuth
+  ///
+  /// - **Web**: Uses Supabase's browser redirect OAuth flow.
+  /// - **iOS / Android**: Uses the native Google Sign-In SDK to obtain an ID
+  ///   token, then exchanges it with Supabase via `signInWithIdToken`.
+  ///   This opens the native account picker sheet — no browser pop-up.
   Future<bool> signInWithGoogle() async {
     if (!isConnected) return false;
 
+    // ── Web: existing browser-redirect OAuth ─────────────────────────────────
+    if (kIsWeb) {
+      try {
+        final success = await SupabaseConfig.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: '${Uri.base.origin}/',
+        );
+        return success;
+      } catch (e) {
+        debugPrint('[SupabaseTabbyRepository] Google web sign-in error: $e');
+        rethrow;
+      }
+    }
+
+    // ── Native iOS / Android: native Google Sign-In SDK ──────────────────────
     try {
-      final redirectUrl = kIsWeb
-          ? '${Uri.base.origin}/'
-          : 'io.supabase.tabby://login-callback/';
-      final success = await SupabaseConfig.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: redirectUrl,
+      // Read compile-time client IDs injected via --dart-define
+      const iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
+      const androidClientId = String.fromEnvironment('GOOGLE_ANDROID_CLIENT_ID');
+
+      final googleSignIn = GoogleSignIn(
+        clientId: iosClientId.isNotEmpty ? iosClientId : null,
+        serverClientId: androidClientId.isNotEmpty ? androidClientId : null,
+        scopes: ['email', 'profile'],
       );
-      return success;
+
+      // Trigger native account picker
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        // User cancelled the picker
+        debugPrint('[SupabaseTabbyRepository] Google sign-in cancelled by user.');
+        return false;
+      }
+
+      // Obtain auth tokens from Google
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if (idToken == null) {
+        debugPrint('[SupabaseTabbyRepository] Google sign-in: idToken is null.');
+        return false;
+      }
+
+      // Exchange Google token with Supabase → creates/updates session
+      await SupabaseConfig.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+
+      debugPrint('[SupabaseTabbyRepository] Native Google sign-in successful.');
+      return true;
     } catch (e) {
-      debugPrint('[SupabaseTabbyRepository] Google sign in error: $e');
+      debugPrint('[SupabaseTabbyRepository] Native Google sign-in error: $e');
       rethrow;
     }
   }
+
 
   /// Sign out
   Future<void> signOut() async {

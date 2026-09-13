@@ -14,6 +14,9 @@ dependencies:
   # Backend BaaS & Realtime
   supabase_flutter: ^2.8.0
 
+  # Google Sign-In (native iOS & Android OAuth)
+  google_sign_in: ^6.2.1
+
   # State Management & Dependency Injection
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1
