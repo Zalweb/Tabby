@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
-import 'core/theme/tabby_colors.dart';
 import 'core/theme/tabby_theme.dart';
 
 void main() async {
@@ -123,113 +122,121 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
   }
 
   Widget _buildHardwareChassis(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        // Hardware side buttons (Titanium finish)
-        // Left: Action Button
-        Positioned(
-          left: -3.0,
-          top: 115.0,
-          child: _buildSideButton(width: 3.0, height: 26.0),
-        ),
-        // Left: Volume Up
-        Positioned(
-          left: -3.0,
-          top: 155.0,
-          child: _buildSideButton(width: 3.0, height: 48.0),
-        ),
-        // Left: Volume Down
-        Positioned(
-          left: -3.0,
-          top: 218.0,
-          child: _buildSideButton(width: 3.0, height: 48.0),
-        ),
-        // Right: Power / Side button
-        Positioned(
-          right: -3.0,
-          top: 170.0,
-          child: _buildSideButton(width: 3.0, height: 72.0),
-        ),
-
-        // Main iPhone Bezel Chassis
-        Container(
-          width: frameWidth,
-          height: frameHeight,
-          padding: const EdgeInsets.all(bezelThickness),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1A1A), // Sleek dark titanium bezel
-            borderRadius: BorderRadius.circular(outerCornerRadius),
-            border: Border.all(
-              color: const Color(0xFF2C2C2C), // Chamfered metallic rim highlight
-              width: 1.5,
-            ),
-            boxShadow: [
-              // Ambient soft drop shadow
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.20),
-                blurRadius: 40.0,
-                spreadRadius: 2.0,
-                offset: const Offset(0, 20.0),
-              ),
-              // Depth grounding shadow
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 14.0,
-                spreadRadius: 0.0,
-                offset: const Offset(0, 4.0),
-              ),
-            ],
+    return SizedBox(
+      width: frameWidth,
+      height: frameHeight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // Hardware side buttons (Titanium finish)
+          // Left: Action Button
+          Positioned(
+            left: -3.0,
+            top: 115.0,
+            child: _buildSideButton(width: 3.0, height: 26.0),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(innerCornerRadius),
-            clipBehavior: Clip.antiAlias,
-            child: Container(
-              color: TabbyColors.backgroundLight,
-              child: Stack(
-                children: [
-                  // App Viewport with safe area insets for Dynamic Island & Home Bar
-                  Positioned.fill(
-                    child: MediaQuery(
+          // Left: Volume Up
+          Positioned(
+            left: -3.0,
+            top: 155.0,
+            child: _buildSideButton(width: 3.0, height: 48.0),
+          ),
+          // Left: Volume Down
+          Positioned(
+            left: -3.0,
+            top: 218.0,
+            child: _buildSideButton(width: 3.0, height: 48.0),
+          ),
+          // Right: Power / Side button
+          Positioned(
+            right: -3.0,
+            top: 170.0,
+            child: _buildSideButton(width: 3.0, height: 72.0),
+          ),
+
+          // Main iPhone Bezel Chassis
+          Container(
+            width: frameWidth,
+            height: frameHeight,
+            padding: const EdgeInsets.all(bezelThickness),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1A1A), // Sleek dark titanium bezel
+              borderRadius: BorderRadius.circular(outerCornerRadius),
+              border: Border.all(
+                color: const Color(0xFF2C2C2C), // Chamfered metallic rim highlight
+                width: 1.5,
+              ),
+              boxShadow: [
+                // Ambient soft drop shadow
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.20),
+                  blurRadius: 40.0,
+                  spreadRadius: 2.0,
+                  offset: const Offset(0, 20.0),
+                ),
+                // Depth grounding shadow
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 14.0,
+                  spreadRadius: 0.0,
+                  offset: const Offset(0, 4.0),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(innerCornerRadius),
+              clipBehavior: Clip.antiAlias,
+              child: SizedBox(
+                width: screenWidth,
+                height: screenHeight,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // App Viewport with safe area insets for Dynamic Island & Home Bar
+                    MediaQuery(
                       data: MediaQuery.of(context).copyWith(
                         size: const Size(screenWidth, screenHeight),
                         padding: const EdgeInsets.only(top: 44.0, bottom: 28.0),
                         viewPadding: const EdgeInsets.only(top: 44.0, bottom: 28.0),
                       ),
-                      child: child,
-                    ),
-                  ),
-
-                  // Dynamic Island / Hardware Pill
-                  const Positioned(
-                    top: 11.0,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: IgnorePointer(
-                        child: DynamicIslandWidget(),
+                      child: SizedBox(
+                        width: screenWidth,
+                        height: screenHeight,
+                        child: child,
                       ),
                     ),
-                  ),
 
-                  // Bottom iOS Home Indicator
-                  const Positioned(
-                    bottom: 8.0,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: IgnorePointer(
-                        child: IPhoneHomeIndicator(),
+                    // Dynamic Island / Hardware Pill
+                    const Positioned(
+                      top: 11.0,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: IgnorePointer(
+                          child: DynamicIslandWidget(),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+
+                    // Bottom iOS Home Indicator
+                    const Positioned(
+                      bottom: 8.0,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: IgnorePointer(
+                          child: IPhoneHomeIndicator(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -15,7 +15,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = MockTabbyRepository.currentUser;
+    const user = MockTabbyRepository.currentUser;
 
     return Scaffold(
       backgroundColor: TabbyColors.backgroundLight,
@@ -116,9 +116,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
+                      children: [
                         Expanded(
                           child: Row(
                             children: [

@@ -140,26 +140,30 @@ class HomeDashboardScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Row(
                     children: [
-                      CurrencyCard(
-                        title: 'YOU OWE',
-                        centavos: dashboardState.youOweCentavos,
-                        subtitle: dashboardState.youOweCentavos > 0
-                            ? 'Active tabs to settle'
-                            : 'All clear! 🎉',
-                        isDebt: true,
-                        icon: Icons.arrow_outward_rounded,
-                        onTap: () => context.go('/tabs'),
+                      Expanded(
+                        child: CurrencyCard(
+                          title: 'YOU OWE',
+                          centavos: dashboardState.youOweCentavos,
+                          subtitle: dashboardState.youOweCentavos > 0
+                              ? 'Active tabs to settle'
+                              : 'All clear! 🎉',
+                          isDebt: true,
+                          icon: Icons.arrow_outward_rounded,
+                          onTap: () => context.go('/tabs'),
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      CurrencyCard(
-                        title: "YOU'RE OWED",
-                        centavos: dashboardState.youAreOwedCentavos,
-                        subtitle: dashboardState.youAreOwedCentavos > 0
-                            ? 'Across ${dashboardState.tabs.where((t) => t.netBalanceCentavos > 0).length} tabs'
-                            : 'Zero pending credits',
-                        isDebt: false,
-                        icon: Icons.arrow_downward_rounded,
-                        onTap: () => context.go('/tabs'),
+                      Expanded(
+                        child: CurrencyCard(
+                          title: "YOU'RE OWED",
+                          centavos: dashboardState.youAreOwedCentavos,
+                          subtitle: dashboardState.youAreOwedCentavos > 0
+                              ? 'Across ${dashboardState.tabs.where((t) => t.netBalanceCentavos > 0).length} tabs'
+                              : 'Zero pending credits',
+                          isDebt: false,
+                          icon: Icons.arrow_downward_rounded,
+                          onTap: () => context.go('/tabs'),
+                        ),
                       ),
                     ],
                   ),
@@ -284,14 +288,19 @@ class HomeDashboardScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Upcoming & Reminders',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: TabbyColors.primaryCharcoal,
+                      const Expanded(
+                        child: Text(
+                          'Upcoming & Reminders',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyColors.primaryCharcoal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         '${dashboardState.reminders.length} items',
                         style: const TextStyle(
@@ -312,9 +321,9 @@ class HomeDashboardScreen extends ConsumerWidget {
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     child: Card(
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(16),
                         child: Row(
-                          children: const [
+                          children: [
                             Text('😴', style: TextStyle(fontSize: 20)),
                             SizedBox(width: 12),
                             Expanded(
@@ -484,14 +493,19 @@ class HomeDashboardScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Recent Activity',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: TabbyColors.primaryCharcoal,
+                      const Expanded(
+                        child: Text(
+                          'Recent Activity',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyColors.primaryCharcoal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         '${dashboardState.activities.length} logs',
                         style: const TextStyle(

@@ -28,7 +28,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required bool isKkbSplit,
     DateTime? dueDate,
   }) {
-    final currentUser = MockTabbyRepository.currentUser;
+    const currentUser = MockTabbyRepository.currentUser;
     final now = DateTime.now();
 
     int myShare;
@@ -153,7 +153,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required bool isPayingMe, // true if counterpart paid user; false if user paid counterpart
     String? note,
   }) {
-    final currentUser = MockTabbyRepository.currentUser;
+    const currentUser = MockTabbyRepository.currentUser;
     final now = DateTime.now();
 
     final tabIndex = state.tabs.indexWhere((t) => t.id == tabId);

@@ -198,12 +198,16 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Quick Log Expense 🐾',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: TabbyColors.primaryCharcoal,
+                const Expanded(
+                  child: Text(
+                    'Quick Log Expense 🐾',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: TabbyColors.primaryCharcoal,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 IconButton(
@@ -376,10 +380,10 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             // 4. Description Field
             TextField(
               controller: _descriptionController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Description (e.g. Samgyupsal, Milk tea, Taxi)',
-                prefixIcon: const Icon(Icons.edit_outlined, size: 18, color: TabbyColors.secondaryMuted),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                prefixIcon: Icon(Icons.edit_outlined, size: 18, color: TabbyColors.secondaryMuted),
+                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               ),
             ),
             const SizedBox(height: 16),
@@ -452,22 +456,29 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.event_outlined, size: 18, color: TabbyColors.secondaryMuted),
-                    const SizedBox(width: 8),
-                    Text(
-                      _selectedDueDate == null
-                          ? 'Optional Due Date'
-                          : 'Due: ${DateFormat('MMM d, yyyy').format(_selectedDueDate!)}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: TabbyColors.primaryCharcoal,
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.event_outlined, size: 18, color: TabbyColors.secondaryMuted),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _selectedDueDate == null
+                              ? 'Optional Due Date'
+                              : 'Due: ${DateFormat('MMM d, yyyy').format(_selectedDueDate!)}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: TabbyColors.primaryCharcoal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 TextButton(
                   onPressed: () async {
                     final picked = await showDatePicker(

@@ -3,7 +3,7 @@ import '../domain/models.dart';
 /// In-memory repository seeded with realistic Filipino peer expenses and bilateral relationships.
 /// Implements ADR-001 integer centavos and canonical balance formulas.
 class MockTabbyRepository {
-  static final TabbyUser currentUser = TabbyUser(
+  static const TabbyUser currentUser = TabbyUser(
     id: 'user-me',
     displayName: 'Frienzal',
     email: 'frienzal@tabby.ph',

@@ -30,10 +30,9 @@ class CurrencyCard extends StatelessWidget {
     final themeColor = isDebt ? TabbyColors.debtRed : TabbyColors.successGreen;
     final bgColor = isDebt ? TabbyColors.debtLight : TabbyColors.successLight;
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: TabbyColors.surfaceWhite,
@@ -180,7 +179,6 @@ class CurrencyCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }
