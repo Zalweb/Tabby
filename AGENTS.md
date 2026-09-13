@@ -58,6 +58,7 @@ Net Balance         +₱700.00 (Juan owes you)
 | **2026-09-13** | Product Plan / ERD | Incorporate full specifications from `PLAN.md` and `TABBY_ERD.md`. | Elevate `AGENTS.md` into the comprehensive master guide for data architecture, flows, and implementation. | `AGENTS.md` (Sections 6–12). |
 | **2026-09-13** | CEO | Adopt Flutter for Mobile Client and Supabase for Backend/Database (*"Now i'm planning to create this using the supabase of the backend and in the mobile using flutter."*). | High-performance cross-platform iOS/Android support, rich mascot animations, local-first offline capabilities, relational PostgreSQL schema with RLS, integer BIGINT centavos, storage for GCash/Maya receipts, and real-time ledger synchronization. | Mobile Client (Flutter), Backend BaaS (Supabase), Local Caching (Drift/SQLite), State Management (Riverpod), Cloud Storage & Auth. |
 | **2026-09-13** | CEO | Add Onboarding flow and Login / Sign-up authentication pages. | Introduce friendly mascot-led onboarding (3 value props) and clean auth gate before reaching dashboard. | Navigation Router, `AppState` session management, Onboarding (`/onboarding`), Login (`/login`), Sign Up (`/signup`). |
+| **2026-09-13** | CEO | Adopt clean conversational English (no Tagalog) and zero emojis across all UI text and copy. | Keep UI modern, clean, globally readable, and professional while retaining companionable warmth without emoji clutter or dialect barriers. | Microcopy, Button Labels, Mascot FSM dialogue, Screen copy across all features. |
 
 ---
 
@@ -211,14 +212,14 @@ The Tabby cat mascot is an integral UX companion that defuses the social tension
 | State Key | Emotion / Pose | Context / Trigger | Microcopy Example |
 | :--- | :--- | :--- | :--- |
 | `IDLE_NEUTRAL` | Neutral / Welcoming | Default dashboard companion; greets user based on balance. | *"Good evening! All tabs up to date."* |
-| `USER_OWES` | Slightly guilt-inducing / Cute | User has active debts to settle. | 🥺 *"Psst... you still have ₱500 to settle."* |
-| `USER_IS_OWED` | Friendly / Proactive | Other parties have pending balances with user. | 👀 *"Juan still owes you ₱500. [Send reminder]"* |
-| `CALCULATING` | Thinking / Focused | Displayed during bill splitting, keypad entry, and KKB mode. | 🐾 *"Crunching the numbers..."* |
-| `GENTLE_NUDGE` | Soft / Disarming | Rendered on shareable reminder cards sent via Messenger/SMS. | 🐾 *"Psst! Pasuyo nung tab natin for dinner 🐱"* |
-| `OVERDUE` | Pleading / Cute guilt | A tab has passed its due date without payment. | 🥺 *"This one's a little overdue..."* |
-| `PAYMENT_SUBMITTED` | Hopeful / Waiting | Debtor submitted payment proof; awaiting confirmation. | ⏳ *"Payment sent! Waiting for creditor confirmation."* |
-| `CELEBRATING` | Joyful / Confetti | Tab confirmed fully settled ("Bayad na!"). | 🎉 *"Nice! One less tab! Tabby approves."* |
-| `SLEEPING` | Relaxed / Cat nap | All active tabs cleared (₱0.00 net balance). | 😴 *"All clear! Tabby can rest now."* |
+| `USER_OWES` | Slightly guilt-inducing / Cute | User has active debts to settle. | *"You have tabs waiting to be settled."* |
+| `USER_IS_OWED` | Friendly / Proactive | Other parties have pending balances with user. | *"You have pending balances to collect."* |
+| `CALCULATING` | Thinking / Focused | Displayed during bill splitting, keypad entry, and split mode. | *"Crunching the numbers..."* |
+| `GENTLE_NUDGE` | Soft / Disarming | Rendered on shareable reminder cards sent via Messenger/SMS. | *"Friendly reminder for our shared tab."* |
+| `OVERDUE` | Pleading / Cute guilt | A tab has passed its due date without payment. | *"This tab is past its due date."* |
+| `PAYMENT_SUBMITTED` | Hopeful / Waiting | Debtor submitted payment proof; awaiting confirmation. | *"Payment sent! Waiting for counterpart confirmation."* |
+| `CELEBRATING` | Joyful / Confetti | Tab confirmed fully settled ("All settled!"). | *"Great! One less tab. All clear."* |
+| `SLEEPING` | Relaxed / Cat nap | All active tabs cleared (₱0.00 net balance). | *"All tabs cleared! Tabby can rest now."* |
 
 ---
 
@@ -244,11 +245,11 @@ Peer financial interactions in the Philippines rely heavily on cultural nuances.
 | :--- | :--- | :--- |
 | **Dashboard Summary (Owed)** | "Total Debt Outstanding: ₱450.00" | "You're owed **₱450.00** across 2 friends" |
 | **Dashboard Summary (Owing)** | "You are in debt: ₱250.00" | "You have **₱250.00** in active tabs to settle" |
-| **Gentle Reminder Button** | "Send Collection Notice" | "Send Gentle Nudge 🐾" / "Pasuyo Reminder" |
-| **Reminder Message (Shareable)**| "Notice: You owe [User] ₱250. Pay immediately." | "Hey! Here's our tab for milk tea (₱250). Settle up whenever you're ready! [Link] 🐱" |
-| **Settlement Confirmation** | "Transaction completed. Balance zeroed." | "All settled up! Salamat! 🎉" |
-| **Zero Debt State** | "No records found in database." | "All tabs cleared! Time for a cat nap. 😴" |
-| **Equal Split Action** | "Execute Split by N" | "Split Equally (KKB)" |
+| **Gentle Reminder Button** | "Send Collection Notice" | "Remind" / "Send Friendly Reminder" |
+| **Reminder Message (Shareable)**| "Notice: You owe [User] ₱250. Pay immediately." | "Hey! Here's our tab for milk tea (₱250). Settle up whenever you're ready! [Link]" |
+| **Settlement Confirmation** | "Transaction completed. Balance zeroed." | "All settled up! Thank you!" |
+| **Zero Debt State** | "No records found in database." | "All tabs cleared! Tabby can rest now." |
+| **Equal Split Action** | "Execute Split by N" | "50/50 Split" |
 
 ### Currency Formatting Rules
 - Always prefix Philippine currency with `₱` (U+20B1) followed by a non-breaking space or standard spacing.
