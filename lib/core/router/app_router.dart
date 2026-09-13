@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../features/home/presentation/home_dashboard_screen.dart';
+import '../../features/navigation/presentation/main_scaffold.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/tabs/presentation/my_tabs_screen.dart';
+import '../../features/tabs/presentation/tab_detail_screen.dart';
+
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
+final GlobalKey<NavigatorState> _tabsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tabs');
+final GlobalKey<NavigatorState> _profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
+
+final GoRouter appRouter = GoRouter(
+  navigatorKey: _rootNavigatorKey,
+  initialLocation: '/home',
+  routes: [
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return MainScaffold(navigationShell: navigationShell);
+      },
+      branches: [
+        // 1. Home Dashboard Branch
+        StatefulShellBranch(
+          navigatorKey: _homeNavigatorKey,
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (context, state) => const HomeDashboardScreen(),
+            ),
+          ],
+        ),
+
+        // 2. My Tabs Branch
+        StatefulShellBranch(
+          navigatorKey: _tabsNavigatorKey,
+          routes: [
+            GoRoute(
+              path: '/tabs',
+              builder: (context, state) => const MyTabsScreen(),
+              routes: [
+                GoRoute(
+                  path: ':tabId',
+                  parentNavigatorKey: _rootNavigatorKey,
+                  builder: (context, state) {
+                    final tabId = state.pathParameters['tabId'] ?? '';
+                    return TabDetailScreen(tabId: tabId);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // 3. Profile Branch
+        StatefulShellBranch(
+          navigatorKey: _profileNavigatorKey,
+          routes: [
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
+          ],
+        ),
+      ],
+    ),
+  ],
+);

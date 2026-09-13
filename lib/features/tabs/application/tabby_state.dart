@@ -1,0 +1,111 @@
+import 'package:flutter/foundation.dart';
+import '../domain/models.dart';
+
+@immutable
+class TabbyDashboardState {
+  final List<BilateralTab> tabs;
+  final List<TabbyActivity> activities;
+  final List<UpcomingReminder> reminders;
+  final MascotEmotion? emotionOverride;
+  final String? emotionCustomMessage;
+
+  const TabbyDashboardState({
+    required this.tabs,
+    required this.activities,
+    required this.reminders,
+    this.emotionOverride,
+    this.emotionCustomMessage,
+  });
+
+  /// Total centavos you owe others across all tabs
+  int get youOweCentavos {
+    int total = 0;
+    for (final tab in tabs) {
+      if (tab.netBalanceCentavos < 0) {
+        total += tab.netBalanceCentavos.abs();
+      }
+    }
+    return total;
+  }
+
+  /// Total centavos friends owe you across all tabs
+  int get youAreOwedCentavos {
+    int total = 0;
+    for (final tab in tabs) {
+      if (tab.netBalanceCentavos > 0) {
+        total += tab.netBalanceCentavos;
+      }
+    }
+    return total;
+  }
+
+  /// Net position from user's perspective
+  int get netBalanceCentavos => youAreOwedCentavos - youOweCentavos;
+
+  /// Effective mascot emotion governed by financial standing FSM
+  MascotEmotion get activeEmotion {
+    if (emotionOverride != null) return emotionOverride!;
+
+    // If completely settled or no tabs
+    if (tabs.isEmpty || (youOweCentavos == 0 && youAreOwedCentavos == 0)) {
+      return MascotEmotion.sleeping;
+    }
+
+    // If user has debt to settle
+    if (youOweCentavos > 0 && youOweCentavos >= youAreOwedCentavos) {
+      return MascotEmotion.userOwes;
+    }
+
+    // If user is owed money
+    if (youAreOwedCentavos > 0) {
+      return MascotEmotion.userIsOwed;
+    }
+
+    return MascotEmotion.idleNeutral;
+  }
+
+  /// Effective microcopy based on mascot state and balances
+  String get mascotMessage {
+    if (emotionCustomMessage != null && emotionCustomMessage!.isNotEmpty) {
+      return emotionCustomMessage!;
+    }
+
+    switch (activeEmotion) {
+      case MascotEmotion.sleeping:
+        return 'All tabs cleared! Time for a cozy cat nap. 😴';
+      case MascotEmotion.userOwes:
+        return 'Psst... you have ₱${(youOweCentavos / 100).toStringAsFixed(2)} in active tabs to settle up. 🐾';
+      case MascotEmotion.userIsOwed:
+        return 'You\'re owed ₱${(youAreOwedCentavos / 100).toStringAsFixed(2)} across your barkada tabs! 👀';
+      case MascotEmotion.celebrating:
+        return 'Nice! One less tab! Tabby approves! 🎉';
+      case MascotEmotion.calculating:
+        return 'Crunching the numbers with zero-centavo drift... 🐾';
+      case MascotEmotion.gentleNudge:
+        return 'Psst! Pasuyo nung tab natin pag ready na 🐱';
+      case MascotEmotion.overdue:
+        return 'Some tabs are overdue... a friendly nudge might help!';
+      case MascotEmotion.paymentSubmitted:
+        return 'Payment submitted! Awaiting your friend\'s confirmation. ⏳';
+      case MascotEmotion.idleNeutral:
+        return 'Good day! All your tabs are organized and up to date.';
+    }
+  }
+
+  TabbyDashboardState copyWith({
+    List<BilateralTab>? tabs,
+    List<TabbyActivity>? activities,
+    List<UpcomingReminder>? reminders,
+    MascotEmotion? emotionOverride,
+    bool clearOverride = false,
+    String? emotionCustomMessage,
+  }) {
+    return TabbyDashboardState(
+      tabs: tabs ?? this.tabs,
+      activities: activities ?? this.activities,
+      reminders: reminders ?? this.reminders,
+      emotionOverride: clearOverride ? null : (emotionOverride ?? this.emotionOverride),
+      emotionCustomMessage: clearOverride ? null : (emotionCustomMessage ?? this.emotionCustomMessage),
+    );
+  }
+}
