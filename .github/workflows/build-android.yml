@@ -1,4 +1,4 @@
-﻿name: Build Android APK
+name: Build Android APK
 
 on:
   push:
@@ -34,11 +34,11 @@ jobs:
       - name: Flutter doctor
         run: flutter doctor -v
 
-      - name: Create Android platform
-        run: flutter create --platforms=android .
-
       - name: Get Flutter packages
         run: flutter pub get
+
+      - name: Generate Android launcher icons
+        run: dart run flutter_launcher_icons
 
       - name: Run build_runner
         run: dart run build_runner build --delete-conflicting-outputs
