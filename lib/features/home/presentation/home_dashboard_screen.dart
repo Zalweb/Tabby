@@ -179,8 +179,8 @@ class HomeDashboardScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: dashboardState.netBalanceCentavos >= 0
-                            ? TabbyColors.successGreen.withOpacity(0.3)
-                            : TabbyColors.debtRed.withOpacity(0.3),
+                            ? TabbyColors.successGreen.withValues(alpha: 0.3)
+                            : TabbyColors.debtRed.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(

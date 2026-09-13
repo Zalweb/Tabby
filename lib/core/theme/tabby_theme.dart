@@ -34,7 +34,7 @@ class TabbyTheme {
           fontFamily: 'Inter',
         ),
       ),
-      cardTheme: const CardTheme(
+      cardTheme: const CardThemeData(
         color: TabbyColors.surfaceWhite,
         elevation: 0,
         margin: EdgeInsets.zero,

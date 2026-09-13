@@ -27,7 +27,6 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
   @override
   Widget build(BuildContext context) {
     final filteredTabs = ref.watch(filteredTabsProvider);
-    final dashboardState = ref.watch(tabbyProvider);
 
     // Group tabs into "They Owe You", "You Owe", and "Settled"
     final theyOweYouTabs = filteredTabs.where((t) => t.netBalanceCentavos > 0).toList();

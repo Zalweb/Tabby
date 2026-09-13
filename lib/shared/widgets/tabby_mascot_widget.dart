@@ -76,12 +76,12 @@ class TabbyMascotWidget extends StatelessWidget {
               color: _getBackdropColor(),
               shape: BoxShape.circle,
               border: Border.all(
-                color: _getBadgeColor().withOpacity(0.3),
+                color: _getBadgeColor().withValues(alpha: 0.3),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _getBadgeColor().withOpacity(0.12),
+                  color: _getBadgeColor().withValues(alpha: 0.12),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

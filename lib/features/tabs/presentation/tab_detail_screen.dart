@@ -21,7 +21,6 @@ class TabDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tab = ref.watch(tabDetailProvider(tabId));
-    final notifier = ref.read(tabbyProvider.notifier);
 
     if (tab == null) {
       return Scaffold(
