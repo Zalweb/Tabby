@@ -376,15 +376,29 @@ class SupabaseTabbyRepository {
       }
     }
 
-    // ── Native iOS / Android: native Google Sign-In SDK ──────────────────────
+    // ── Native iOS / Android: native Google Sign-In SDK with web OAuth fallback ──
+    const defaultGoogleClientId =
+        '137141086000-qnr5kedgh9miig5mmaaq90efn90gckmm.apps.googleusercontent.com';
+
     try {
-      // Read compile-time client IDs injected via --dart-define
-      const iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
-      const androidClientId = String.fromEnvironment('GOOGLE_ANDROID_CLIENT_ID');
+      // Read compile-time client IDs or fall back to default Google Client ID
+      const iosClientId = String.fromEnvironment(
+        'GOOGLE_IOS_CLIENT_ID',
+        defaultValue: defaultGoogleClientId,
+      );
+      const androidClientId = String.fromEnvironment(
+        'GOOGLE_ANDROID_CLIENT_ID',
+        defaultValue: defaultGoogleClientId,
+      );
+
+      final effectiveClientId =
+          iosClientId.isNotEmpty ? iosClientId : defaultGoogleClientId;
+      final effectiveServerClientId =
+          androidClientId.isNotEmpty ? androidClientId : defaultGoogleClientId;
 
       final googleSignIn = GoogleSignIn(
-        clientId: iosClientId.isNotEmpty ? iosClientId : null,
-        serverClientId: androidClientId.isNotEmpty ? androidClientId : null,
+        clientId: effectiveClientId,
+        serverClientId: effectiveServerClientId,
         scopes: ['email', 'profile'],
       );
 
@@ -402,8 +416,12 @@ class SupabaseTabbyRepository {
       final accessToken = googleAuth.accessToken;
 
       if (idToken == null) {
-        debugPrint('[SupabaseTabbyRepository] Google sign-in: idToken is null.');
-        return false;
+        debugPrint(
+            '[SupabaseTabbyRepository] Native Google sign-in: idToken is null. Falling back to browser OAuth...');
+        return await SupabaseConfig.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: 'io.supabase.tabby://login-callback',
+        );
       }
 
       // Exchange Google token with Supabase → creates/updates session
@@ -416,8 +434,19 @@ class SupabaseTabbyRepository {
       debugPrint('[SupabaseTabbyRepository] Native Google sign-in successful.');
       return true;
     } catch (e) {
-      debugPrint('[SupabaseTabbyRepository] Native Google sign-in error: $e');
-      rethrow;
+      debugPrint(
+          '[SupabaseTabbyRepository] Native Google sign-in error: $e. Falling back to browser OAuth...');
+      try {
+        final fallbackSuccess = await SupabaseConfig.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: 'io.supabase.tabby://login-callback',
+        );
+        return fallbackSuccess;
+      } catch (fallbackError) {
+        debugPrint(
+            '[SupabaseTabbyRepository] Google browser OAuth fallback error: $fallbackError');
+        rethrow;
+      }
     }
   }
 
