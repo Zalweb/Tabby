@@ -84,6 +84,97 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordSheet() {
+    final resetEmailController = TextEditingController(
+      text: _emailController.text.contains('@') ? _emailController.text.trim() : '',
+    );
+    String? resetError;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: const BoxDecoration(
+                  color: TabbyColors.surfaceWhite,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Reset Password',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Enter your registered email address to receive password reset instructions.',
+                      style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary, height: 1.4),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildTextField(
+                      controller: resetEmailController,
+                      label: 'Email Address',
+                      icon: Icons.email_outlined,
+                    ),
+                    if (resetError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        resetError!,
+                        style: const TextStyle(color: TabbyColors.alertRed, fontSize: 11),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    TabbyButton(
+                      label: 'Send Reset Link',
+                      onPressed: () {
+                        final email = resetEmailController.text.trim();
+                        if (email.isEmpty || !email.contains('@')) {
+                          setModalState(() {
+                            resetError = 'Please enter a valid email address.';
+                          });
+                          return;
+                        }
+
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Password reset link sent to $email! Please check your inbox.'),
+                            backgroundColor: TabbyColors.brandEmerald,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,27 +186,32 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 32),
-              const Text(
-                'Tabby',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: TabbyColors.brandDarkTeal,
+              const SizedBox(height: 16),
+              const Center(
+                child: Column(
+                  children: [
+                    Text(
+                      'Tabby',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: TabbyColors.brandDarkTeal,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Keep tabs. Settle up.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: TabbyColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Keep tabs. Settle up.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontStyle: FontStyle.italic,
-                  color: TabbyColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               const Center(
                 child: TabbyMascotWidget(
                   emotion: MascotEmotion.idleNeutral,
@@ -158,7 +254,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
               Center(
                 child: TextButton(
-                  onPressed: () {},
+                  onPressed: _showForgotPasswordSheet,
                   child: const Text(
                     'Forgot password?',
                     style: TextStyle(color: TabbyColors.textSecondary),

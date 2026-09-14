@@ -72,13 +72,17 @@ class TabbyButton extends StatelessWidget {
             icon!,
             const SizedBox(width: 8),
           ],
-          Text(
-            label,
-            style: TextStyle(
-              color: foregroundColor,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Inter',
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: foregroundColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Inter',
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],

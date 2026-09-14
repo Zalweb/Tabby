@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -117,6 +118,27 @@ class TabDetailScreen extends ConsumerWidget {
                               icon: const Icon(Icons.qr_code_2_rounded, size: 20, color: TabbyColors.brandDarkTeal),
                               onPressed: () => _showPaymentInfoSheet(context, tab),
                               tooltip: 'Payment Info',
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: TabbyColors.surfaceWhite,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.receipt_long_rounded, size: 20, color: TabbyColors.brandDarkTeal),
+                              onPressed: () => _showReceiptsSheet(context, tab, ref),
+                              tooltip: 'View Receipts',
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -494,14 +516,62 @@ class TabDetailScreen extends ConsumerWidget {
                       ),
                     ),
                     Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
-                        itemCount: tab.entries.length,
-                        itemBuilder: (context, index) {
-                          final entry = tab.entries[index];
-                          return _buildLedgerEntryCard(context, entry);
-                        },
-                      ),
+                      child: tab.entries.isEmpty
+                          ? SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const TabbyMascotWidget(
+                                      emotion: MascotEmotion.idleNeutral,
+                                      size: 64,
+                                      showBubble: false,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'No transactions yet',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: TabbyColors.brandDarkTeal,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Start keeping tabs by logging your first shared expense with ${tab.isGroupTab ? (tab.groupName ?? tab.counterpart.displayName) : tab.counterpart.displayName}.',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: TabbyColors.textSecondary,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton.icon(
+                                      onPressed: () {
+                                        AddExpenseModal.show(context, initialCounterpartId: tab.id);
+                                      },
+                                      icon: const Icon(Icons.add_rounded, size: 18),
+                                      label: const Text('Log First Expense'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: TabbyColors.brandEmerald,
+                                        foregroundColor: TabbyColors.surfaceWhite,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
+                              itemCount: tab.entries.length,
+                              itemBuilder: (context, index) {
+                                final entry = tab.entries[index];
+                                return _buildLedgerEntryCard(context, ref, entry);
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -513,7 +583,7 @@ class TabDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLedgerEntryCard(BuildContext context, LedgerEntry entry) {
+  Widget _buildLedgerEntryCard(BuildContext context, WidgetRef ref, LedgerEntry entry) {
     final dateFormat = DateFormat('HH:mm - MMM d');
     final isPayment = entry.isPayment;
     final amountPrefix = isPayment ? '+' : (entry.paidByUserId == MockTabbyRepository.currentUser.id ? '+' : '-');
@@ -525,14 +595,18 @@ class TabDetailScreen extends ConsumerWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: TabbyColors.surfaceWhite,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: TabbyColors.borderMint),
       ),
-      child: Row(
-        children: [
+      child: InkWell(
+        onTap: () => _showEntryDetailsSheet(context, ref, entry),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
           // Squircle Icon Badge (Figma 40x40)
           Container(
             width: 40,
@@ -631,8 +705,10 @@ class TabDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildStatusBadge(TransactionStatus status, bool isPayment) {
     Color bg;
@@ -708,12 +784,16 @@ class TabDetailScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Send Friendly Reminder',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: TabbyColors.brandDarkTeal,
+                  const Expanded(
+                    child: Text(
+                      'Send Friendly Reminder',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   IconButton(
@@ -749,6 +829,9 @@ class TabDetailScreen extends ConsumerWidget {
                 variant: TabbyButtonVariant.primary,
                 icon: const Icon(Icons.share_rounded, size: 18, color: TabbyColors.surfaceWhite),
                 onPressed: () {
+                  final reminderMsg =
+                      'Hey ${tab.counterpart.displayName}! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!';
+                  Clipboard.setData(ClipboardData(text: reminderMsg));
                   ref.read(tabbyProvider.notifier).sendGentleNudge(
                     tabId: tab.id,
                     friendName: tab.counterpart.displayName,
@@ -757,7 +840,7 @@ class TabDetailScreen extends ConsumerWidget {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Reminder link copied and sent to ${tab.counterpart.displayName}.'),
+                      content: Text('Reminder link copied to clipboard and sent to ${tab.counterpart.displayName}!'),
                       backgroundColor: TabbyColors.brandDarkTeal,
                     ),
                   );
@@ -806,12 +889,16 @@ class TabDetailScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        isPayingMe ? 'Confirm Payment Received' : 'Record Settlement',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: TabbyColors.brandDarkTeal,
+                      Expanded(
+                        child: Text(
+                          isPayingMe ? 'Confirm Payment Received' : 'Record Settlement',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       IconButton(
@@ -909,42 +996,72 @@ class TabDetailScreen extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: TabbyColors.surfaceWhite,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '${tab.counterpart.displayName}\'s Payment Info',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: TabbyColors.brandDarkTeal,
-                ),
+        return Material(
+          color: TabbyColors.surfaceWhite,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${tab.counterpart.displayName}\'s Payment Info',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: TabbyColors.brandDarkTeal),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
-              Container(
-                width: 170,
-                height: 170,
-                decoration: BoxDecoration(
-                  color: TabbyColors.brandMintAccent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.qr_code_2_rounded, size: 72, color: TabbyColors.brandDarkTeal),
-                      SizedBox(height: 8),
-                      Text(
-                        'QR Ph Code',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                      ),
-                    ],
+              InkWell(
+                onTap: () => _showQrCodePreviewModal(context, tab),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 170,
+                  height: 170,
+                  decoration: BoxDecoration(
+                    color: TabbyColors.brandMintAccent,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: TabbyColors.borderMint),
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.qr_code_2_rounded, size: 72, color: TabbyColors.brandDarkTeal),
+                        SizedBox(height: 8),
+                        Text(
+                          'QR Ph Code',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                        ),
+                        SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.zoom_in_rounded, size: 14, color: TabbyColors.brandEmerald),
+                            SizedBox(width: 4),
+                            Text(
+                              'Tap to enlarge',
+                              style: TextStyle(fontSize: 10, color: TabbyColors.brandEmerald, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -965,8 +1082,12 @@ class TabDetailScreen extends ConsumerWidget {
                     : '0917-XXX-XXXX'),
                 trailing: const Icon(Icons.copy_rounded, size: 18, color: TabbyColors.textSecondary),
                 onTap: () {
+                  final num = tab.counterpart.gcashNumber.isNotEmpty
+                      ? tab.counterpart.gcashNumber
+                      : '0917-888-1234';
+                  Clipboard.setData(ClipboardData(text: num));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('GCash number copied!')),
+                    SnackBar(content: Text('GCash number $num copied to clipboard!')),
                   );
                 },
               ),
@@ -986,10 +1107,713 @@ class TabDetailScreen extends ConsumerWidget {
                     : '0917-XXX-XXXX'),
                 trailing: const Icon(Icons.copy_rounded, size: 18, color: TabbyColors.textSecondary),
                 onTap: () {
+                  final num = tab.counterpart.mayaNumber.isNotEmpty
+                      ? tab.counterpart.mayaNumber
+                      : '0917-888-1234';
+                  Clipboard.setData(ClipboardData(text: num));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Maya number copied!')),
+                    SnackBar(content: Text('Maya number $num copied to clipboard!')),
                   );
                 },
+              ),
+              const SizedBox(height: 16),
+              TabbyButton(
+                label: 'Close',
+                variant: TabbyButtonVariant.outline,
+                onPressed: () => Navigator.pop(context),
+              ),
+              ],
+            ),
+          ),
+        ),
+      );
+      },
+    );
+  }
+
+  void _showEntryDetailsSheet(BuildContext context, WidgetRef ref, LedgerEntry entry) {
+    final dateFormat = DateFormat('MMMM d, yyyy • h:mm a');
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      entry.isPayment ? 'Payment Details' : 'Expense Details',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(sheetContext),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: entry.isPayment ? TabbyColors.iconBgMint : TabbyColors.iconBgBlue,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        entry.isPayment
+                            ? (entry.paymentMethod?.iconData ?? Icons.payments_rounded)
+                            : entry.category.icon,
+                        color: entry.isPayment ? TabbyColors.brandEmerald : TabbyColors.accentLightBlue,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          dateFormat.format(entry.date),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: TabbyColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: TabbyColors.brandMintAccent,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total Amount', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
+                        Text(
+                          CurrencyFormatter.formatCentavos(entry.totalAmountCentavos),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: TabbyColors.brandDarkTeal),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Paid By', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
+                        Text(
+                          entry.paidByName,
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                        ),
+                      ],
+                    ),
+                    if (!entry.isPayment) ...[
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Your Share', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
+                          Text(
+                            CurrencyFormatter.formatCentavos(entry.myShareCentavos),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Their Share', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
+                          Text(
+                            CurrencyFormatter.formatCentavos(entry.counterpartShareCentavos),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (entry.paymentMethod != null) ...[
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Payment Rail', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
+                          Text(
+                            entry.paymentMethod!.label,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandEmerald),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (entry.dueDate != null) ...[
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Due Date', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
+                          Text(
+                            DateFormat('MMMM d, yyyy').format(entry.dueDate!),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const Divider(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Text('Receipt / Attachment', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
+                        ),
+                        Text(
+                          entry.receiptUrl != null && entry.receiptUrl!.isNotEmpty ? 'Attached' : 'None',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: entry.receiptUrl != null && entry.receiptUrl!.isNotEmpty
+                                ? TabbyColors.brandEmerald
+                                : TabbyColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              if (entry.receiptUrl == null || entry.receiptUrl!.isEmpty)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final receiptId = 'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
+                    ref.read(tabbyProvider.notifier).attachReceiptToEntry(
+                          tabId: entry.tabId,
+                          entryId: entry.id,
+                          receiptUrl: receiptId,
+                        );
+                    Navigator.pop(sheetContext);
+                    messenger.clearSnackBars();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Receipt image attached to transaction successfully!'),
+                        backgroundColor: TabbyColors.brandEmerald,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
+                  label: const Text('Attach Receipt Photo'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: TabbyColors.brandDarkTeal,
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: InkWell(
+                    onTap: () => _showReceiptPreviewSheet(context, entry),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: TabbyColors.surfaceWhite,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: TabbyColors.brandEmerald.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.image_outlined, color: TabbyColors.brandEmerald, size: 20),
+                          SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Verified Bill/Receipt Attached (Tap to view)',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: TabbyColors.brandEmerald),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 16),
+              TabbyButton(
+                label: 'Close',
+                variant: TabbyButtonVariant.outline,
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReceiptsSheet(BuildContext context, BilateralTab tab, WidgetRef ref) {
+    final entriesWithReceipts = tab.entries.where((e) => e.receiptUrl != null && e.receiptUrl!.isNotEmpty).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Shared Media & Receipts',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Receipts and payment proofs for ${tab.counterpart.displayName}\'s tab',
+                style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              if (entriesWithReceipts.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: TabbyColors.brandMintAccent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.receipt_long_outlined, size: 48, color: TabbyColors.textSecondary),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'No Receipts Attached Yet',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Attach bill photos, receipts, or payment screenshots to keep proof organized.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                      ),
+                      const SizedBox(height: 16),
+                      if (tab.entries.isNotEmpty)
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final latest = tab.entries.first;
+                            final receiptId = 'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
+                            ref.read(tabbyProvider.notifier).attachReceiptToEntry(
+                                  tabId: tab.id,
+                                  entryId: latest.id,
+                                  receiptUrl: receiptId,
+                                );
+                            Navigator.pop(context);
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('Receipt attached to "${latest.title}"!'),
+                                backgroundColor: TabbyColors.brandEmerald,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                          label: const Text('Attach to Latest Transaction'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: TabbyColors.brandEmerald,
+                            foregroundColor: TabbyColors.surfaceWhite,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                    ],
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: entriesWithReceipts.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, idx) {
+                      final item = entriesWithReceipts[idx];
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.surfaceWhite,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: TabbyColors.borderMint),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: TabbyColors.brandMintAccent,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.receipt_rounded, color: TabbyColors.brandEmerald, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.title,
+                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: TabbyColors.brandDarkTeal),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '${DateFormat('MMM d, yyyy').format(item.date)} • ${CurrencyFormatter.formatCentavos(item.totalAmountCentavos)}',
+                                    style: const TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.visibility_outlined, color: TabbyColors.brandEmerald, size: 20),
+                              tooltip: 'View Receipt',
+                              onPressed: () => _showReceiptPreviewSheet(context, item),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 16),
+              TabbyButton(
+                label: 'Close',
+                variant: TabbyButtonVariant.outline,
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReceiptPreviewSheet(BuildContext context, LedgerEntry entry) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.85,
+          ),
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Receipt Preview',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          entry.title,
+                          style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: TabbyColors.bgCanvas,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: TabbyColors.borderMint),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: const BoxDecoration(
+                          color: TabbyColors.brandMintAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.receipt_long_rounded,
+                          size: 40,
+                          color: TabbyColors.brandEmerald,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        CurrencyFormatter.formatCentavos(entry.totalAmountCentavos),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          color: TabbyColors.brandDarkTeal,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        DateFormat('MMMM d, yyyy • h:mm a').format(entry.date),
+                        style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.brandMintAccent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.verified_rounded, size: 16, color: TabbyColors.brandEmerald),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Verified Proof: ${entry.receiptUrl ?? "receipt_proof.png"}',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TabbyButton(
+                      label: 'Save Image',
+                      variant: TabbyButtonVariant.outline,
+                      icon: const Icon(Icons.download_rounded, size: 16, color: TabbyColors.brandDarkTeal),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Receipt image saved to downloads!'),
+                            backgroundColor: TabbyColors.brandEmerald,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TabbyButton(
+                      label: 'Close',
+                      variant: TabbyButtonVariant.primary,
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showQrCodePreviewModal(BuildContext context, BilateralTab tab) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${tab.counterpart.displayName}\'s QR Ph',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: 220,
+                height: 220,
+                decoration: BoxDecoration(
+                  color: TabbyColors.brandMintAccent,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: TabbyColors.borderMint),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.qr_code_2_rounded, size: 120, color: TabbyColors.brandDarkTeal),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.brandEmerald,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'QR Ph Official',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: TabbyColors.surfaceWhite),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Scan using GCash, Maya, or any Philippine banking app to settle up with ${tab.counterpart.displayName}.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TabbyButton(
+                      label: 'Copy QR String',
+                      variant: TabbyButtonVariant.outline,
+                      icon: const Icon(Icons.copy_rounded, size: 16, color: TabbyColors.brandDarkTeal),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(
+                          text: '00020101021226580009PH.PAYMAYA0111${tab.counterpart.phone.replaceAll(RegExp(r'[^0-9]'), '')}5204601453036085802PH5912${tab.counterpart.displayName}',
+                        ));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('QR Ph payload copied to clipboard!'),
+                            backgroundColor: TabbyColors.brandEmerald,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TabbyButton(
+                      label: 'Save QR Image',
+                      variant: TabbyButtonVariant.primary,
+                      icon: const Icon(Icons.download_rounded, size: 16, color: TabbyColors.surfaceWhite),
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('QR code image saved to gallery!'),
+                            backgroundColor: TabbyColors.brandEmerald,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

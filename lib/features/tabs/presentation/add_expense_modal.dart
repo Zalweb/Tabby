@@ -39,6 +39,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   bool _paidByMe = true;
   bool _isEqualSplit = true;
   DateTime? _selectedDueDate;
+  String? _receiptUrl;
 
   // Preset quick amount chips in pesos
   final List<int> _quickAmounts = [100, 250, 500, 1000, 2000];
@@ -50,9 +51,9 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
       final tabs = ref.read(tabbyProvider).tabs;
       final match = tabs.where((t) => t.id == widget.initialCounterpartId || t.counterpart.id == widget.initialCounterpartId).firstOrNull;
       if (match != null) {
-        _selectedFriendId = match.counterpart.id;
-        _selectedFriendName = match.counterpart.displayName;
-        _friendNameController.text = match.counterpart.displayName;
+        _selectedFriendId = match.isGroupTab ? match.id : match.counterpart.id;
+        _selectedFriendName = match.isGroupTab ? (match.groupName ?? match.counterpart.displayName) : match.counterpart.displayName;
+        _friendNameController.text = _selectedFriendName;
       } else {
         _selectedFriendId = widget.initialCounterpartId!;
         _selectedFriendName = widget.initialCounterpartId!;
@@ -139,6 +140,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
           paidByMe: _paidByMe,
           isEqualSplit: _isEqualSplit,
           dueDate: _selectedDueDate,
+          receiptUrl: _receiptUrl,
         );
 
     Navigator.pop(context);
@@ -195,6 +197,12 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   @override
   Widget build(BuildContext context) {
     final friends = ref.watch(friendsProvider);
+    final groups = ref.watch(groupsProvider);
+
+    final allParticipants = [
+      ...friends.map((f) => (id: f.id, name: f.displayName, isGroup: false)),
+      ...groups.map((g) => (id: g.id, name: g.groupName ?? g.counterpart.displayName, isGroup: true)),
+    ];
 
     return Container(
       padding: EdgeInsets.fromLTRB(
@@ -273,8 +281,11 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                   setState(() {
                     _selectedFriendName = val;
                     final match = friends.where((f) => f.displayName.toLowerCase() == val.trim().toLowerCase()).firstOrNull;
+                    final groupMatch = groups.where((g) => (g.groupName ?? g.counterpart.displayName).toLowerCase() == val.trim().toLowerCase()).firstOrNull;
                     if (match != null) {
                       _selectedFriendId = match.id;
+                    } else if (groupMatch != null) {
+                      _selectedFriendId = groupMatch.id;
                     } else {
                       _selectedFriendId = 'user-${val.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}';
                     }
@@ -297,20 +308,23 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                 ),
               ),
             ),
-            if (friends.isNotEmpty) ...[
+            if (allParticipants.isNotEmpty) ...[
               const SizedBox(height: 8),
               SizedBox(
                 height: 38,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: friends.length,
+                  itemCount: allParticipants.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
-                    final f = friends[index];
-                    final isSelected = f.id == _selectedFriendId ||
-                        f.displayName.toLowerCase() == _friendNameController.text.trim().toLowerCase();
+                    final p = allParticipants[index];
+                    final isSelected = p.id == _selectedFriendId ||
+                        p.name.toLowerCase() == _friendNameController.text.trim().toLowerCase();
                     return ChoiceChip(
-                      label: Text(f.displayName),
+                      avatar: p.isGroup
+                          ? const Icon(Icons.group_rounded, size: 14, color: TabbyColors.brandDarkTeal)
+                          : null,
+                      label: Text(p.name),
                       selected: isSelected,
                       selectedColor: TabbyColors.brandEmerald,
                       labelStyle: TextStyle(
@@ -321,9 +335,9 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                       onSelected: (selected) {
                         if (selected) {
                           setState(() {
-                            _selectedFriendId = f.id;
-                            _selectedFriendName = f.displayName;
-                            _friendNameController.text = f.displayName;
+                            _selectedFriendId = p.id;
+                            _selectedFriendName = p.name;
+                            _friendNameController.text = p.name;
                           });
                         }
                       },
@@ -634,6 +648,62 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                   child: Text(
                     _selectedDueDate == null ? 'Set Date' : 'Change',
                     style: const TextStyle(fontWeight: FontWeight.w700, color: TabbyColors.brandEmerald),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // 8. Optional Receipt Attachment
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.receipt_long_outlined, size: 20, color: TabbyColors.brandDarkTeal),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _receiptUrl == null
+                              ? 'Attach Receipt / Bill Photo'
+                              : 'Receipt: Attached',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: _receiptUrl == null ? TabbyColors.brandDarkTeal : TabbyColors.brandEmerald,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      if (_receiptUrl == null) {
+                        _receiptUrl = 'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Receipt image attached.'),
+                            backgroundColor: TabbyColors.brandEmerald,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      } else {
+                        _receiptUrl = null;
+                      }
+                    });
+                  },
+                  child: Text(
+                    _receiptUrl == null ? 'Attach' : 'Remove',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: _receiptUrl == null ? TabbyColors.brandEmerald : TabbyColors.alertRed,
+                    ),
                   ),
                 ),
               ],

@@ -141,6 +141,8 @@ class TabbyUser {
   final String gcashNumber;
   final String mayaNumber;
 
+  final String? qrCodeUrl;
+
   const TabbyUser({
     required this.id,
     required this.displayName,
@@ -149,7 +151,30 @@ class TabbyUser {
     this.avatarUrl,
     this.gcashNumber = '',
     this.mayaNumber = '',
+    this.qrCodeUrl,
   });
+
+  TabbyUser copyWith({
+    String? id,
+    String? displayName,
+    String? email,
+    String? phone,
+    String? avatarUrl,
+    String? gcashNumber,
+    String? mayaNumber,
+    String? qrCodeUrl,
+  }) {
+    return TabbyUser(
+      id: id ?? this.id,
+      displayName: displayName ?? this.displayName,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      gcashNumber: gcashNumber ?? this.gcashNumber,
+      mayaNumber: mayaNumber ?? this.mayaNumber,
+      qrCodeUrl: qrCodeUrl ?? this.qrCodeUrl,
+    );
+  }
 }
 
 /// Participant in a split transaction

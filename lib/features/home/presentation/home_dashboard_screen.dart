@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/currency_card.dart';
+import '../../../shared/widgets/notification_center_sheet.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
 import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/domain/models.dart';
@@ -23,6 +24,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(tabbyProvider);
     final notifier = ref.read(tabbyProvider.notifier);
+    final currentUser = ref.watch(currentUserProvider);
 
     return Scaffold(
       backgroundColor: TabbyColors.brandEmerald,
@@ -48,11 +50,11 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   'Hi, Welcome Back',
                                   style: TextStyle(
                                     fontSize: 14,
@@ -61,10 +63,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                                     letterSpacing: -0.2,
                                   ),
                                 ),
-                                SizedBox(height: 2),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Frienzal',
-                                  style: TextStyle(
+                                  currentUser.displayName.split(' ').first,
+                                  style: const TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
                                     color: TabbyColors.brandDarkTeal,
@@ -96,14 +98,8 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                                 color: TabbyColors.brandDarkTeal,
                                 size: 22,
                               ),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('All notifications caught up!'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              },
+                              onPressed: () => NotificationCenterSheet.show(context),
+                              tooltip: 'Notifications',
                             ),
                           ),
                         ],
@@ -750,130 +746,156 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                         ],
                       ),
                       // FinWise 3-Column Transaction / Activity List (home_7033_352)
-                      if (dashboardState.activities.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: TabbyColors.surfaceWhite,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: TabbyColors.borderMint),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'No recent activity yet. Log an expense to get started!',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: TabbyColors.textSecondary,
-                                fontWeight: FontWeight.w500,
+                      Builder(
+                        builder: (context) {
+                          final filteredActivities = dashboardState.activities.where((act) {
+                            if (_selectedFilter == 'Daily') {
+                              return DateTime.now().difference(act.timestamp).inHours < 24;
+                            } else if (_selectedFilter == 'Weekly') {
+                              return DateTime.now().difference(act.timestamp).inDays < 7;
+                            }
+                            return true;
+                          }).toList();
+
+                          if (filteredActivities.isEmpty) {
+                            return Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: TabbyColors.surfaceWhite,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: TabbyColors.borderMint),
                               ),
-                            ),
-                          ),
-                        )
-                      else
-                        ...dashboardState.activities.map((act) {
-                        final displayName = act.actorName == 'Frienzal' ? 'You' : act.actorName;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: TabbyColors.surfaceWhite,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: TabbyColors.borderMint),
-                          ),
-                          child: Row(
-                            children: [
-                              // Circular Icon Squircle Container (Figma 40x40)
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: TabbyColors.iconBgBlue,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    act.iconData ?? Icons.receipt_rounded,
-                                    color: TabbyColors.accentLightBlue,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Column 1: Title & Time
-                              Expanded(
-                                flex: 4,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      displayName,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w700,
-                                        color: TabbyColors.brandDarkTeal,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _formatTimestamp(act.timestamp),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: TabbyColors.accentLightBlue,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Column Divider
-                              Container(
-                                height: 28,
-                                width: 1,
-                                color: TabbyColors.borderMint,
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                              ),
-                              // Column 2: Category / Context
-                              Expanded(
-                                flex: 3,
+                              child: Center(
                                 child: Text(
-                                  act.description,
+                                  _selectedFilter == 'Monthly'
+                                      ? 'No recent activity yet. Log an expense to get started!'
+                                      : 'No activity found for $_selectedFilter filter.',
                                   style: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 13,
                                     color: TabbyColors.textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              // Column Divider
-                              Container(
-                                height: 28,
-                                width: 1,
-                                color: TabbyColors.borderMint,
-                                margin: const EdgeInsets.symmetric(horizontal: 8),
-                              ),
-                              // Column 3: Currency Amount
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  act.amountCentavos > 0
-                                      ? CurrencyFormatter.formatCentavos(act.amountCentavos)
-                                      : 'Settled',
-                                  textAlign: TextAlign.end,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: TabbyColors.brandDarkTeal,
+                            );
+                          }
+
+                          return Column(
+                            children: filteredActivities.map((act) {
+                              final displayName = (act.actorName == 'Frienzal' || act.actorName == currentUser.displayName)
+                                  ? 'You'
+                                  : act.actorName;
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: TabbyColors.surfaceWhite,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: TabbyColors.borderMint),
+                                ),
+                                child: InkWell(
+                                  onTap: () => _showActivityDetailSheet(context, act),
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        // Circular Icon Squircle Container (Figma 40x40)
+                                        Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: TabbyColors.iconBgBlue,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Center(
+                                            child: Icon(
+                                              act.iconData ?? Icons.receipt_rounded,
+                                              color: TabbyColors.accentLightBlue,
+                                              size: 20,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        // Column 1: Title & Time
+                                        Expanded(
+                                          flex: 4,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                displayName,
+                                                style: const TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: TabbyColors.brandDarkTeal,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                _formatTimestamp(act.timestamp),
+                                                style: const TextStyle(
+                                                  fontSize: 11,
+                                                  color: TabbyColors.accentLightBlue,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Column Divider
+                                        Container(
+                                          height: 28,
+                                          width: 1,
+                                          color: TabbyColors.borderMint,
+                                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                                        ),
+                                        // Column 2: Category / Context
+                                        Expanded(
+                                          flex: 3,
+                                          child: Text(
+                                            act.description,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: TabbyColors.textSecondary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        // Column Divider
+                                        Container(
+                                          height: 28,
+                                          width: 1,
+                                          color: TabbyColors.borderMint,
+                                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                                        ),
+                                        // Column 3: Currency Amount
+                                        Expanded(
+                                          flex: 3,
+                                          child: Text(
+                                            act.amountCentavos > 0
+                                                ? CurrencyFormatter.formatCentavos(act.amountCentavos)
+                                                : 'Settled',
+                                            textAlign: TextAlign.end,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w800,
+                                              color: TabbyColors.brandDarkTeal,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -884,6 +906,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_home_dashboard',
         onPressed: () => AddExpenseModal.show(context),
         backgroundColor: TabbyColors.brandEmerald,
         foregroundColor: TabbyColors.surfaceWhite,
@@ -908,4 +931,133 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
       return '${diff.inDays}d ago';
     }
   }
+
+  void _showActivityDetailSheet(BuildContext context, TabbyActivity act) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Activity Details',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: TabbyColors.brandDarkTeal,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: TabbyColors.iconBgBlue,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        act.iconData ?? Icons.receipt_rounded,
+                        color: TabbyColors.accentLightBlue,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          act.actorName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                        ),
+                        Text(
+                          act.description,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: TabbyColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (act.amountCentavos > 0) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: TabbyColors.brandMintAccent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Amount Recorded',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: TabbyColors.brandDarkTeal),
+                      ),
+                      Text(
+                        CurrencyFormatter.formatCentavos(act.amountCentavos),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: TabbyColors.brandDarkTeal),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.schedule_rounded, size: 16, color: TabbyColors.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Recorded ${_formatTimestamp(act.timestamp)}',
+                    style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: TabbyColors.brandEmerald,
+                  foregroundColor: TabbyColors.surfaceWhite,
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
 }

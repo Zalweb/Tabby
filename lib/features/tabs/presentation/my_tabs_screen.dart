@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../shared/widgets/notification_center_sheet.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
 import '../application/tabby_providers.dart';
 import '../domain/models.dart';
@@ -105,10 +106,14 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              Icons.notifications_none_rounded,
-                              size: 22,
-                              color: TabbyColors.brandDarkTeal,
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.notifications_none_rounded,
+                                size: 22,
+                                color: TabbyColors.brandDarkTeal,
+                              ),
+                              onPressed: () => NotificationCenterSheet.show(context),
+                              tooltip: 'Notifications',
                             ),
                           ),
                         ],
@@ -439,6 +444,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_my_tabs',
         onPressed: () => AddExpenseModal.show(context),
         backgroundColor: TabbyColors.brandEmerald,
         foregroundColor: TabbyColors.surfaceWhite,

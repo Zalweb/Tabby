@@ -108,6 +108,145 @@ class SupabaseTabbyRepository {
 
   bool _isValidUuid(String id) => _uuidRegex.hasMatch(id);
 
+  // Static testing & mapping helpers
+  static String mapCategory(ExpenseCategory category) => instance._mapCategory(category);
+  static ExpenseCategory unmapCategory(dynamic catStr) => instance._unmapCategory(catStr);
+  static String mapPaymentMethod(PaymentMethod method) => instance._mapPaymentMethod(method);
+  static PaymentMethod unmapPaymentMethod(dynamic methodStr) => instance._unmapPaymentMethod(methodStr);
+  static TransactionStatus unmapTransactionStatus(dynamic statusStr) => instance._unmapTransactionStatus(statusStr);
+  static bool isValidUuid(String id) => _uuidRegex.hasMatch(id);
+
+  /// Parses a raw Supabase PostgREST tab query row into a [BilateralTab].
+  /// Returns `null` if row is missing essential fields or counterpart member cannot be resolved.
+  static BilateralTab? parseTabRow(
+    Map<String, dynamic> tabRow,
+    String currentUserId, {
+    int netBalance = 0,
+  }) {
+    final tabId = tabRow['id'] as String? ?? '';
+    if (tabId.isEmpty) return null;
+
+    // Find counterpart member (anyone who is not the current user)
+    final membersList = (tabRow['tab_members'] as List<dynamic>?) ?? [];
+    Map<String, dynamic>? counterpartMember;
+    for (final m in membersList) {
+      if ((m as Map<String, dynamic>)['user_id'] != currentUserId) {
+        counterpartMember = m;
+        break;
+      }
+    }
+
+    if (counterpartMember == null) return null;
+
+    final counterpartUserId = counterpartMember['user_id'] as String? ?? '';
+    final counterpartUserRow =
+        counterpartMember['users'] as Map<String, dynamic>?;
+
+    final counterpart = TabbyUser(
+      id: counterpartUserId,
+      displayName:
+          counterpartUserRow?['display_name'] as String? ?? 'Friend',
+      email: counterpartUserRow?['email'] as String? ?? '',
+      phone: counterpartUserRow?['phone'] as String? ?? '',
+    );
+
+    // Build ledger entries from transactions
+    final List<LedgerEntry> entries = [];
+
+    final txList = (tabRow['transactions'] as List<dynamic>?) ?? [];
+    for (final txRaw in txList) {
+      final tx = txRaw as Map<String, dynamic>;
+      final pList =
+          (tx['transaction_participants'] as List<dynamic>?) ?? [];
+      int myShare = 0;
+      int counterpartShare = 0;
+
+      for (final pRaw in pList) {
+        final p = pRaw as Map<String, dynamic>;
+        final pUserId = p['user_id'] as String?;
+        final shareAmt = (p['share_amount_centavos'] as num?)?.toInt() ?? 0;
+        if (pUserId == currentUserId) {
+          myShare = shareAmt;
+        } else if (pUserId == counterpart.id) {
+          counterpartShare = shareAmt;
+        }
+      }
+
+      final dateStr = tx['created_at'] as String?;
+      final dueDateStr = tx['due_date'] as String?;
+      final totalAmt =
+          (tx['total_amount_centavos'] as num?)?.toInt() ?? 0;
+      final createdBy = tx['created_by'] as String? ?? '';
+
+      entries.add(LedgerEntry(
+        id: tx['id'] as String? ?? 'tx-$tabId',
+        tabId: tabId,
+        title: tx['description'] as String? ?? '',
+        category: unmapCategory(tx['category']),
+        totalAmountCentavos: totalAmt,
+        myShareCentavos: myShare,
+        counterpartShareCentavos: counterpartShare,
+        paidByUserId: createdBy,
+        paidByName:
+            createdBy == currentUserId ? 'You' : counterpart.displayName,
+        date: dateStr != null
+            ? DateTime.tryParse(dateStr) ?? DateTime.now()
+            : DateTime.now(),
+        dueDate: dueDateStr != null ? DateTime.tryParse(dueDateStr) : null,
+        status: unmapTransactionStatus(tx['status']),
+      ));
+    }
+
+    // Build ledger entries from payments
+    final payList = (tabRow['payments'] as List<dynamic>?) ?? [];
+    for (final payRaw in payList) {
+      final pay = payRaw as Map<String, dynamic>;
+      final submittedBy = pay['submitted_by'] as String? ?? '';
+      final isCounterpartPaying = submittedBy == counterpart.id;
+      final dateStr = pay['submitted_at'] as String?;
+      final payAmt = (pay['amount_centavos'] as num?)?.toInt() ?? 0;
+
+      entries.add(LedgerEntry(
+        id: pay['id'] as String? ?? 'pay-$tabId',
+        tabId: tabId,
+        title: isCounterpartPaying
+            ? '${counterpart.displayName} paid'
+            : 'You paid',
+        category: ExpenseCategory.borrowedCash,
+        totalAmountCentavos: payAmt,
+        myShareCentavos: 0,
+        counterpartShareCentavos: 0,
+        paidByUserId: submittedBy,
+        paidByName:
+            isCounterpartPaying ? counterpart.displayName : 'You',
+        date: dateStr != null
+            ? DateTime.tryParse(dateStr) ?? DateTime.now()
+            : DateTime.now(),
+        status: TransactionStatus.settled,
+        isPayment: true,
+        paymentMethod: unmapPaymentMethod(pay['payment_method']),
+        note: pay['note'] as String?,
+      ));
+    }
+
+    // Sort entries newest-first
+    entries.sort((a, b) => b.date.compareTo(a.date));
+
+    final lastUpdatedStr = tabRow['updated_at'] as String? ??
+        tabRow['created_at'] as String?;
+
+    return BilateralTab(
+      id: tabId,
+      counterpart: counterpart,
+      netBalanceCentavos: netBalance,
+      itemCount: entries.length,
+      entries: entries,
+      lastUpdated: lastUpdatedStr != null
+          ? DateTime.tryParse(lastUpdatedStr) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
   /// Ensures a user row exists in public.users.
   /// For real UUID IDs, upserts the record. For synthetic IDs (non-UUID),
   /// looks up or creates a user by display_name and returns the canonical UUID.
@@ -343,112 +482,6 @@ class SupabaseTabbyRepository {
         final tabId = tabRow['id'] as String? ?? '';
         if (tabId.isEmpty) continue;
 
-        // Find counterpart member (anyone who is not the current user)
-        final membersList = (tabRow['tab_members'] as List<dynamic>?) ?? [];
-        Map<String, dynamic>? counterpartMember;
-        for (final m in membersList) {
-          if ((m as Map<String, dynamic>)['user_id'] != currentUserId) {
-            counterpartMember = m;
-            break;
-          }
-        }
-
-        if (counterpartMember == null) continue;
-
-        final counterpartUserId = counterpartMember['user_id'] as String? ?? '';
-        final counterpartUserRow =
-            counterpartMember['users'] as Map<String, dynamic>?;
-
-        final counterpart = TabbyUser(
-          id: counterpartUserId,
-          displayName:
-              counterpartUserRow?['display_name'] as String? ?? 'Friend',
-          email: counterpartUserRow?['email'] as String? ?? '',
-          phone: counterpartUserRow?['phone'] as String? ?? '',
-        );
-
-        // Build ledger entries from transactions
-        final List<LedgerEntry> entries = [];
-
-        final txList = (tabRow['transactions'] as List<dynamic>?) ?? [];
-        for (final txRaw in txList) {
-          final tx = txRaw as Map<String, dynamic>;
-          final pList =
-              (tx['transaction_participants'] as List<dynamic>?) ?? [];
-          int myShare = 0;
-          int counterpartShare = 0;
-
-          for (final pRaw in pList) {
-            final p = pRaw as Map<String, dynamic>;
-            final pUserId = p['user_id'] as String?;
-            final shareAmt = (p['share_amount_centavos'] as num?)?.toInt() ?? 0;
-            if (pUserId == currentUserId) {
-              myShare = shareAmt;
-            } else if (pUserId == counterpart.id) {
-              counterpartShare = shareAmt;
-            }
-          }
-
-          final dateStr = tx['created_at'] as String?;
-          final dueDateStr = tx['due_date'] as String?;
-          final totalAmt =
-              (tx['total_amount_centavos'] as num?)?.toInt() ?? 0;
-          final createdBy = tx['created_by'] as String? ?? '';
-
-          entries.add(LedgerEntry(
-            id: tx['id'] as String? ?? 'tx-$tabId',
-            tabId: tabId,
-            title: tx['description'] as String? ?? '',
-            category: _unmapCategory(tx['category']),
-            totalAmountCentavos: totalAmt,
-            myShareCentavos: myShare,
-            counterpartShareCentavos: counterpartShare,
-            paidByUserId: createdBy,
-            paidByName:
-                createdBy == currentUserId ? 'You' : counterpart.displayName,
-            date: dateStr != null
-                ? DateTime.tryParse(dateStr) ?? DateTime.now()
-                : DateTime.now(),
-            dueDate: dueDateStr != null ? DateTime.tryParse(dueDateStr) : null,
-            status: _unmapTransactionStatus(tx['status']),
-          ));
-        }
-
-        // Build ledger entries from payments
-        final payList = (tabRow['payments'] as List<dynamic>?) ?? [];
-        for (final payRaw in payList) {
-          final pay = payRaw as Map<String, dynamic>;
-          final submittedBy = pay['submitted_by'] as String? ?? '';
-          final isCounterpartPaying = submittedBy == counterpart.id;
-          final dateStr = pay['submitted_at'] as String?;
-          final payAmt = (pay['amount_centavos'] as num?)?.toInt() ?? 0;
-
-          entries.add(LedgerEntry(
-            id: pay['id'] as String? ?? 'pay-$tabId',
-            tabId: tabId,
-            title: isCounterpartPaying
-                ? '${counterpart.displayName} paid'
-                : 'You paid',
-            category: ExpenseCategory.borrowedCash,
-            totalAmountCentavos: payAmt,
-            myShareCentavos: 0,
-            counterpartShareCentavos: 0,
-            paidByUserId: submittedBy,
-            paidByName:
-                isCounterpartPaying ? counterpart.displayName : 'You',
-            date: dateStr != null
-                ? DateTime.tryParse(dateStr) ?? DateTime.now()
-                : DateTime.now(),
-            status: TransactionStatus.settled,
-            isPayment: true,
-            paymentMethod: _unmapPaymentMethod(pay['payment_method']),
-            note: pay['note'] as String?,
-          ));
-        }
-
-        // Sort entries newest-first
-        entries.sort((a, b) => b.date.compareTo(a.date));
-
         // Fetch live RPC balance for this tab
         int netBalance = 0;
         try {
@@ -461,19 +494,10 @@ class SupabaseTabbyRepository {
               '[SupabaseTabbyRepository] getNetBalance error for $tabId: $e');
         }
 
-        final lastUpdatedStr = tabRow['updated_at'] as String? ??
-            tabRow['created_at'] as String?;
-
-        loadedTabs.add(BilateralTab(
-          id: tabId,
-          counterpart: counterpart,
-          netBalanceCentavos: netBalance,
-          itemCount: entries.length,
-          entries: entries,
-          lastUpdated: lastUpdatedStr != null
-              ? DateTime.tryParse(lastUpdatedStr) ?? DateTime.now()
-              : DateTime.now(),
-        ));
+        final tab = parseTabRow(tabRow, currentUserId, netBalance: netBalance);
+        if (tab != null) {
+          loadedTabs.add(tab);
+        }
       }
 
       return loadedTabs;

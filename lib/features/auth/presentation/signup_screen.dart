@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/config/app_state.dart';
 import '../../../shared/widgets/tabby_button.dart';
+import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
 
-class SignUpScreen extends StatefulWidget {
+class SignUpScreen extends ConsumerStatefulWidget {
   const SignUpScreen({super.key});
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
+class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -50,6 +52,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } catch (e) {
       debugPrint('[SignUpScreen] Live Supabase auth notice: $e');
     }
+
+    ref.read(currentUserProvider.notifier).updateProfile(
+          displayName: name,
+          email: email,
+          phone: phone,
+        );
 
     AppState.isAuthenticated.value = true;
     if (mounted) context.go('/home');
