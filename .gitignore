@@ -64,3 +64,4 @@ eggs/
 .pub/
 .flutter-plugins
 .flutter-plugins-dependencies
+releases/
