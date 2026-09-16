@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tabby — Keep tabs. Settle up.</title>
+  <meta name="description" content="A warm, socially frictionless shared-expense tracker built specifically for Filipino peer spending habits. Instant settlement with GCash, Maya, and Cash.">
+  <meta name="theme-color" content="#1F1F1F">
+
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Tabby — Keep tabs. Settle up.">
+  <meta property="og:description" content="Friendship first, accounting second. Centavo-accurate shared expense tracking with instant GCash and Maya settlement shortcuts.">
+  <meta property="og:image" content="assets/tabby-icon.jpg">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="assets/tabby-icon.jpg">
+  <link rel="apple-touch-icon" href="assets/tabby-icon.jpg">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <a href="#" class="nav-brand">
+        <img src="assets/tabby-icon.jpg" alt="Tabby Mascot" class="brand-icon">
+        <span>Tabby</span>
+        <span class="nav-tagline">Keep tabs. Settle up.</span>
+      </a>
+
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#features" class="nav-link">Features</a></li>
+          <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+          <li><a href="#download" class="nav-link">Downloads</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-cta">
+        <a href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk"
+           class="btn btn-primary btn-sm"
+           data-role="apk-download-btn"
+           download="Tabby.apk">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download APK</span>
+          <span class="btn-pill-version" data-role="version-tag">v1.0.1</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="container hero-container">
+      <div class="hero-header-center">
+        <div class="status-badge">
+          <span class="status-dot"></span>
+          <span data-role="live-status">Checking for latest build...</span>
+        </div>
+
+        <h1 class="hero-title">
+          Keep tabs.<br>
+          <span class="highlight">Settle up.</span>
+        </h1>
+
+        <p class="hero-subtitle">
+          A warm, socially frictionless shared-expense tracker built specifically for Filipino peer spending habits. No awkward calculations, no floating-point drift, just crystal-clear tabs.
+        </p>
+
+        <div class="hero-cta-group">
+          <a href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk"
+             class="btn btn-amber btn-lg"
+             data-role="apk-download-btn"
+             download="Tabby.apk">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Download Android APK</span>
+            <span class="btn-pill-version" data-role="version-tag">v1.0.1</span>
+          </a>
+
+          <a href="#download" class="btn btn-secondary btn-lg">
+            <span>Install Instructions</span>
+          </a>
+        </div>
+
+        <div class="hero-meta">
+          <div class="meta-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+            <span>Direct APK</span>
+          </div>
+          <span class="meta-dot">•</span>
+          <div class="meta-item">
+            <span>Size:</span>
+            <strong data-role="apk-size" style="color: var(--tabby-charcoal); margin-left: 3px;">68.9 MB</strong>
+          </div>
+          <span class="meta-dot">•</span>
+          <div class="meta-item">
+            <span>Release:</span>
+            <span data-role="release-date" style="margin-left: 3px;">September 17, 2026</span>
+          </div>
+          <span class="meta-dot">•</span>
+          <div class="meta-item">
+            <span>Android 8.0+</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3-Phone Mockup Showcase Stage -->
+      <div class="hero-mockup-stage">
+        <!-- Floating Metric Overlays -->
+        <div class="floating-card floating-card-left">
+          <div class="card-icon-pill icon-green">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="card-info-title">Net Balance</div>
+            <div class="card-info-value">+₱700.00 (Owed to you)</div>
+          </div>
+        </div>
+
+        <div class="floating-card floating-card-right">
+          <div class="card-icon-pill icon-amber">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+          </div>
+          <div>
+            <div class="card-info-title">Settlement Rails</div>
+            <div class="card-info-value">GCash & Maya Instant QR</div>
+          </div>
+        </div>
+
+        <!-- Phone 1: Homepage of App -->
+        <div class="mockup-item mockup-phone-left">
+          <div class="mockup-frame">
+            <div class="mockup-notch"></div>
+            <div class="mockup-screen">
+              <img src="assets/preview-home.png" alt="Tabby App Homepage">
+            </div>
+          </div>
+          <div class="mockup-badge">
+            <span class="badge-dot"></span>
+            <span>Homepage</span>
+          </div>
+        </div>
+
+        <!-- Phone 2: Banner Page of App (Hero Center) -->
+        <div class="mockup-item mockup-phone-center">
+          <div class="mockup-frame mockup-frame-primary">
+            <div class="mockup-notch"></div>
+            <div class="mockup-screen">
+              <img src="assets/preview-banner.png" alt="Tabby App Banner Page">
+            </div>
+          </div>
+          <div class="mockup-badge mockup-badge-primary">
+            <span class="badge-dot badge-dot-amber"></span>
+            <span>Banner Page</span>
+          </div>
+        </div>
+
+        <!-- Phone 3: Tab Page -->
+        <div class="mockup-item mockup-phone-right">
+          <div class="mockup-frame">
+            <div class="mockup-notch"></div>
+            <div class="mockup-screen">
+              <img src="assets/preview-tab.png" alt="Tabby App Tab Page">
+            </div>
+          </div>
+          <div class="mockup-badge">
+            <span class="badge-dot"></span>
+            <span>Tab Page</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Grid Section -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Engineered for Barkadas</span>
+        <h2 class="section-title">Friendship First, Accounting Second</h2>
+        <p class="section-description">
+          Traditional expense trackers feel cold, confrontational, or corporate. Tabby absorbs social tension with warmth, transparency, and lightning-fast entry.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Speed is King (<5s Entry)</h3>
+          <p class="feature-card-desc">
+            Logging who paid for lunch takes under 5 seconds before the conversation moves on. Quick amount keypad, member chips, and instant split modes.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">One Tab = One Relationship</h3>
+          <p class="feature-card-desc">
+            No messy dozens of side-conversations. Fifty shared meals, coffee runs, and road trips are automatically consolidated into one running bilateral ledger.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Philippine Payment Rails</h3>
+          <p class="feature-card-desc">
+            Direct settlement shortcuts for GCash, Maya, Bank Transfer, and Cash. Upload QR codes, attach proof of payment, and settle without awkward friction.
+          </p>
+        </div>
+      </div>
+
+      <!-- Mascot Companion Banner -->
+      <div class="mascot-banner">
+        <div>
+          <h3>Defusing Awkwardness with Warmth</h3>
+          <p>
+            Asking friends for money shouldn't feel confrontational. Tabby's companion cat mascot humanizes every balance with soft reminders, celebration confetti when all is clear, and zero debt-collector language.
+          </p>
+        </div>
+        <div class="mascot-img-wrap">
+          <img src="assets/tabby-icon.jpg" alt="Tabby Mascot Companion" class="mascot-circle-img">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Hub & Automatic Release Engine Section -->
+  <section class="download-section" id="download">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Direct Downloads</span>
+        <h2 class="section-title">Get the Latest Tabby Build</h2>
+        <p class="section-description">
+          This download hub automatically provides the latest release. Whenever a new build is deployed, this page immediately serves the newest APK without delay.
+        </p>
+      </div>
+
+      <div class="download-hub-grid">
+        <!-- Main Android Download Card -->
+        <div class="download-main-card">
+          <div class="release-live-indicator">
+            <span class="status-dot"></span>
+            <span data-role="live-status">Auto-Update Engine Active</span>
+          </div>
+
+          <h3 class="download-main-title">Android Standalone Package</h3>
+          <p class="download-main-desc">
+            Direct Android APK release package. Compatible with Android 8.0 (Oreo) and above.
+          </p>
+
+          <div class="download-actions-row">
+            <div class="auto-update-banner">
+              <div>
+                <span style="font-weight: 600; color: #FFFFFF;">Automated Release Sync</span>
+                <div style="font-size: 0.8125rem; color: #9CA3AF;">Link updates dynamically on every git tag</div>
+              </div>
+              <span class="btn-pill-version" data-role="version-tag" style="background: rgba(255, 183, 77, 0.2); color: var(--tabby-amber);">v1.0.1</span>
+            </div>
+
+            <a href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk"
+               class="btn btn-amber btn-lg"
+               data-role="apk-download-btn"
+               download="Tabby.apk"
+               style="width: 100%;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Download Tabby APK</span>
+              <span class="btn-pill-version" data-role="version-tag">v1.0.1</span>
+            </a>
+          </div>
+
+          <div class="release-specs">
+            <div class="spec-entry">
+              <span>Version:</span>
+              <strong data-role="version-tag">v1.0.1</strong>
+            </div>
+            <div class="spec-entry">
+              <span>Artifact Name:</span>
+              <strong data-role="apk-filename">Tabby-v1.0.1.apk</strong>
+            </div>
+            <div class="spec-entry">
+              <span>File Size:</span>
+              <strong data-role="apk-size">68.9 MB</strong>
+            </div>
+            <div class="spec-entry">
+              <span>Published:</span>
+              <strong data-role="release-date">September 17, 2026</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Platform Instructions & iOS Stack -->
+        <div class="platform-cards-stack">
+          <!-- Android Steps -->
+          <div class="platform-card">
+            <div class="platform-card-header">
+              <div class="platform-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+                <span>Android Installation</span>
+              </div>
+              <span class="platform-badge">3 Steps</span>
+            </div>
+            <p class="platform-desc">How to install after clicking Download APK:</p>
+            <ol class="install-steps">
+              <li>Open the downloaded APK file from your browser downloads or file manager.</li>
+              <li>When prompted by Android, permit <em>"Install unknown apps"</em> for your browser.</li>
+              <li>Tap <strong>Install</strong> to complete setup and launch Tabby.</li>
+            </ol>
+          </div>
+
+          <!-- iOS Sideload Option -->
+          <div class="platform-card">
+            <div class="platform-card-header">
+              <div class="platform-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a10 10 0 0 0-1.9 19.82c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.58 9.58 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.69.92.69 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"></path>
+                </svg>
+                <span>Apple iOS (IPA)</span>
+              </div>
+              <span class="platform-badge">Sideload</span>
+            </div>
+            <p class="platform-desc">
+              Download the unsigned iOS package and install via Sideloadly or AltStore on your Mac/PC.
+            </p>
+            <a href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.ipa"
+               class="btn btn-secondary btn-sm"
+               data-role="ipa-download-btn">
+              <span>Download Tabby.ipa</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Release Notes Accordion -->
+      <div class="changelog-box">
+        <div class="changelog-header" id="changelogToggle">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Latest Release Changelog</span>
+            <span class="btn-pill-version" data-role="version-tag" style="background: #E5E7EB; color: #374151;">v1.0.1</span>
+          </h3>
+          <svg class="toggle-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s ease;">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+        <div class="changelog-content" id="changelogContainer" data-role="changelog-body">
+          Loading latest release notes...
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Simple 4-Step Flow</span>
+        <h2 class="section-title">How Tabby Works</h2>
+        <p class="section-description">
+          Keep shared spending simple and crystal clear in four intuitive steps.
+        </p>
+      </div>
+
+      <div class="how-it-works-grid">
+        <!-- Step 1 -->
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3 class="step-title">Create a Tab</h3>
+          <p class="step-desc">
+            Open a shared ledger with a friend or group. One ongoing tab covers all past, present, and future expenses.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3 class="step-title">Log in Seconds</h3>
+          <p class="step-desc">
+            Enter the bill amount, select participants, and let Tabby split with exact centavo integer precision.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3 class="step-title">Single Transparent Net</h3>
+          <p class="step-desc">
+            Tabby nets all debits and credits automatically into one transparent number. No mental gymnastics.
+          </p>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <h3 class="step-title">Instant Settlement</h3>
+          <p class="step-desc">
+            Pay via GCash QR, Maya, or Cash. Attach your payment screenshot and celebrate zero balance together.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="nav-brand">
+          <img src="assets/tabby-icon.jpg" alt="Tabby Mascot" class="brand-icon">
+          <span>Tabby</span>
+          <span class="nav-tagline">Keep tabs. Settle up.</span>
+        </div>
+
+        <ul class="footer-links">
+          <li><a href="#features" class="footer-link">Features</a></li>
+          <li><a href="#how-it-works" class="footer-link">How It Works</a></li>
+          <li><a href="#download" class="footer-link">Downloads</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; 2026 Tabby. Made with care for Filipino barkadas.</p>
+        <p>Zero floating-point drift. Centavo-accurate ledger.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Release Synchronization Engine -->
+  <script src="app.js"></script>
+</body>
+</html>

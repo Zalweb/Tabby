@@ -1,0 +1,13 @@
+# Flutter build outputs and dependencies
+build/
+build_artifacts/
+.dart_tool/
+.idea/
+.flutter-plugins-dependencies
+android/
+ios/
+releases/
+test/
+lib/
+web/
+supabase/
