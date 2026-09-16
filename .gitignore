@@ -38,6 +38,7 @@ build/
 build_artifacts/
 .next/
 .turbo/
+.vercel/
 
 # Python artifacts
 __pycache__/

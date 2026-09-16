@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tabby/main.dart';
 import 'package:tabby/core/config/app_state.dart';
 import 'package:tabby/core/router/app_router.dart';
+import 'package:tabby/features/tabs/application/tabby_providers.dart';
 
 void main() {
   setUp(() {
@@ -612,20 +613,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Add a new friend with zero initial expenses
-    final addFriendBtn = find.text('Add');
-    await tester.ensureVisible(addFriendBtn);
-    await tester.tap(addFriendBtn);
-    await tester.pumpAndSettle();
-
-    final friendFields = find.descendant(
-      of: find.byType(BottomSheet),
-      matching: find.byType(TextField),
+    // Add a saved contact with zero initial expenses.
+    final profileContainer = ProviderScope.containerOf(
+      tester.element(find.text('Profile & Settings')),
     );
-    await tester.enterText(friendFields.at(0), 'Empty Tab Friend');
-    await tester.enterText(friendFields.at(1), '+63 999 000 1111');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Add Friend'));
+    await profileContainer.read(tabbyProvider.notifier).addFriend(
+          name: 'Empty Tab Friend',
+          phone: '+63 999 000 1111',
+        );
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
 
