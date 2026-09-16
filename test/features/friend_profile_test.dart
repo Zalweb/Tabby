@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tabby/core/config/app_state.dart';
 import 'package:tabby/core/router/app_router.dart';
+import 'package:tabby/features/profile/presentation/profile_screen.dart';
+import 'package:tabby/features/tabs/domain/models.dart';
 import 'package:tabby/main.dart';
 
 void main() {
@@ -56,5 +60,46 @@ void main() {
     expect(find.text('Enter a valid Tabby ID such as TAB-7K4P2M.'),
         findsOneWidget);
     expect(find.text('Send Friend Request'), findsNothing);
+  });
+
+  testWidgets(
+      'Connect by Tabby ID closes safely while a friend lookup is pending',
+      (tester) async {
+    final lookupCompleter = Completer<TabbyUser?>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => ConnectByIdSheet(
+                  findFriend: (_) => lookupCompleter.future,
+                  sendFriendRequest: (_) async => null,
+                ),
+              ),
+              child: const Text('Open Connect Sheet'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open Connect Sheet'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'TAB-7K4P2M');
+    await tester.tap(find.byIcon(Icons.search_rounded));
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+    lookupCompleter.complete(null);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Connect with a Friend'), findsNothing);
   });
 }
