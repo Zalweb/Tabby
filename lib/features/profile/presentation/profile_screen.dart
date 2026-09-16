@@ -2103,7 +2103,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           isLoading: isSubmitting,
                           onPressed: isSubmitting
                               ? null
-                              : () {
+                              : () async {
                                   final name = nameController.text.trim();
                                   final phone = phoneController.text.trim();
                                   final email = emailController.text.trim();
@@ -2147,7 +2147,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                                   setModalState(() => isSubmitting = true);
 
-                                  ref.read(tabbyProvider.notifier).addFriend(
+                                  await ref.read(tabbyProvider.notifier).addFriend(
                                         name: name,
                                         phone: phone.isNotEmpty ? phone : '+63 900 000 0000',
                                         email: email,
@@ -2155,14 +2155,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                         mayaNumber: mayaController.text.trim(),
                                       );
 
-                                  Navigator.pop(sheetContext);
-                                  ScaffoldMessenger.of(context).clearSnackBars();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Added $name to your friends list!'),
-                                      backgroundColor: TabbyColors.brandEmerald,
-                                    ),
-                                  );
+                                  if (context.mounted) {
+                                    Navigator.pop(sheetContext);
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Added $name to your friends list!'),
+                                        backgroundColor: TabbyColors.brandEmerald,
+                                      ),
+                                    );
+                                  }
                                 },
                         ),
                       ],

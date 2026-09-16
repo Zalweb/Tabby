@@ -40,36 +40,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorText = null;
     });
 
-    try {
-      if (SupabaseTabbyRepository.instance.isConnected) {
-        final authResponse = await SupabaseTabbyRepository.instance.signIn(
-          email: email,
-          password: password,
-        );
-
-        if (authResponse?.user == null && SupabaseConfig.currentUser == null) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _errorText = 'Invalid email or password. Please try again.';
-            });
-          }
-          return;
-        }
-
-        // Successfully authenticated! Load the real user profile and tabs
-        await ref.read(currentUserProvider.notifier).loadFromSupabase();
-        await ref.read(tabbyProvider.notifier).refreshTabs();
-      } else {
-        // Offline / unit-test fallback
-        ref.read(currentUserProvider.notifier).updateProfile(email: email);
-      }
-
+    if (!SupabaseTabbyRepository.instance.isConnected) {
       if (mounted) {
-        setState(() => _isLoading = false);
-        AppState.isAuthenticated.value = true;
-        context.go('/home');
+        setState(() {
+          _isLoading = false;
+          _errorText =
+              'Authentication service is unavailable. Please try again when online.';
+        });
       }
+      return;
+    }
+
+    try {
+      final authResponse = await SupabaseTabbyRepository.instance.signIn(
+        email: email,
+        password: password,
+      );
+      final session =
+          authResponse?.session ?? SupabaseConfig.auth.currentSession;
+
+      if (authResponse?.user == null || session == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorText = 'Invalid email or password. Please try again.';
+          });
+        }
+        return;
+      }
+
+      await ref.read(currentUserProvider.notifier).loadFromSupabase();
+      await ref.read(tabbyProvider.notifier).refreshTabs();
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      AppState.isAuthenticated.value = true;
+      context.go('/home');
     } catch (e) {
       debugPrint('[LoginScreen] Live Supabase auth error: $e');
       if (mounted) {
@@ -82,7 +88,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           } else if (errStr.contains('email not confirmed')) {
             _errorText = 'Please confirm your email before logging in.';
           } else {
-            _errorText = 'Sign in failed: ${e.toString().replaceAll('AuthApiException', '').replaceAll('AuthException', '').trim()}';
+            _errorText =
+                'Sign in failed: ${e.toString().replaceAll('AuthApiException', '').replaceAll('AuthException', '').trim()}';
           }
         });
       }
@@ -97,17 +104,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorText = null;
     });
 
+    if (!SupabaseTabbyRepository.instance.isConnected) {
+      if (mounted) {
+        setState(() {
+          _isGoogleLoading = false;
+          _errorText =
+              'Authentication service is unavailable. Please try again when online.';
+        });
+      }
+      return;
+    }
+
     try {
       if (SupabaseTabbyRepository.instance.isConnected) {
         final success =
             await SupabaseTabbyRepository.instance.signInWithGoogle();
 
         // Web: browser redirect handles the rest — nothing more to do here.
-        if (kIsWeb) return;
+        if (kIsWeb) {
+          if (mounted) setState(() => _isGoogleLoading = false);
+          return;
+        }
 
         // Native: success = false means user cancelled the picker.
         if (!success) {
           setState(() => _isGoogleLoading = false);
+          return;
+        }
+
+        if (SupabaseConfig.auth.currentSession == null) {
+          if (mounted) {
+            setState(() {
+              _isGoogleLoading = false;
+              _errorText =
+                  'Google sign-in is still in progress. Please try again after it finishes.';
+            });
+          }
           return;
         }
 
@@ -128,14 +160,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (mounted) {
       setState(() => _isGoogleLoading = false);
-      AppState.isAuthenticated.value = true;
-      context.go('/home');
+      if (SupabaseConfig.auth.currentSession != null) {
+        AppState.isAuthenticated.value = true;
+        context.go('/home');
+      }
     }
   }
 
   void _showForgotPasswordSheet() {
     final resetEmailController = TextEditingController(
-      text: _emailController.text.contains('@') ? _emailController.text.trim() : '',
+      text: _emailController.text.contains('@')
+          ? _emailController.text.trim()
+          : '',
     );
     String? resetError;
     bool isResetting = false;
@@ -148,7 +184,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom),
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: const BoxDecoration(
@@ -180,7 +217,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(height: 8),
                       const Text(
                         'Enter your registered email address to receive password reset instructions.',
-                        style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary, height: 1.4),
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: TabbyColors.textSecondary,
+                            height: 1.4),
                       ),
                       const SizedBox(height: 20),
                       _buildTextField(
@@ -192,7 +232,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: 8),
                         Text(
                           resetError!,
-                          style: const TextStyle(color: TabbyColors.alertRed, fontSize: 11),
+                          style: const TextStyle(
+                              color: TabbyColors.alertRed, fontSize: 11),
                         ),
                       ],
                       const SizedBox(height: 24),
@@ -205,7 +246,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 final email = resetEmailController.text.trim();
                                 if (email.isEmpty || !email.contains('@')) {
                                   setModalState(() {
-                                    resetError = 'Please enter a valid email address.';
+                                    resetError =
+                                        'Please enter a valid email address.';
+                                  });
+                                  return;
+                                }
+
+                                if (!SupabaseTabbyRepository
+                                    .instance.isConnected) {
+                                  setModalState(() {
+                                    resetError =
+                                        'Authentication service is unavailable. Please try again when online.';
                                   });
                                   return;
                                 }
@@ -216,15 +267,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 });
 
                                 try {
-                                  if (SupabaseConfig.isInitialized) {
-                                    await SupabaseConfig.auth.resetPasswordForEmail(email);
-                                  }
+                                  await SupabaseConfig.auth
+                                      .resetPasswordForEmail(email);
                                   if (context.mounted) {
                                     Navigator.pop(context);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text('Password reset link sent to $email! Please check your inbox.'),
-                                        backgroundColor: TabbyColors.brandEmerald,
+                                        content: Text(
+                                            'Password reset link sent to $email! Please check your inbox.'),
+                                        backgroundColor:
+                                            TabbyColors.brandEmerald,
                                         duration: const Duration(seconds: 3),
                                       ),
                                     );
@@ -232,7 +284,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 } catch (e) {
                                   setModalState(() {
                                     isResetting = false;
-                                    resetError = 'Failed to send reset link: ${e.toString().replaceAll('AuthApiException', '').replaceAll('AuthException', '').trim()}';
+                                    resetError =
+                                        'Failed to send reset link: ${e.toString().replaceAll('AuthApiException', '').replaceAll('AuthException', '').trim()}';
                                   });
                                 }
                               },
@@ -305,17 +358,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 obscureText: _obscurePassword,
                 suffixIcon: IconButton(
                   icon: Icon(
-                    _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
                     color: TabbyColors.textSecondary,
                   ),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
               if (_errorText != null) ...[
                 const SizedBox(height: 8),
                 Text(
                   _errorText!,
-                  style: const TextStyle(color: TabbyColors.alertRed, fontSize: 11),
+                  style: const TextStyle(
+                      color: TabbyColors.alertRed, fontSize: 11),
                 ),
               ],
               const SizedBox(height: 24),
@@ -340,7 +397,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Expanded(child: Divider(color: TabbyColors.borderMint)),
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('or', style: TextStyle(color: TabbyColors.textSecondary)),
+                    child: Text('or',
+                        style: TextStyle(color: TabbyColors.textSecondary)),
                   ),
                   Expanded(child: Divider(color: TabbyColors.borderMint)),
                 ],
@@ -375,12 +433,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Don't have an account? ", style: TextStyle(color: TabbyColors.textSecondary)),
+                  const Text("Don't have an account? ",
+                      style: TextStyle(color: TabbyColors.textSecondary)),
                   GestureDetector(
                     onTap: () => context.go('/signup'),
                     child: const Text(
                       'Sign Up',
-                      style: TextStyle(color: TabbyColors.brandEmerald, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          color: TabbyColors.brandEmerald,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -413,7 +474,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           prefixIcon: Icon(icon, color: TabbyColors.textSecondary),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
     );

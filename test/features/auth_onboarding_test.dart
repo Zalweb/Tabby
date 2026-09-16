@@ -10,7 +10,8 @@ void main() {
     AppState.hasSeenOnboarding.value = false;
   });
 
-  testWidgets('App opens Onboarding by default on first launch', (tester) async {
+  testWidgets('App opens Onboarding by default on first launch',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -50,7 +51,8 @@ void main() {
     expect(find.text('Log In'), findsOneWidget);
   });
 
-  testWidgets('Login validation and successful authentication flow', (tester) async {
+  testWidgets('Login refuses to authenticate when Supabase is unavailable',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -81,15 +83,19 @@ void main() {
     await tester.enterText(textFields.at(1), 'password123');
     await tester.pumpAndSettle();
 
-    // Tap Log In
+    // Tap Log In while the backend is unavailable. Local/mock auth must not unlock the app.
     await tester.tap(find.text('Log In'));
     await tester.pumpAndSettle();
 
-    expect(AppState.isAuthenticated.value, isTrue);
-    expect(find.text('Frienzal'), findsOneWidget);
+    expect(AppState.isAuthenticated.value, isFalse);
+    expect(
+        find.text(
+            'Authentication service is unavailable. Please try again when online.'),
+        findsOneWidget);
   });
 
-  testWidgets('Navigation from Login to SignUp and account creation', (tester) async {
+  testWidgets('SignUp refuses to authenticate when Supabase is unavailable',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -131,7 +137,10 @@ void main() {
     await tester.tap(find.text('Create Account'));
     await tester.pumpAndSettle();
 
-    expect(AppState.isAuthenticated.value, isTrue);
-    expect(find.text('Frienzal'), findsOneWidget);
+    expect(AppState.isAuthenticated.value, isFalse);
+    expect(
+        find.text(
+            'Authentication service is unavailable. Please try again when online.'),
+        findsOneWidget);
   });
 }

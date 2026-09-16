@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tabby/features/tabs/application/tabby_providers.dart';
 import 'package:tabby/features/tabs/data/mock_tabby_repository.dart';
 import 'package:tabby/features/tabs/data/supabase_tabby_repository.dart';
 import 'package:tabby/features/tabs/data/tabby_local_cache.dart';
@@ -8,7 +9,9 @@ import 'package:tabby/features/tabs/domain/models.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   group('Backend Data Handling & Supabase Serialization Tests', () {
-    test('Category serialization and deserialization covers all ExpenseCategory values', () {
+    test(
+        'Category serialization and deserialization covers all ExpenseCategory values',
+        () {
       for (final cat in ExpenseCategory.values) {
         final serialized = SupabaseTabbyRepository.mapCategory(cat);
         expect(serialized, isNotEmpty);
@@ -17,46 +20,79 @@ void main() {
       }
 
       // Edge cases & unknown strings
-      expect(SupabaseTabbyRepository.unmapCategory('UNKNOWN_XYZ'), equals(ExpenseCategory.other));
-      expect(SupabaseTabbyRepository.unmapCategory(null), equals(ExpenseCategory.other));
-      expect(SupabaseTabbyRepository.unmapCategory(''), equals(ExpenseCategory.other));
-      expect(SupabaseTabbyRepository.unmapCategory('FOOD'), equals(ExpenseCategory.food));
-      expect(SupabaseTabbyRepository.unmapCategory('Borrowed_Cash'), equals(ExpenseCategory.borrowedCash));
+      expect(SupabaseTabbyRepository.unmapCategory('UNKNOWN_XYZ'),
+          equals(ExpenseCategory.other));
+      expect(SupabaseTabbyRepository.unmapCategory(null),
+          equals(ExpenseCategory.other));
+      expect(SupabaseTabbyRepository.unmapCategory(''),
+          equals(ExpenseCategory.other));
+      expect(SupabaseTabbyRepository.unmapCategory('FOOD'),
+          equals(ExpenseCategory.food));
+      expect(SupabaseTabbyRepository.unmapCategory('Borrowed_Cash'),
+          equals(ExpenseCategory.borrowedCash));
     });
 
-    test('PaymentMethod serialization and deserialization covers all values', () {
+    test('PaymentMethod serialization and deserialization covers all values',
+        () {
       for (final method in PaymentMethod.values) {
         final serialized = SupabaseTabbyRepository.mapPaymentMethod(method);
         expect(serialized, isNotEmpty);
-        final deserialized = SupabaseTabbyRepository.unmapPaymentMethod(serialized);
+        final deserialized =
+            SupabaseTabbyRepository.unmapPaymentMethod(serialized);
         expect(deserialized, equals(method));
       }
 
       // Edge cases & unknown strings
-      expect(SupabaseTabbyRepository.unmapPaymentMethod('crypto'), equals(PaymentMethod.other));
-      expect(SupabaseTabbyRepository.unmapPaymentMethod(null), equals(PaymentMethod.other));
-      expect(SupabaseTabbyRepository.unmapPaymentMethod(''), equals(PaymentMethod.other));
-      expect(SupabaseTabbyRepository.unmapPaymentMethod('GCASH'), equals(PaymentMethod.gcash));
-      expect(SupabaseTabbyRepository.unmapPaymentMethod('bank_transfer'), equals(PaymentMethod.bankTransfer));
+      expect(SupabaseTabbyRepository.unmapPaymentMethod('crypto'),
+          equals(PaymentMethod.other));
+      expect(SupabaseTabbyRepository.unmapPaymentMethod(null),
+          equals(PaymentMethod.other));
+      expect(SupabaseTabbyRepository.unmapPaymentMethod(''),
+          equals(PaymentMethod.other));
+      expect(SupabaseTabbyRepository.unmapPaymentMethod('GCASH'),
+          equals(PaymentMethod.gcash));
+      expect(SupabaseTabbyRepository.unmapPaymentMethod('bank_transfer'),
+          equals(PaymentMethod.bankTransfer));
     });
 
-    test('TransactionStatus deserialization covers all Postgres status strings', () {
-      expect(SupabaseTabbyRepository.unmapTransactionStatus('settled'), equals(TransactionStatus.settled));
-      expect(SupabaseTabbyRepository.unmapTransactionStatus('payment_submitted'), equals(TransactionStatus.paymentSubmitted));
-      expect(SupabaseTabbyRepository.unmapTransactionStatus('cancelled'), equals(TransactionStatus.cancelled));
-      expect(SupabaseTabbyRepository.unmapTransactionStatus('acknowledged'), equals(TransactionStatus.acknowledged));
-      expect(SupabaseTabbyRepository.unmapTransactionStatus('pending'), equals(TransactionStatus.pending));
+    test('TransactionStatus deserialization covers all Postgres status strings',
+        () {
+      expect(SupabaseTabbyRepository.unmapTransactionStatus('settled'),
+          equals(TransactionStatus.settled));
+      expect(
+          SupabaseTabbyRepository.unmapTransactionStatus('payment_submitted'),
+          equals(TransactionStatus.paymentSubmitted));
+      expect(SupabaseTabbyRepository.unmapTransactionStatus('cancelled'),
+          equals(TransactionStatus.cancelled));
+      expect(SupabaseTabbyRepository.unmapTransactionStatus('acknowledged'),
+          equals(TransactionStatus.acknowledged));
+      expect(SupabaseTabbyRepository.unmapTransactionStatus('pending'),
+          equals(TransactionStatus.pending));
       // Unknown / fallback
-      expect(SupabaseTabbyRepository.unmapTransactionStatus('unknown'), equals(TransactionStatus.pending));
-      expect(SupabaseTabbyRepository.unmapTransactionStatus(null), equals(TransactionStatus.pending));
-      expect(SupabaseTabbyRepository.unmapTransactionStatus('SETTLED'), equals(TransactionStatus.settled));
+      expect(SupabaseTabbyRepository.unmapTransactionStatus('unknown'),
+          equals(TransactionStatus.pending));
+      expect(SupabaseTabbyRepository.unmapTransactionStatus(null),
+          equals(TransactionStatus.pending));
+      expect(SupabaseTabbyRepository.unmapTransactionStatus('SETTLED'),
+          equals(TransactionStatus.settled));
     });
 
-    test('UUID validator accurately distinguishes valid UUIDs from synthetic IDs', () {
+    test(
+        'UUID validator accurately distinguishes valid UUIDs from synthetic IDs',
+        () {
       // Valid RFC 4122 v4 UUIDs
-      expect(SupabaseTabbyRepository.isValidUuid('c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c'), isTrue);
-      expect(SupabaseTabbyRepository.isValidUuid('00000000-0000-0000-0000-000000000000'), isTrue);
-      expect(SupabaseTabbyRepository.isValidUuid('C1A2B3C4-D5E6-4F7A-8B9C-0D1E2F3A4B5C'), isTrue);
+      expect(
+          SupabaseTabbyRepository.isValidUuid(
+              'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c'),
+          isTrue);
+      expect(
+          SupabaseTabbyRepository.isValidUuid(
+              '00000000-0000-0000-0000-000000000000'),
+          isTrue);
+      expect(
+          SupabaseTabbyRepository.isValidUuid(
+              'C1A2B3C4-D5E6-4F7A-8B9C-0D1E2F3A4B5C'),
+          isTrue);
 
       // Synthetic IDs
       expect(SupabaseTabbyRepository.isValidUuid('user-me'), isFalse);
@@ -64,11 +100,19 @@ void main() {
       expect(SupabaseTabbyRepository.isValidUuid('group-beach-trip'), isFalse);
       expect(SupabaseTabbyRepository.isValidUuid(''), isFalse);
       expect(SupabaseTabbyRepository.isValidUuid('12345'), isFalse);
-      expect(SupabaseTabbyRepository.isValidUuid('c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5'), isFalse); // too short
-      expect(SupabaseTabbyRepository.isValidUuid('c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c9'), isFalse); // too long
+      expect(
+          SupabaseTabbyRepository.isValidUuid(
+              'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5'),
+          isFalse); // too short
+      expect(
+          SupabaseTabbyRepository.isValidUuid(
+              'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c9'),
+          isFalse); // too long
     });
 
-    test('SupabaseTabbyRepository offline resilience handles uninitialized backend gracefully', () async {
+    test(
+        'SupabaseTabbyRepository offline resilience handles uninitialized backend gracefully',
+        () async {
       final repo = SupabaseTabbyRepository.instance;
       expect(repo.isConnected, isFalse);
 
@@ -116,7 +160,8 @@ void main() {
     const friendId = 'user-friend';
 
     test('Empty ledger entries calculate to zero centavos', () {
-      expect(MockTabbyRepository.calculateNetBalance([], currentUserId), equals(0));
+      expect(MockTabbyRepository.calculateNetBalance([], currentUserId),
+          equals(0));
     });
 
     test('Single expense paid by current user creates positive balance', () {
@@ -134,7 +179,8 @@ void main() {
           date: DateTime.now(),
         ),
       ];
-      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId), equals(50000));
+      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId),
+          equals(50000));
     });
 
     test('Single expense paid by counterpart creates negative balance', () {
@@ -152,10 +198,12 @@ void main() {
           date: DateTime.now(),
         ),
       ];
-      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId), equals(-25000));
+      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId),
+          equals(-25000));
     });
 
-    test('Two-way mutual debts offset correctly into a net integer balance', () {
+    test('Two-way mutual debts offset correctly into a net integer balance',
+        () {
       final entries = [
         // I paid ₱500 for friend
         LedgerEntry(
@@ -185,7 +233,8 @@ void main() {
         ),
       ];
       // Net: 50000 - 20000 = +30000 (+₱300.00)
-      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId), equals(30000));
+      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId),
+          equals(30000));
     });
 
     test('Partial payment reduces net balance correctly', () {
@@ -221,7 +270,8 @@ void main() {
         ),
       ];
       // Net: 50000 - 20000 = +30000 (+₱300.00)
-      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId), equals(30000));
+      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId),
+          equals(30000));
     });
 
     test('Full settlement zeros out the tab completely', () {
@@ -254,10 +304,12 @@ void main() {
           status: TransactionStatus.settled,
         ),
       ];
-      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId), equals(0));
+      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId),
+          equals(0));
     });
 
-    test('Current user paying friend offsets negative debt balance to zero', () {
+    test('Current user paying friend offsets negative debt balance to zero',
+        () {
       final entries = [
         // Friend paid ₱300 for me -> I owe friend ₱300
         LedgerEntry(
@@ -289,7 +341,8 @@ void main() {
           status: TransactionStatus.settled,
         ),
       ];
-      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId), equals(0));
+      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId),
+          equals(0));
     });
 
     test('Cancelled transactions are ignored in net balance calculation', () {
@@ -308,7 +361,8 @@ void main() {
           status: TransactionStatus.cancelled,
         ),
       ];
-      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId), equals(0));
+      expect(MockTabbyRepository.calculateNetBalance(entries, currentUserId),
+          equals(0));
     });
 
     test('50/50 split on odd centavos preserves exact sum without loss', () {
@@ -333,11 +387,14 @@ void main() {
         ),
       ];
 
-      final net = MockTabbyRepository.calculateNetBalance(entries, currentUserId);
+      final net =
+          MockTabbyRepository.calculateNetBalance(entries, currentUserId);
       expect(net, equals(5001)); // Friend owes 5001 centavos (₱50.01)
     });
 
-    test('Zero floating-point drift: 10,000 centavo operations maintain integer exactitude', () {
+    test(
+        'Zero floating-point drift: 10,000 centavo operations maintain integer exactitude',
+        () {
       int runningBalance = 0;
       for (int i = 1; i <= 10000; i++) {
         final amount = (i % 999) + 1;
@@ -356,26 +413,35 @@ void main() {
     const currentUserId = 'user-me-uuid-123';
     const counterpartUserId = 'user-alex-uuid-456';
 
-    test('parseTabRow returns null on invalid or missing tabId or missing counterpart', () {
+    test(
+        'parseTabRow returns null on invalid or missing tabId or missing counterpart',
+        () {
       expect(SupabaseTabbyRepository.parseTabRow({}, currentUserId), isNull);
-      expect(SupabaseTabbyRepository.parseTabRow({'id': ''}, currentUserId), isNull);
+      expect(SupabaseTabbyRepository.parseTabRow({'id': ''}, currentUserId),
+          isNull);
 
       // tab with no members
-      expect(SupabaseTabbyRepository.parseTabRow({
-        'id': 'tab-1',
-        'tab_members': <dynamic>[],
-      }, currentUserId), isNull);
+      expect(
+          SupabaseTabbyRepository.parseTabRow({
+            'id': 'tab-1',
+            'tab_members': <dynamic>[],
+          }, currentUserId),
+          isNull);
 
       // tab where only current user is a member
-      expect(SupabaseTabbyRepository.parseTabRow({
-        'id': 'tab-1',
-        'tab_members': [
-          {'user_id': currentUserId}
-        ],
-      }, currentUserId), isNull);
+      expect(
+          SupabaseTabbyRepository.parseTabRow({
+            'id': 'tab-1',
+            'tab_members': [
+              {'user_id': currentUserId}
+            ],
+          }, currentUserId),
+          isNull);
     });
 
-    test('parseTabRow correctly deserializes full PostgREST nested payload with counterpart, expenses, and payments', () {
+    test(
+        'parseTabRow correctly deserializes full PostgREST nested payload with counterpart, expenses, and payments',
+        () {
       final rawTabRow = {
         'id': 'tab-uuid-101',
         'tab_type': 'bilateral',
@@ -494,7 +560,8 @@ void main() {
       expect(parsed.entries[0].title, equals('Alex Rivera paid'));
 
       expect(parsed.entries[1].id, equals('tx-2'));
-      expect(parsed.entries[1].category, equals(ExpenseCategory.transportation));
+      expect(
+          parsed.entries[1].category, equals(ExpenseCategory.transportation));
       expect(parsed.entries[1].myShareCentavos, equals(20000));
       expect(parsed.entries[1].counterpartShareCentavos, equals(20000));
       expect(parsed.entries[1].paidByName, equals('Alex Rivera'));
@@ -507,7 +574,9 @@ void main() {
       expect(parsed.entries[2].dueDate, isNotNull);
     });
 
-    test('parseTabRow handles fallback fields when optional values are null or omitted', () {
+    test(
+        'parseTabRow handles fallback fields when optional values are null or omitted',
+        () {
       final rawTabRow = {
         'id': 'tab-uuid-202',
         'tab_members': [
@@ -533,7 +602,8 @@ void main() {
         ],
       };
 
-      final parsed = SupabaseTabbyRepository.parseTabRow(rawTabRow, currentUserId);
+      final parsed =
+          SupabaseTabbyRepository.parseTabRow(rawTabRow, currentUserId);
       expect(parsed, isNotNull);
       expect(parsed!.counterpart.displayName, equals('Friend')); // fallback
       expect(parsed.entries.length, equals(2));
@@ -548,7 +618,9 @@ void main() {
       expect(pay.title, equals('You paid'));
     });
 
-    test('recordPayment executes safely offline and ignores invalid UUIDs without throwing', () async {
+    test(
+        'recordPayment executes safely offline and ignores invalid UUIDs without throwing',
+        () async {
       // Offline / synthetic tabId
       await expectLater(
         SupabaseTabbyRepository.instance.recordPayment(
@@ -631,7 +703,8 @@ void main() {
       expect(restored.qrCodeUrl, equals(user.qrCodeUrl));
     });
 
-    test('ParticipantShare toMap and fromMap roundtrip preserves all fields', () {
+    test('ParticipantShare toMap and fromMap roundtrip preserves all fields',
+        () {
       const share = ParticipantShare(
         userId: 'usr-p1',
         name: 'Pao',
@@ -648,7 +721,9 @@ void main() {
       expect(restored.acknowledged, isTrue);
     });
 
-    test('LedgerEntry toMap and fromMap roundtrip preserves all transaction and payment details', () {
+    test(
+        'LedgerEntry toMap and fromMap roundtrip preserves all transaction and payment details',
+        () {
       final now = DateTime.now();
       final entry = LedgerEntry(
         id: 'tx-999',
@@ -679,13 +754,16 @@ void main() {
       expect(restored.myShareCentavos, equals(50000));
       expect(restored.counterpartShareCentavos, equals(100000));
       expect(restored.paidByUserId, equals('usr-1'));
-      expect(restored.receiptUrl, equals('https://tabby.ph/receipts/team_dinner.png'));
+      expect(restored.receiptUrl,
+          equals('https://tabby.ph/receipts/team_dinner.png'));
       expect(restored.paymentMethod, equals(PaymentMethod.gcash));
       expect(restored.status, equals(TransactionStatus.acknowledged));
       expect(restored.note, equals('Split 3 ways'));
     });
 
-    test('BilateralTab toMap and fromMap roundtrip preserves nested counterpart and entries', () {
+    test(
+        'BilateralTab toMap and fromMap roundtrip preserves nested counterpart and entries',
+        () {
       final now = DateTime.now();
       const friend = TabbyUser(
         id: 'usr-carlos',
@@ -728,7 +806,8 @@ void main() {
       expect(restored.isGroupTab, isFalse);
     });
 
-    test('TabbyActivity toMap and fromMap roundtrip preserves event details', () {
+    test('TabbyActivity toMap and fromMap roundtrip preserves event details',
+        () {
       final now = DateTime.now();
       final activity = TabbyActivity(
         id: 'act-001',
@@ -746,7 +825,9 @@ void main() {
       expect(restored.amountCentavos, equals(50000));
     });
 
-    test('UpcomingReminder toMap and fromMap roundtrip preserves financial due dates', () {
+    test(
+        'UpcomingReminder toMap and fromMap roundtrip preserves financial due dates',
+        () {
       final dueDate = DateTime.now().add(const Duration(days: 3));
       final reminder = UpcomingReminder(
         id: 'rem-001',
@@ -770,7 +851,9 @@ void main() {
   });
 
   group('Supabase Group Tab Deserialization (parseTabRow)', () {
-    test('parseTabRow correctly deserializes group tabs, group names, aggregated shares, and receipts', () {
+    test(
+        'parseTabRow correctly deserializes group tabs, group names, aggregated shares, and receipts',
+        () {
       const currentUserId = 'user-current-id';
 
       final groupTabRow = {
@@ -795,7 +878,8 @@ void main() {
             'total_amount_centavos': 300000,
             'created_by': currentUserId,
             'created_at': '2026-09-16T12:00:00Z',
-            'receipt_url': 'https://supabase.tabby.ph/receipts/villa_booking.png',
+            'receipt_url':
+                'https://supabase.tabby.ph/receipts/villa_booking.png',
             'status': 'settled',
             'transaction_participants': [
               {
@@ -835,10 +919,13 @@ void main() {
       expect(entry.myShareCentavos, equals(100000));
       // Counterpart share must aggregate shares of member 2 and member 3 (100000 + 100000 = 200000)
       expect(entry.counterpartShareCentavos, equals(200000));
-      expect(entry.receiptUrl, equals('https://supabase.tabby.ph/receipts/villa_booking.png'));
+      expect(entry.receiptUrl,
+          equals('https://supabase.tabby.ph/receipts/villa_booking.png'));
     });
 
-    test('parseTabRow correctly attributes group payments and member payer names', () {
+    test(
+        'parseTabRow correctly attributes group payments and member payer names',
+        () {
       const currentUserId = 'usr-current-uuid-1';
       final groupTabRow = {
         'id': 'tab-group-uuid-2',
@@ -934,7 +1021,8 @@ void main() {
       expect(payCarlos.paidByUserId, equals('usr-member-carlos'));
       expect(payCarlos.paidByName, equals('Carlos Mendoza'));
       expect(payCarlos.title, equals('Carlos Mendoza paid'));
-      expect(payCarlos.receiptUrl, equals('https://supabase.tabby.ph/proofs/gcash1.jpg'));
+      expect(payCarlos.receiptUrl,
+          equals('https://supabase.tabby.ph/proofs/gcash1.jpg'));
 
       // Payment 2: Submitted by current user
       final payMe = parsed.entries.firstWhere((e) => e.id == 'pay-group-2');
@@ -1009,7 +1097,41 @@ void main() {
       expect(loadedReminders.first.friendName, equals('Sam'));
     });
 
-    test('SupabaseTabbyRepository.signOut purges local secure cache and handles offline gracefully', () async {
+    test('TabbyLocalCache keeps different users in separate scopes', () async {
+      final userATab = BilateralTab(
+        id: 'tab-user-a',
+        counterpart: const TabbyUser(
+          id: 'friend-a',
+          displayName: 'Friend A',
+          email: '',
+          phone: '',
+        ),
+        entries: const [],
+        netBalanceCentavos: 1000,
+        itemCount: 0,
+        lastUpdated: DateTime.now(),
+      );
+      final userBTab = userATab.copyWith(
+        id: 'tab-user-b',
+        counterpart: userATab.counterpart.copyWith(
+          id: 'friend-b',
+          displayName: 'Friend B',
+        ),
+      );
+
+      await TabbyLocalCache.saveTabs([userATab], userId: 'user-a');
+      await TabbyLocalCache.saveTabs([userBTab], userId: 'user-b');
+
+      final loadedA = await TabbyLocalCache.loadTabs(userId: 'user-a');
+      final loadedB = await TabbyLocalCache.loadTabs(userId: 'user-b');
+
+      expect(loadedA!.single.id, equals('tab-user-a'));
+      expect(loadedB!.single.id, equals('tab-user-b'));
+    });
+
+    test(
+        'SupabaseTabbyRepository.signOut purges local secure cache and handles offline gracefully',
+        () async {
       final tab = BilateralTab(
         id: 'tab-cache-logout-1',
         counterpart: const TabbyUser(
@@ -1037,7 +1159,9 @@ void main() {
       expect(afterSignOut, isNull);
     });
 
-    test('parseTabRow accurately attributes payer from transaction_participants when created_by is current user', () {
+    test(
+        'parseTabRow accurately attributes payer from transaction_participants when created_by is current user',
+        () {
       final tabRow = {
         'id': 'tab-payer-test-1',
         'tab_type': 'bilateral',
@@ -1048,7 +1172,10 @@ void main() {
           },
           {
             'user_id': 'user-friend',
-            'users': {'display_name': 'Friend Carlos', 'email': 'carlos@tabby.ph'},
+            'users': {
+              'display_name': 'Friend Carlos',
+              'email': 'carlos@tabby.ph'
+            },
           },
         ],
         'transactions': [
@@ -1078,7 +1205,8 @@ void main() {
         'payments': [],
       };
 
-      final parsed = SupabaseTabbyRepository.parseTabRow(tabRow, 'user-current');
+      final parsed =
+          SupabaseTabbyRepository.parseTabRow(tabRow, 'user-current');
       expect(parsed, isNotNull);
       expect(parsed!.entries.length, equals(1));
 
@@ -1090,11 +1218,13 @@ void main() {
       expect(entry.counterpartShareCentavos, equals(5000));
 
       // Balance calculation: Carlos paid, so current user owes 5000 (-5000)
-      final netBalance = MockTabbyRepository.calculateNetBalance(parsed.entries, 'user-current');
+      final netBalance = MockTabbyRepository.calculateNetBalance(
+          parsed.entries, 'user-current');
       expect(netBalance, equals(-5000));
     });
 
-    test('parseTabRow extracts receipt URL from payment_proofs nested relation', () {
+    test('parseTabRow extracts receipt URL from payment_proofs nested relation',
+        () {
       final tabRow = {
         'id': 'tab-proof-test-1',
         'tab_type': 'bilateral',
@@ -1119,22 +1249,29 @@ void main() {
             'submitted_at': '2026-09-16T15:00:00Z',
             'payment_proofs': [
               {
-                'file_url': 'https://supabase.tabby.ph/storage/v1/object/proofs/gcash_123.jpg',
+                'file_url':
+                    'https://supabase.tabby.ph/storage/v1/object/proofs/gcash_123.jpg',
               },
             ],
           },
         ],
       };
 
-      final parsed = SupabaseTabbyRepository.parseTabRow(tabRow, 'user-current');
+      final parsed =
+          SupabaseTabbyRepository.parseTabRow(tabRow, 'user-current');
       expect(parsed, isNotNull);
       expect(parsed!.entries.length, equals(1));
       final paymentEntry = parsed.entries.first;
       expect(paymentEntry.isPayment, isTrue);
-      expect(paymentEntry.receiptUrl, equals('https://supabase.tabby.ph/storage/v1/object/proofs/gcash_123.jpg'));
+      expect(
+          paymentEntry.receiptUrl,
+          equals(
+              'https://supabase.tabby.ph/storage/v1/object/proofs/gcash_123.jpg'));
     });
 
-    test('SupabaseTabbyRepository archiveTab and attachReceipt execute safely offline', () async {
+    test(
+        'SupabaseTabbyRepository archiveTab and attachReceipt execute safely offline',
+        () async {
       final repo = SupabaseTabbyRepository.instance;
       expect(repo.isConnected, isFalse);
 
@@ -1144,9 +1281,47 @@ void main() {
       );
 
       await expectLater(
-        repo.attachReceipt('00000000-0000-0000-0000-000000000002', 'receipt.png'),
+        repo.attachReceipt(
+            '00000000-0000-0000-0000-000000000002', 'receipt.png'),
         completes,
       );
+    });
+
+    test('TabbyNotifier preserves locally added tabs and un-synced entries across refresh', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final notifier = TabbyNotifier();
+
+      // Add a friend tab locally
+      await notifier.addFriend(
+        name: 'Maria Clara',
+        phone: '+63 917 123 4567',
+      );
+
+      expect(notifier.state.tabs.any((t) => t.counterpart.displayName == 'Maria Clara'), isTrue);
+
+      // Add expense with Maria Clara
+      await notifier.addExpense(
+        counterpartId: notifier.state.tabs.firstWhere((t) => t.counterpart.displayName == 'Maria Clara').id,
+        counterpartName: 'Maria Clara',
+        title: 'Lunch treat',
+        totalAmountCentavos: 50000,
+        category: ExpenseCategory.food,
+        paidByMe: true,
+        isEqualSplit: true,
+      );
+
+      final tabBeforeRefresh = notifier.state.tabs.firstWhere((t) => t.counterpart.displayName == 'Maria Clara');
+      expect(tabBeforeRefresh.entries.length, equals(1));
+      expect(tabBeforeRefresh.netBalanceCentavos, equals(25000));
+
+      // Trigger refresh (simulating pull to refresh or sync)
+      await notifier.refreshTabs();
+
+      // Ensure tab is NOT wiped out and entries are intact!
+      final tabAfterRefresh = notifier.state.tabs.firstWhere((t) => t.counterpart.displayName == 'Maria Clara');
+      expect(tabAfterRefresh.entries.length, equals(1));
+      expect(tabAfterRefresh.entries.first.title, equals('Lunch treat'));
+      expect(tabAfterRefresh.netBalanceCentavos, equals(25000));
     });
   });
 }

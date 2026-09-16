@@ -17,7 +17,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           // When Supabase is initialized, start with an empty live state.
           // When running unit tests (Supabase not initialized), use mock data.
           SupabaseConfig.isInitialized
-              ? const TabbyDashboardState(tabs: [], activities: [], reminders: [])
+              ? const TabbyDashboardState(
+                  tabs: [], activities: [], reminders: [])
               : TabbyDashboardState(
                   tabs: MockTabbyRepository.getInitialTabs(),
                   activities: MockTabbyRepository.getInitialActivities(),
@@ -28,12 +29,28 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   }
 
   Future<void> _loadTabs() async {
+    final hasLiveSession =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
+    final currentUserId = hasLiveSession
+        ? SupabaseConfig.currentUserId!
+        : MockTabbyRepository.currentUser.id;
+
     // 1. Offline resilience: load from local cache first to prevent blank screens
+    List<BilateralTab>? cachedTabs;
     try {
-      final cachedTabs = await TabbyLocalCache.loadTabs();
-      final cachedActivities = await TabbyLocalCache.loadActivities();
-      final cachedReminders = await TabbyLocalCache.loadReminders();
-      if (mounted && (cachedTabs != null || cachedActivities != null || cachedReminders != null)) {
+      cachedTabs = await TabbyLocalCache.loadTabs(
+        userId: hasLiveSession ? currentUserId : null,
+      );
+      final cachedActivities = await TabbyLocalCache.loadActivities(
+        userId: hasLiveSession ? currentUserId : null,
+      );
+      final cachedReminders = await TabbyLocalCache.loadReminders(
+        userId: hasLiveSession ? currentUserId : null,
+      );
+      if (mounted &&
+          (cachedTabs != null ||
+              cachedActivities != null ||
+              cachedReminders != null)) {
         state = state.copyWith(
           tabs: cachedTabs ?? state.tabs,
           activities: cachedActivities ?? state.activities,
@@ -45,18 +62,96 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     }
 
     // 2. Fetch live data from Supabase backend
-    String currentUserId = MockTabbyRepository.currentUser.id;
-    if (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null) {
-      currentUserId = SupabaseConfig.currentUserId!;
-    }
-
     try {
-      final tabs = await SupabaseTabbyRepository.instance.fetchTabs(currentUserId);
+      final serverTabs =
+          await SupabaseTabbyRepository.instance.fetchTabs(currentUserId);
       if (mounted) {
-        if (tabs.isNotEmpty || (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null)) {
-          state = state.copyWith(tabs: tabs);
-          await TabbyLocalCache.saveTabs(tabs);
+        // Collect all candidate local tabs from in-memory state and local cache
+        final localTabsPool = <String, BilateralTab>{};
+        if (cachedTabs != null) {
+          for (final t in cachedTabs) {
+            localTabsPool[t.id] = t;
+          }
         }
+        for (final t in state.tabs) {
+          localTabsPool[t.id] = t;
+        }
+
+        final mergedTabs = <BilateralTab>[];
+        final processedLocalIds = <String>{};
+
+        for (final st in serverTabs) {
+          // Find matching local tab by tab id or counterpart id/name
+          final localMatch =
+              localTabsPool.values.cast<BilateralTab?>().firstWhere(
+                    (lt) =>
+                        lt != null &&
+                        (lt.id == st.id ||
+                            (!lt.isGroupTab &&
+                                !st.isGroupTab &&
+                                ((lt.counterpart.id.isNotEmpty &&
+                                        lt.counterpart.id ==
+                                            st.counterpart.id) ||
+                                    lt.counterpart.displayName
+                                            .trim()
+                                            .toLowerCase() ==
+                                        st.counterpart.displayName
+                                            .trim()
+                                            .toLowerCase()))),
+                    orElse: () => null,
+                  );
+
+          if (localMatch != null) {
+            processedLocalIds.add(localMatch.id);
+            // Merge entries: combine server entries and any local entries that haven't synced yet
+            final serverEntryIds = st.entries.map((e) => e.id).toSet();
+            final combinedEntries = <LedgerEntry>[...st.entries];
+            for (final le in localMatch.entries) {
+              if (!serverEntryIds.contains(le.id)) {
+                combinedEntries.add(le);
+              }
+            }
+            combinedEntries.sort((a, b) => b.date.compareTo(a.date));
+
+            final effectiveBalance = MockTabbyRepository.calculateNetBalance(
+              combinedEntries,
+              currentUserId,
+            );
+
+            mergedTabs.add(st.copyWith(
+              entries: combinedEntries,
+              itemCount: combinedEntries.length,
+              netBalanceCentavos: effectiveBalance,
+            ));
+          } else {
+            mergedTabs.add(st);
+          }
+        }
+
+        // Add remaining local tabs that were not on server
+        for (final entry in localTabsPool.entries) {
+          if (!processedLocalIds.contains(entry.key)) {
+            final alreadyInMerged = mergedTabs.any((m) =>
+                m.id == entry.value.id ||
+                (!m.isGroupTab &&
+                    !entry.value.isGroupTab &&
+                    ((m.counterpart.id.isNotEmpty &&
+                            m.counterpart.id == entry.value.counterpart.id) ||
+                        m.counterpart.displayName.trim().toLowerCase() ==
+                            entry.value.counterpart.displayName
+                                .trim()
+                                .toLowerCase())));
+            if (!alreadyInMerged) {
+              mergedTabs.add(entry.value);
+            }
+          }
+        }
+
+        state = state.copyWith(tabs: mergedTabs);
+        await TabbyLocalCache.saveTabs(
+          mergedTabs,
+          userId: hasLiveSession ? currentUserId : null,
+        );
       }
     } catch (e) {
       debugPrint('[TabbyNotifier] Live fetch error: $e');
@@ -90,8 +185,14 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     DateTime? dueDate,
     String? receiptUrl,
   }) async {
-    final currentUserId = SupabaseConfig.isInitialized ? (SupabaseConfig.currentUserId ?? MockTabbyRepository.currentUser.id) : MockTabbyRepository.currentUser.id;
-    final currentUserDisplayName = SupabaseConfig.isInitialized && SupabaseConfig.currentUser != null ? (SupabaseConfig.currentUser!.userMetadata?['display_name'] ?? MockTabbyRepository.currentUser.displayName) : MockTabbyRepository.currentUser.displayName;
+    final currentUserId = SupabaseConfig.isInitialized
+        ? (SupabaseConfig.currentUserId ?? MockTabbyRepository.currentUser.id)
+        : MockTabbyRepository.currentUser.id;
+    final currentUserDisplayName =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUser != null
+            ? (SupabaseConfig.currentUser!.userMetadata?['display_name'] ??
+                MockTabbyRepository.currentUser.displayName)
+            : MockTabbyRepository.currentUser.displayName;
 
     final now = DateTime.now();
 
@@ -206,14 +307,18 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       emotionCustomMessage: 'Tab logged successfully! Calculating balances...',
     );
 
-    TabbyLocalCache.saveTabs(updatedTabs);
-    TabbyLocalCache.saveActivities([newActivity, ...state.activities]);
-    TabbyLocalCache.saveReminders(updatedReminders);
+    final cacheUserId =
+        SupabaseConfig.isInitialized ? SupabaseConfig.currentUserId : null;
+    await TabbyLocalCache.saveTabs(updatedTabs, userId: cacheUserId);
+    await TabbyLocalCache.saveActivities([newActivity, ...state.activities],
+        userId: cacheUserId);
+    await TabbyLocalCache.saveReminders(updatedReminders, userId: cacheUserId);
 
     // Synchronize with Supabase backend
     if (SupabaseConfig.isInitialized) {
       try {
-        final isGroupTab = existingTabIndex >= 0 && state.tabs[existingTabIndex].isGroupTab;
+        final isGroupTab =
+            existingTabIndex >= 0 && state.tabs[existingTabIndex].isGroupTab;
 
         // Ensure counterpart exists in public.users (handles typed-name friends with synthetic IDs)
         final resolvedCounterpartId = isGroupTab
@@ -223,7 +328,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
         String? realTabId;
         if (existingTabIndex >= 0 &&
-            SupabaseTabbyRepository.isValidUuid(state.tabs[existingTabIndex].id)) {
+            SupabaseTabbyRepository.isValidUuid(
+                state.tabs[existingTabIndex].id)) {
           realTabId = state.tabs[existingTabIndex].id;
         } else if (!isGroupTab &&
             SupabaseTabbyRepository.isValidUuid(currentUserId) &&
@@ -235,7 +341,39 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           );
         }
 
+        // If not a group and not a registered user, resolve or create contact tab
+        if (realTabId == null &&
+            !isGroupTab &&
+            SupabaseTabbyRepository.isValidUuid(currentUserId)) {
+          final contactResult =
+              await SupabaseTabbyRepository.instance.getOrCreateContactTab(
+            ownerId: currentUserId,
+            contactName: counterpartName,
+          );
+          if (contactResult != null && contactResult['tab_id'] != null) {
+            realTabId = contactResult['tab_id'];
+          }
+        }
+
         if (realTabId != null) {
+          // Update local tab id if it was synthetic
+          final currentIdx = state.tabs.indexWhere(
+            (t) =>
+                t.id == counterpartId ||
+                t.counterpart.id == counterpartId ||
+                t.id == realTabId,
+          );
+          if (currentIdx >= 0 && state.tabs[currentIdx].id != realTabId) {
+            final fixedTabs = List<BilateralTab>.from(state.tabs);
+            fixedTabs[currentIdx] =
+                fixedTabs[currentIdx].copyWith(id: realTabId);
+            state = state.copyWith(tabs: fixedTabs);
+            await TabbyLocalCache.saveTabs(
+              fixedTabs,
+              userId: cacheUserId,
+            );
+          }
+
           await SupabaseTabbyRepository.instance.logExpense(
             tabId: realTabId,
             title: title.trim().isEmpty ? category.displayName : title.trim(),
@@ -264,15 +402,23 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required String tabId,
     required int amountCentavos,
     required PaymentMethod method,
-    required bool isPayingMe, // true if counterpart paid user; false if user paid counterpart
+    required bool
+        isPayingMe, // true if counterpart paid user; false if user paid counterpart
     String? note,
   }) async {
-    final currentUserId = SupabaseConfig.isInitialized ? (SupabaseConfig.currentUserId ?? MockTabbyRepository.currentUser.id) : MockTabbyRepository.currentUser.id;
-    final currentUserDisplayName = SupabaseConfig.isInitialized && SupabaseConfig.currentUser != null ? (SupabaseConfig.currentUser!.userMetadata?['display_name'] ?? MockTabbyRepository.currentUser.displayName) : MockTabbyRepository.currentUser.displayName;
+    final currentUserId = SupabaseConfig.isInitialized
+        ? (SupabaseConfig.currentUserId ?? MockTabbyRepository.currentUser.id)
+        : MockTabbyRepository.currentUser.id;
+    final currentUserDisplayName =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUser != null
+            ? (SupabaseConfig.currentUser!.userMetadata?['display_name'] ??
+                MockTabbyRepository.currentUser.displayName)
+            : MockTabbyRepository.currentUser.displayName;
 
     final now = DateTime.now();
 
-    final tabIndex = state.tabs.indexWhere((t) => t.id == tabId || t.counterpart.id == tabId);
+    final tabIndex = state.tabs
+        .indexWhere((t) => t.id == tabId || t.counterpart.id == tabId);
     if (tabIndex < 0) return;
 
     final tab = state.tabs[tabIndex];
@@ -288,7 +434,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       myShareCentavos: 0,
       counterpartShareCentavos: 0,
       paidByUserId: isPayingMe ? tab.counterpart.id : currentUserId,
-      paidByName: isPayingMe ? tab.counterpart.displayName : currentUserDisplayName,
+      paidByName:
+          isPayingMe ? tab.counterpart.displayName : currentUserDisplayName,
       date: now,
       status: TransactionStatus.settled,
       isPayment: true,
@@ -313,12 +460,18 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     updatedTabs[tabIndex] = updatedTab;
 
     // Filter out resolved reminders for this tab if now settled
-    final updatedReminders = state.reminders.where((r) => (r.tabId != tab.id && r.tabId != tab.counterpart.id) || newNetBalance.abs() > 0).toList();
+    final updatedReminders = state.reminders
+        .where((r) =>
+            (r.tabId != tab.id && r.tabId != tab.counterpart.id) ||
+            newNetBalance.abs() > 0)
+        .toList();
 
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
-      actorName: isPayingMe ? tab.counterpart.displayName : currentUserDisplayName,
-      description: 'settled ₱${(amountCentavos / 100).toStringAsFixed(2)} via ${method.label}',
+      actorName:
+          isPayingMe ? tab.counterpart.displayName : currentUserDisplayName,
+      description:
+          'settled ₱${(amountCentavos / 100).toStringAsFixed(2)} via ${method.label}',
       amountCentavos: amountCentavos,
       timestamp: now,
       iconData: method.iconData,
@@ -334,9 +487,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           : 'Payment recorded! Remaining balance updated.',
     );
 
-    TabbyLocalCache.saveTabs(updatedTabs);
-    TabbyLocalCache.saveActivities([newActivity, ...state.activities]);
-    TabbyLocalCache.saveReminders(updatedReminders);
+    final cacheUserId =
+        SupabaseConfig.isInitialized ? SupabaseConfig.currentUserId : null;
+    await TabbyLocalCache.saveTabs(updatedTabs, userId: cacheUserId);
+    await TabbyLocalCache.saveActivities([newActivity, ...state.activities],
+        userId: cacheUserId);
+    await TabbyLocalCache.saveReminders(updatedReminders, userId: cacheUserId);
 
     // Synchronize payment with Supabase backend
     if (SupabaseConfig.isInitialized) {
@@ -351,17 +507,35 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
             userA: currentUserId,
             userB: tab.counterpart.id,
           );
+        } else if (SupabaseTabbyRepository.isValidUuid(currentUserId)) {
+          final contactResult =
+              await SupabaseTabbyRepository.instance.getOrCreateContactTab(
+            ownerId: currentUserId,
+            contactName: tab.counterpart.displayName,
+          );
+          if (contactResult != null) {
+            realTabId = contactResult['tab_id'];
+          }
         }
 
         if (realTabId != null) {
+          final effectivePaidBy =
+              SupabaseTabbyRepository.isValidUuid(tab.counterpart.id)
+                  ? (isPayingMe ? tab.counterpart.id : currentUserId)
+                  : currentUserId;
+          final effectiveReceivedBy =
+              SupabaseTabbyRepository.isValidUuid(tab.counterpart.id)
+                  ? (isPayingMe ? currentUserId : tab.counterpart.id)
+                  : currentUserId;
+
           await SupabaseTabbyRepository.instance.recordPayment(
             tabId: realTabId,
             amountCentavos: amountCentavos,
             method: method,
-            paidByUserId: isPayingMe ? tab.counterpart.id : currentUserId,
-            receivedByUserId: isPayingMe ? currentUserId : tab.counterpart.id,
+            paidByUserId: effectivePaidBy,
+            receivedByUserId: effectiveReceivedBy,
             note: note,
-            confirmedByUserId: isPayingMe ? currentUserId : null,
+            confirmedByUserId: currentUserId,
           );
           await _loadTabs();
         }
@@ -371,7 +545,6 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     }
 
     _scheduleEmotionReset(seconds: 4);
-
   }
 
   /// Sends a gentle reminder to a friend
@@ -393,13 +566,15 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     state = state.copyWith(
       activities: [newActivity, ...state.activities],
       emotionOverride: MascotEmotion.gentleNudge,
-      emotionCustomMessage: 'Friendly reminder sent to $friendName for our shared tab.',
+      emotionCustomMessage:
+          'Friendly reminder sent to $friendName for our shared tab.',
     );
 
     _scheduleEmotionReset(seconds: 5);
   }
 
-  void setTemporaryEmotion(MascotEmotion emotion, {String? message, int durationSeconds = 3}) {
+  void setTemporaryEmotion(MascotEmotion emotion,
+      {String? message, int durationSeconds = 3}) {
     state = state.copyWith(
       emotionOverride: emotion,
       emotionCustomMessage: message,
@@ -422,26 +597,59 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   }
 
   /// Adds a new friend and creates an initial bilateral tab
-  void addFriend({
+  Future<void> addFriend({
     required String name,
     required String phone,
     String email = '',
     String gcashNumber = '',
     String mayaNumber = '',
-  }) {
+  }) async {
+    final hasLiveSession =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
+    final currentUserId = hasLiveSession
+        ? SupabaseConfig.currentUserId!
+        : MockTabbyRepository.currentUser.id;
+
     final now = DateTime.now();
-    final friendId = 'user-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-${now.millisecondsSinceEpoch % 10000}';
+    String tabId =
+        'user-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-${now.millisecondsSinceEpoch % 10000}';
+    String counterpartId = tabId;
+
+    if (hasLiveSession && SupabaseTabbyRepository.isValidUuid(currentUserId)) {
+      try {
+        final contactRes =
+            await SupabaseTabbyRepository.instance.getOrCreateContactTab(
+          ownerId: currentUserId,
+          contactName: name,
+        );
+        if (contactRes != null) {
+          if (contactRes['tab_id'] != null &&
+              contactRes['tab_id']!.isNotEmpty) {
+            tabId = contactRes['tab_id']!;
+          }
+          if (contactRes['contact_id'] != null &&
+              contactRes['contact_id']!.isNotEmpty) {
+            counterpartId = contactRes['contact_id']!;
+          }
+        }
+      } catch (e) {
+        debugPrint('[TabbyNotifier] addFriend Supabase sync error: $e');
+      }
+    }
+
     final newFriend = TabbyUser(
-      id: friendId,
+      id: counterpartId,
       displayName: name,
-      email: email.isNotEmpty ? email : '${name.toLowerCase().replaceAll(RegExp(r'\s+'), '.')}@example.com',
+      email: email.isNotEmpty
+          ? email
+          : '${name.toLowerCase().replaceAll(RegExp(r'\s+'), '.')}@example.com',
       phone: phone,
       gcashNumber: gcashNumber,
       mayaNumber: mayaNumber,
     );
 
     final newTab = BilateralTab(
-      id: friendId,
+      id: tabId,
       counterpart: newFriend,
       entries: const [],
       netBalanceCentavos: 0,
@@ -466,8 +674,14 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       activities: updatedActivities,
     );
 
-    TabbyLocalCache.saveTabs(updatedTabs);
-    TabbyLocalCache.saveActivities(updatedActivities);
+    await TabbyLocalCache.saveTabs(
+      updatedTabs,
+      userId: hasLiveSession ? currentUserId : null,
+    );
+    await TabbyLocalCache.saveActivities(
+      updatedActivities,
+      userId: hasLiveSession ? currentUserId : null,
+    );
   }
 
   /// Adds a new group tab
@@ -476,8 +690,15 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required List<String> memberNames,
     List<String>? memberUserIds,
   }) {
+    final hasLiveSession =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
+    final currentUserId = hasLiveSession
+        ? SupabaseConfig.currentUserId!
+        : MockTabbyRepository.currentUser.id;
+
     final now = DateTime.now();
-    final groupId = 'group-${groupName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-${now.millisecondsSinceEpoch % 10000}';
+    final groupId =
+        'group-${groupName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-${now.millisecondsSinceEpoch % 10000}';
     final groupTab = BilateralTab(
       id: groupId,
       counterpart: TabbyUser(
@@ -497,7 +718,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
       actorName: 'You',
-      description: 'created group $groupName with ${memberNames.length} members',
+      description:
+          'created group $groupName with ${memberNames.length} members',
       amountCentavos: 0,
       timestamp: now,
       iconData: Icons.group_add_rounded,
@@ -511,15 +733,23 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       activities: updatedActivities,
     );
 
-    TabbyLocalCache.saveTabs(updatedTabs);
-    TabbyLocalCache.saveActivities(updatedActivities);
+    TabbyLocalCache.saveTabs(
+      updatedTabs,
+      userId: hasLiveSession ? currentUserId : null,
+    );
+    TabbyLocalCache.saveActivities(
+      updatedActivities,
+      userId: hasLiveSession ? currentUserId : null,
+    );
 
     if (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null) {
-      SupabaseTabbyRepository.instance.createGroupTab(
+      SupabaseTabbyRepository.instance
+          .createGroupTab(
         groupName: groupName,
         currentUserId: SupabaseConfig.currentUserId!,
         memberUserIds: memberUserIds,
-      ).then((newTabId) {
+      )
+          .then((newTabId) {
         if (newTabId != null) {
           _loadTabs();
         }
@@ -539,6 +769,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     String gcashNumber = '',
     String mayaNumber = '',
   }) {
+    final hasLiveSession =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
+    final currentUserId = hasLiveSession
+        ? SupabaseConfig.currentUserId!
+        : MockTabbyRepository.currentUser.id;
+
     final updatedTabs = state.tabs.map((tab) {
       if (tab.counterpart.id == id || tab.id == id) {
         return tab.copyWith(
@@ -555,17 +791,31 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     }).toList();
 
     state = state.copyWith(tabs: updatedTabs);
-    TabbyLocalCache.saveTabs(updatedTabs);
+    TabbyLocalCache.saveTabs(
+      updatedTabs,
+      userId: hasLiveSession ? currentUserId : null,
+    );
   }
 
   /// Removes a friend and their bilateral tab
   void removeFriend(String friendId) {
-    final tabToRemove = state.tabs.where((t) => t.counterpart.id == friendId || t.id == friendId).firstOrNull;
+    final hasLiveSession =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
+    final currentUserId = hasLiveSession
+        ? SupabaseConfig.currentUserId!
+        : MockTabbyRepository.currentUser.id;
+
+    final tabToRemove = state.tabs
+        .where((t) => t.counterpart.id == friendId || t.id == friendId)
+        .firstOrNull;
     final friendName = tabToRemove?.counterpart.displayName ?? 'Friend';
     final now = DateTime.now();
 
-    final updatedTabs = state.tabs.where((t) => t.counterpart.id != friendId && t.id != friendId).toList();
-    final updatedReminders = state.reminders.where((r) => r.tabId != friendId).toList();
+    final updatedTabs = state.tabs
+        .where((t) => t.counterpart.id != friendId && t.id != friendId)
+        .toList();
+    final updatedReminders =
+        state.reminders.where((r) => r.tabId != friendId).toList();
 
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
@@ -584,23 +834,47 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       reminders: updatedReminders,
     );
 
-    TabbyLocalCache.saveTabs(updatedTabs);
-    TabbyLocalCache.saveActivities(updatedActivities);
-    TabbyLocalCache.saveReminders(updatedReminders);
+    TabbyLocalCache.saveTabs(
+      updatedTabs,
+      userId: hasLiveSession ? currentUserId : null,
+    );
+    TabbyLocalCache.saveActivities(
+      updatedActivities,
+      userId: hasLiveSession ? currentUserId : null,
+    );
+    TabbyLocalCache.saveReminders(
+      updatedReminders,
+      userId: hasLiveSession ? currentUserId : null,
+    );
 
-    if (SupabaseConfig.isInitialized && tabToRemove != null && SupabaseTabbyRepository.isValidUuid(tabToRemove.id)) {
+    if (SupabaseConfig.isInitialized &&
+        tabToRemove != null &&
+        SupabaseTabbyRepository.isValidUuid(tabToRemove.id)) {
       SupabaseTabbyRepository.instance.archiveTab(tabToRemove.id);
     }
   }
 
   /// Removes a group tab and its associated records
   void removeGroupTab(String groupId) {
-    final groupToRemove = state.tabs.where((t) => t.id == groupId || t.counterpart.id == groupId).firstOrNull;
-    final groupName = groupToRemove?.groupName ?? groupToRemove?.counterpart.displayName ?? 'Group';
+    final hasLiveSession =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
+    final currentUserId = hasLiveSession
+        ? SupabaseConfig.currentUserId!
+        : MockTabbyRepository.currentUser.id;
+
+    final groupToRemove = state.tabs
+        .where((t) => t.id == groupId || t.counterpart.id == groupId)
+        .firstOrNull;
+    final groupName = groupToRemove?.groupName ??
+        groupToRemove?.counterpart.displayName ??
+        'Group';
     final now = DateTime.now();
 
-    final updatedTabs = state.tabs.where((t) => t.id != groupId && t.counterpart.id != groupId).toList();
-    final updatedReminders = state.reminders.where((r) => r.tabId != groupId).toList();
+    final updatedTabs = state.tabs
+        .where((t) => t.id != groupId && t.counterpart.id != groupId)
+        .toList();
+    final updatedReminders =
+        state.reminders.where((r) => r.tabId != groupId).toList();
 
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
@@ -619,11 +893,22 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       activities: updatedActivities,
     );
 
-    TabbyLocalCache.saveTabs(updatedTabs);
-    TabbyLocalCache.saveActivities(updatedActivities);
-    TabbyLocalCache.saveReminders(updatedReminders);
+    TabbyLocalCache.saveTabs(
+      updatedTabs,
+      userId: hasLiveSession ? currentUserId : null,
+    );
+    TabbyLocalCache.saveActivities(
+      updatedActivities,
+      userId: hasLiveSession ? currentUserId : null,
+    );
+    TabbyLocalCache.saveReminders(
+      updatedReminders,
+      userId: hasLiveSession ? currentUserId : null,
+    );
 
-    if (SupabaseConfig.isInitialized && groupToRemove != null && SupabaseTabbyRepository.isValidUuid(groupToRemove.id)) {
+    if (SupabaseConfig.isInitialized &&
+        groupToRemove != null &&
+        SupabaseTabbyRepository.isValidUuid(groupToRemove.id)) {
       SupabaseTabbyRepository.instance.archiveTab(groupToRemove.id);
     }
   }
@@ -634,7 +919,14 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required String entryId,
     required String receiptUrl,
   }) {
-    final tabIndex = state.tabs.indexWhere((t) => t.id == tabId || t.counterpart.id == tabId);
+    final hasLiveSession =
+        SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
+    final currentUserId = hasLiveSession
+        ? SupabaseConfig.currentUserId!
+        : MockTabbyRepository.currentUser.id;
+
+    final tabIndex = state.tabs
+        .indexWhere((t) => t.id == tabId || t.counterpart.id == tabId);
     if (tabIndex < 0) return;
     final tab = state.tabs[tabIndex];
 
@@ -650,9 +942,13 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     updatedTabs[tabIndex] = updatedTab;
 
     state = state.copyWith(tabs: updatedTabs);
-    TabbyLocalCache.saveTabs(updatedTabs);
+    TabbyLocalCache.saveTabs(
+      updatedTabs,
+      userId: hasLiveSession ? currentUserId : null,
+    );
 
-    if (SupabaseConfig.isInitialized && SupabaseTabbyRepository.isValidUuid(entryId)) {
+    if (SupabaseConfig.isInitialized &&
+        SupabaseTabbyRepository.isValidUuid(entryId)) {
       SupabaseTabbyRepository.instance.attachReceipt(entryId, receiptUrl);
     }
   }
@@ -691,7 +987,8 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
     final authUser = SupabaseConfig.currentUser;
     if (authUser == null) return;
 
-    final profile = await SupabaseTabbyRepository.instance.fetchUserProfile(authUser.id);
+    final profile =
+        await SupabaseTabbyRepository.instance.fetchUserProfile(authUser.id);
     if (profile != null) {
       state = profile;
     } else {
@@ -700,7 +997,8 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
           (authUser.email?.split('@').first ?? 'User');
       final phone = (meta['phone'] ?? authUser.phone) as String? ?? '';
 
-      await SupabaseTabbyRepository.instance.ensureUserExists(authUser.id, displayName);
+      await SupabaseTabbyRepository.instance
+          .ensureUserExists(authUser.id, displayName);
 
       state = TabbyUser(
         id: authUser.id,
@@ -750,12 +1048,14 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
 }
 
 /// Global provider for Current User profile
-final currentUserProvider = StateNotifierProvider<CurrentUserNotifier, TabbyUser>((ref) {
+final currentUserProvider =
+    StateNotifierProvider<CurrentUserNotifier, TabbyUser>((ref) {
   return CurrentUserNotifier();
 });
 
 /// Global provider for Tabby Dashboard state & operations
-final tabbyProvider = StateNotifierProvider<TabbyNotifier, TabbyDashboardState>((ref) {
+final tabbyProvider =
+    StateNotifierProvider<TabbyNotifier, TabbyDashboardState>((ref) {
   return TabbyNotifier();
 });
 
@@ -841,7 +1141,8 @@ class UserSettings {
       autoLockEnabled: autoLockEnabled ?? this.autoLockEnabled,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       paymentAlertsEnabled: paymentAlertsEnabled ?? this.paymentAlertsEnabled,
-      reminderNudgesEnabled: reminderNudgesEnabled ?? this.reminderNudgesEnabled,
+      reminderNudgesEnabled:
+          reminderNudgesEnabled ?? this.reminderNudgesEnabled,
     );
   }
 }
@@ -882,13 +1183,15 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
         final canCheck = await _auth.canCheckBiometrics;
         final isSupported = await _auth.isDeviceSupported();
         if (!canCheck && !isSupported) {
-          debugPrint('[UserSettingsNotifier] Biometrics not supported on device');
+          debugPrint(
+              '[UserSettingsNotifier] Biometrics not supported on device');
           return false;
         }
 
         final didAuthenticate = await _auth.authenticate(
           localizedReason: 'Confirm biometric identity to secure Tabby',
-          options: const AuthenticationOptions(stickyAuth: true, biometricOnly: true),
+          options: const AuthenticationOptions(
+              stickyAuth: true, biometricOnly: true),
         );
 
         if (!didAuthenticate) {
@@ -902,7 +1205,8 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
 
     state = state.copyWith(biometricsEnabled: enable);
     try {
-      await _storage.write(key: 'tabby_biometrics_enabled', value: enable.toString());
+      await _storage.write(
+          key: 'tabby_biometrics_enabled', value: enable.toString());
     } catch (e) {
       debugPrint('[UserSettingsNotifier] Error saving biometrics: $e');
     }
@@ -912,7 +1216,8 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
   Future<void> toggleNotifications(bool enable) async {
     state = state.copyWith(notificationsEnabled: enable);
     try {
-      await _storage.write(key: 'tabby_notifications_enabled', value: enable.toString());
+      await _storage.write(
+          key: 'tabby_notifications_enabled', value: enable.toString());
     } catch (e) {
       debugPrint('[UserSettingsNotifier] Error saving notifications: $e');
     }
@@ -937,22 +1242,32 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
 
     try {
       if (biometricsEnabled != null) {
-        await _storage.write(key: 'tabby_biometrics_enabled', value: biometricsEnabled.toString());
+        await _storage.write(
+            key: 'tabby_biometrics_enabled',
+            value: biometricsEnabled.toString());
       }
       if (passcodeEnabled != null) {
-        await _storage.write(key: 'tabby_passcode_enabled', value: passcodeEnabled.toString());
+        await _storage.write(
+            key: 'tabby_passcode_enabled', value: passcodeEnabled.toString());
       }
       if (autoLockEnabled != null) {
-        await _storage.write(key: 'tabby_auto_lock_enabled', value: autoLockEnabled.toString());
+        await _storage.write(
+            key: 'tabby_auto_lock_enabled', value: autoLockEnabled.toString());
       }
       if (notificationsEnabled != null) {
-        await _storage.write(key: 'tabby_notifications_enabled', value: notificationsEnabled.toString());
+        await _storage.write(
+            key: 'tabby_notifications_enabled',
+            value: notificationsEnabled.toString());
       }
       if (paymentAlertsEnabled != null) {
-        await _storage.write(key: 'tabby_payment_alerts_enabled', value: paymentAlertsEnabled.toString());
+        await _storage.write(
+            key: 'tabby_payment_alerts_enabled',
+            value: paymentAlertsEnabled.toString());
       }
       if (reminderNudgesEnabled != null) {
-        await _storage.write(key: 'tabby_reminder_nudges_enabled', value: reminderNudgesEnabled.toString());
+        await _storage.write(
+            key: 'tabby_reminder_nudges_enabled',
+            value: reminderNudgesEnabled.toString());
       }
     } catch (e) {
       debugPrint('[UserSettingsNotifier] Error saving settings: $e');
@@ -960,7 +1275,7 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
   }
 }
 
-final userSettingsProvider = StateNotifierProvider<UserSettingsNotifier, UserSettings>((ref) {
+final userSettingsProvider =
+    StateNotifierProvider<UserSettingsNotifier, UserSettings>((ref) {
   return UserSettingsNotifier();
 });
-

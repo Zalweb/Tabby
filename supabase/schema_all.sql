@@ -482,11 +482,19 @@ RETURNS TABLE (
     avatar_url TEXT
 ) AS $$
 BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Authentication required';
+    END IF;
+
+    IF length(trim(coalesce(p_query, ''))) < 2 THEN
+        RETURN;
+    END IF;
+
     RETURN QUERY
     SELECT u.id, u.display_name, u.avatar_url
     FROM public.users u
-    WHERE u.display_name ILIKE '%' || p_query || '%'
-       OR u.email ILIKE p_query
+    WHERE u.display_name ILIKE '%' || trim(p_query) || '%'
+       OR lower(u.email) = lower(trim(p_query))
     LIMIT 20;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
@@ -510,7 +518,7 @@ CREATE POLICY "Users can insert their own contacts"
 DROP POLICY IF EXISTS "Users can update contacts they own or claim" ON public.contacts;
 CREATE POLICY "Users can update contacts they own or claim"
     ON public.contacts FOR UPDATE TO authenticated
-    USING (owner_user_id = auth.uid() OR claimed_user_id = auth.uid() OR claim_status = 'unclaimed')
+    USING (owner_user_id = auth.uid() OR claimed_user_id = auth.uid())
     WITH CHECK (owner_user_id = auth.uid() OR claimed_user_id = auth.uid());
 DROP POLICY IF EXISTS "Users can delete contacts they own" ON public.contacts;
 CREATE POLICY "Users can delete contacts they own"
@@ -553,7 +561,16 @@ CREATE POLICY "Members can view roster of their groups"
     ON public.group_members FOR SELECT TO authenticated USING (public.is_group_member(group_id, auth.uid()) OR user_id = auth.uid());
 DROP POLICY IF EXISTS "Group admins or creator can add members" ON public.group_members;
 CREATE POLICY "Group admins or creator can add members"
-    ON public.group_members FOR INSERT TO authenticated WITH CHECK (public.is_group_admin(group_id, auth.uid()) OR user_id = auth.uid());
+    ON public.group_members FOR INSERT TO authenticated WITH CHECK (
+        public.is_group_admin(group_id, auth.uid())
+        OR (
+            user_id = auth.uid()
+            AND EXISTS (
+                SELECT 1 FROM public.groups g
+                WHERE g.id = group_id AND g.created_by = auth.uid()
+            )
+        )
+    );
 DROP POLICY IF EXISTS "Group admins can update members or user can leave" ON public.group_members;
 CREATE POLICY "Group admins can update members or user can leave"
     ON public.group_members FOR UPDATE TO authenticated USING (public.is_group_admin(group_id, auth.uid()) OR user_id = auth.uid());
@@ -577,7 +594,21 @@ CREATE POLICY "Tab members can view their tabs"
     ON public.tabs FOR SELECT TO authenticated USING (public.is_tab_member(id, auth.uid()));
 DROP POLICY IF EXISTS "Authenticated users can create tabs" ON public.tabs;
 CREATE POLICY "Authenticated users can create tabs"
-    ON public.tabs FOR INSERT TO authenticated WITH CHECK (true);
+    ON public.tabs FOR INSERT TO authenticated WITH CHECK (
+        (
+            tab_type IN ('individual', 'shared_couple')
+            AND user_a IS NOT NULL AND user_b IS NOT NULL
+            AND user_a <> user_b
+            AND (user_a = auth.uid() OR user_b = auth.uid())
+        )
+        OR (
+            tab_type = 'group' AND group_id IS NOT NULL
+            AND EXISTS (
+                SELECT 1 FROM public.groups g
+                WHERE g.id = group_id AND g.created_by = auth.uid()
+            )
+        )
+    );
 DROP POLICY IF EXISTS "Tab members can update tabs" ON public.tabs;
 CREATE POLICY "Tab members can update tabs"
     ON public.tabs FOR UPDATE TO authenticated USING (public.is_tab_member(id, auth.uid()));
@@ -589,7 +620,23 @@ CREATE POLICY "Tab members can view tab members"
     ON public.tab_members FOR SELECT TO authenticated USING (public.is_tab_member(tab_id, auth.uid()) OR user_id = auth.uid());
 DROP POLICY IF EXISTS "Tab members or creator can add tab members" ON public.tab_members;
 CREATE POLICY "Tab members or creator can add tab members"
-    ON public.tab_members FOR INSERT TO authenticated WITH CHECK (public.is_tab_member(tab_id, auth.uid()) OR user_id = auth.uid());
+    ON public.tab_members FOR INSERT TO authenticated WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.tab_members tm
+            WHERE tm.tab_id = tab_id
+              AND tm.user_id = auth.uid()
+              AND tm.role = 'admin'
+        )
+        OR (
+            user_id = auth.uid()
+            AND EXISTS (
+                SELECT 1
+                FROM public.tabs t
+                JOIN public.groups g ON g.id = t.group_id
+                WHERE t.id = tab_id AND g.created_by = auth.uid()
+            )
+        )
+    );
 DROP POLICY IF EXISTS "Tab members can update tab membership" ON public.tab_members;
 CREATE POLICY "Tab members can update tab membership"
     ON public.tab_members FOR UPDATE TO authenticated USING (public.is_tab_member(tab_id, auth.uid()));
@@ -642,17 +689,16 @@ CREATE POLICY "Transaction creator can insert participants"
     ON public.transaction_participants FOR INSERT TO authenticated WITH CHECK (
         EXISTS (
             SELECT 1 FROM public.transactions t
-            WHERE t.id = transaction_id AND public.is_tab_member(t.tab_id, auth.uid())
+            WHERE t.id = transaction_id
+              AND t.created_by = auth.uid()
+              AND public.is_tab_member(t.tab_id, auth.uid())
         )
     );
 DROP POLICY IF EXISTS "Participants or tab members can update participant status" ON public.transaction_participants;
 CREATE POLICY "Participants or tab members can update participant status"
-    ON public.transaction_participants FOR UPDATE TO authenticated USING (
-        user_id = auth.uid() OR EXISTS (
-            SELECT 1 FROM public.transactions t
-            WHERE t.id = transaction_id AND public.is_tab_member(t.tab_id, auth.uid())
-        )
-    );
+    ON public.transaction_participants FOR UPDATE TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 DROP POLICY IF EXISTS "Transaction creator can delete participant" ON public.transaction_participants;
 CREATE POLICY "Transaction creator can delete participant"
     ON public.transaction_participants FOR DELETE TO authenticated USING (
@@ -671,13 +717,21 @@ DROP POLICY IF EXISTS "Tab members can submit payments" ON public.payments;
 CREATE POLICY "Tab members can submit payments"
     ON public.payments FOR INSERT TO authenticated WITH CHECK (
         public.is_tab_member(tab_id, auth.uid()) AND (
-            submitted_by = auth.uid() OR
-            confirmed_by = auth.uid()
+            (
+                submitted_by = auth.uid()
+                AND confirmed_by IS NULL
+                AND confirmed_at IS NULL
+                AND status = 'submitted'
+            )
+            OR (
+                confirmed_by = auth.uid()
+                AND submitted_by <> auth.uid()
+                AND confirmed_at IS NOT NULL
+                AND status = 'confirmed'
+            )
         )
     );
 DROP POLICY IF EXISTS "Tab members can update payments" ON public.payments;
-CREATE POLICY "Tab members can update payments"
-    ON public.payments FOR UPDATE TO authenticated USING (public.is_tab_member(tab_id, auth.uid()));
 
 -- RLS: PAYMENT_PROOFS
 ALTER TABLE public.payment_proofs ENABLE ROW LEVEL SECURITY;
@@ -719,8 +773,6 @@ DROP POLICY IF EXISTS "Users can view their notifications" ON public.notificatio
 CREATE POLICY "Users can view their notifications"
     ON public.notifications FOR SELECT TO authenticated USING (recipient_user_id = auth.uid());
 DROP POLICY IF EXISTS "System and authenticated users can queue notifications" ON public.notifications;
-CREATE POLICY "System and authenticated users can queue notifications"
-    ON public.notifications FOR INSERT TO authenticated WITH CHECK (true);
 DROP POLICY IF EXISTS "Users can update their notification read status" ON public.notifications;
 CREATE POLICY "Users can update their notification read status"
     ON public.notifications FOR UPDATE TO authenticated USING (recipient_user_id = auth.uid());
@@ -788,8 +840,10 @@ DECLARE
     v_payments_made BIGINT := 0;
     v_net_balance BIGINT := 0;
 BEGIN
-    IF p_tab_id IS NULL OR p_user_id IS NULL THEN
-        RETURN 0;
+    IF auth.uid() IS NULL
+       OR p_user_id IS DISTINCT FROM auth.uid()
+       OR NOT public.is_tab_member(p_tab_id, auth.uid()) THEN
+        RAISE EXCEPTION 'Not authorized to view this tab balance';
     END IF;
 
     -- 1. Obligations Owed TO User A:
@@ -853,6 +907,12 @@ DECLARE
     v_tab_type TEXT;
     v_tab_status TEXT;
 BEGIN
+    IF auth.uid() IS NULL
+       OR p_user_id IS DISTINCT FROM auth.uid()
+       OR NOT public.is_tab_member(p_tab_id, auth.uid()) THEN
+        RAISE EXCEPTION 'Not authorized to view this tab summary';
+    END IF;
+
     SELECT tab_type, status INTO v_tab_type, v_tab_status
     FROM public.tabs
     WHERE id = p_tab_id;
@@ -940,8 +1000,8 @@ DECLARE
     v_settled_tabs_count INT := 0;
     v_mascot_state TEXT := 'IDLE_NEUTRAL';
 BEGIN
-    IF p_user_id IS NULL THEN
-        RETURN jsonb_build_object('error', 'User ID is required');
+    IF auth.uid() IS NULL OR p_user_id IS DISTINCT FROM auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to view this dashboard';
     END IF;
 
     FOR v_tab_record IN
@@ -991,6 +1051,11 @@ DECLARE
     v_first_user UUID;
     v_second_user UUID;
 BEGIN
+    IF auth.uid() IS NULL
+       OR (p_user_a IS DISTINCT FROM auth.uid() AND p_user_b IS DISTINCT FROM auth.uid()) THEN
+        RAISE EXCEPTION 'Only a tab participant can create or retrieve this tab';
+    END IF;
+
     IF p_user_a IS NULL OR p_user_b IS NULL THEN
         RAISE EXCEPTION 'Both user IDs must be non-null';
     END IF;
@@ -1051,6 +1116,10 @@ RETURNS BOOLEAN AS $$
 DECLARE
     v_contact RECORD;
 BEGIN
+    IF auth.uid() IS NULL OR p_claimed_user_id IS DISTINCT FROM auth.uid() THEN
+        RAISE EXCEPTION 'Only the authenticated claimant can claim a contact';
+    END IF;
+
     SELECT * INTO v_contact
     FROM public.contacts
     WHERE id = p_contact_id;
@@ -1061,6 +1130,27 @@ BEGIN
 
     IF v_contact.claim_status = 'claimed' THEN
         RAISE EXCEPTION 'Contact has already been claimed';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM auth.users au
+        WHERE au.id = auth.uid()
+          AND (
+              (
+                  v_contact.email IS NOT NULL
+                  AND au.email IS NOT NULL
+                  AND lower(trim(v_contact.email)) = lower(trim(au.email))
+              )
+              OR (
+                  v_contact.phone IS NOT NULL
+                  AND au.phone IS NOT NULL
+                  AND regexp_replace(v_contact.phone, '[^0-9]', '', 'g')
+                      = regexp_replace(au.phone, '[^0-9]', '', 'g')
+              )
+          )
+    ) THEN
+        RAISE EXCEPTION 'Authenticated account does not match this contact';
     END IF;
 
     UPDATE public.contacts
@@ -1380,13 +1470,18 @@ RETURNS BOOLEAN AS $$
 DECLARE
     v_total BIGINT;
     v_sum_shares BIGINT;
+    v_tab_id UUID;
 BEGIN
-    SELECT total_amount_centavos INTO v_total
+    SELECT total_amount_centavos, tab_id INTO v_total, v_tab_id
     FROM public.transactions
     WHERE id = p_transaction_id;
 
     IF v_total IS NULL THEN
         RETURN FALSE;
+    END IF;
+
+    IF auth.uid() IS NULL OR NOT public.is_tab_member(v_tab_id, auth.uid()) THEN
+        RAISE EXCEPTION 'Not authorized to validate this transaction';
     END IF;
 
     SELECT COALESCE(SUM(share_amount_centavos), 0) INTO v_sum_shares
@@ -1397,3 +1492,129 @@ BEGIN
     RETURN v_total = v_sum_shares;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- ============================================================================
+-- PART 5: AUTHORIZATION HARDENING
+-- Kept in sync with migration 20260917000001_authz_hardening.sql.
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.prevent_tab_identity_tampering()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.tab_type IS DISTINCT FROM OLD.tab_type
+       OR NEW.group_id IS DISTINCT FROM OLD.group_id
+       OR NEW.user_a IS DISTINCT FROM OLD.user_a
+       OR NEW.user_b IS DISTINCT FROM OLD.user_b THEN
+        RAISE EXCEPTION 'Tab identity fields cannot be changed';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trigger_prevent_tab_identity_tampering ON public.tabs;
+CREATE TRIGGER trigger_prevent_tab_identity_tampering
+    BEFORE UPDATE ON public.tabs
+    FOR EACH ROW EXECUTE FUNCTION public.prevent_tab_identity_tampering();
+
+CREATE OR REPLACE FUNCTION public.prevent_transaction_tampering()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.tab_id IS DISTINCT FROM OLD.tab_id
+       OR NEW.created_by IS DISTINCT FROM OLD.created_by
+       OR NEW.recurring_rule_id IS DISTINCT FROM OLD.recurring_rule_id
+       OR NEW.transaction_type IS DISTINCT FROM OLD.transaction_type
+       OR NEW.category IS DISTINCT FROM OLD.category
+       OR NEW.description IS DISTINCT FROM OLD.description
+       OR NEW.total_amount_centavos IS DISTINCT FROM OLD.total_amount_centavos
+       OR NEW.currency IS DISTINCT FROM OLD.currency
+       OR NEW.transaction_date IS DISTINCT FROM OLD.transaction_date
+       OR NEW.due_date IS DISTINCT FROM OLD.due_date
+       OR NEW.status IS DISTINCT FROM OLD.status THEN
+        RAISE EXCEPTION 'Financial transaction fields cannot be changed';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trigger_prevent_transaction_tampering ON public.transactions;
+CREATE TRIGGER trigger_prevent_transaction_tampering
+    BEFORE UPDATE ON public.transactions
+    FOR EACH ROW EXECUTE FUNCTION public.prevent_transaction_tampering();
+
+CREATE OR REPLACE FUNCTION public.prevent_participant_tampering()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.transaction_id IS DISTINCT FROM OLD.transaction_id
+       OR NEW.contact_id IS DISTINCT FROM OLD.contact_id
+       OR NEW.participant_role IS DISTINCT FROM OLD.participant_role
+       OR NEW.share_amount_centavos IS DISTINCT FROM OLD.share_amount_centavos
+       OR NEW.share_percentage IS DISTINCT FROM OLD.share_percentage THEN
+        RAISE EXCEPTION 'Participant allocation fields cannot be changed';
+    END IF;
+
+    IF NEW.user_id IS DISTINCT FROM OLD.user_id
+       AND NOT (
+           OLD.user_id IS NULL
+           AND OLD.contact_id IS NOT NULL
+           AND NEW.user_id = auth.uid()
+       ) THEN
+        RAISE EXCEPTION 'Participant identity cannot be changed';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trigger_prevent_participant_tampering ON public.transaction_participants;
+CREATE TRIGGER trigger_prevent_participant_tampering
+    BEFORE UPDATE ON public.transaction_participants
+    FOR EACH ROW EXECUTE FUNCTION public.prevent_participant_tampering();
+
+ALTER FUNCTION public.is_tab_member(UUID, UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.is_group_member(UUID, UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.is_group_admin(UUID, UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.get_transaction_payer_id(UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.search_users(TEXT) SET search_path = public, pg_temp;
+ALTER FUNCTION public.get_net_balance(UUID, UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.get_tab_summary(UUID, UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.get_user_dashboard_summary(UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.get_or_create_bilateral_tab(UUID, UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.claim_contact(UUID, UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.validate_transaction_split(UUID) SET search_path = public, pg_temp;
+ALTER FUNCTION public.handle_new_user() SET search_path = public, pg_temp;
+ALTER FUNCTION public.handle_updated_at() SET search_path = public, pg_temp;
+ALTER FUNCTION public.log_transaction_activity() SET search_path = public, pg_temp;
+ALTER FUNCTION public.log_payment_activity() SET search_path = public, pg_temp;
+ALTER FUNCTION public.log_report_activity() SET search_path = public, pg_temp;
+
+REVOKE EXECUTE ON FUNCTION public.is_tab_member(UUID, UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_group_member(UUID, UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_group_admin(UUID, UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_tab_member(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_group_member(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_group_admin(UUID, UUID) TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.get_transaction_payer_id(UUID) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.handle_updated_at() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.log_transaction_activity() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.log_payment_activity() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.log_report_activity() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.prevent_tab_identity_tampering() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.prevent_transaction_tampering() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.prevent_participant_tampering() FROM PUBLIC, anon, authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.search_users(TEXT) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.get_net_balance(UUID, UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.get_tab_summary(UUID, UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.get_user_dashboard_summary(UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.get_or_create_bilateral_tab(UUID, UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.claim_contact(UUID, UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.validate_transaction_split(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.search_users(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_net_balance(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_tab_summary(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_dashboard_summary(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_or_create_bilateral_tab(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_contact(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.validate_transaction_split(UUID) TO authenticated;

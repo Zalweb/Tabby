@@ -13,7 +13,9 @@ void main() {
     AppState.hasSeenOnboarding.value = true;
   });
 
-  testWidgets('Login screen: Forgot password sheet works with validation and submit', (tester) async {
+  testWidgets(
+      'Login screen: Forgot password sheet works with validation and submit',
+      (tester) async {
     AppState.isAuthenticated.value = false;
 
     await tester.pumpWidget(
@@ -47,13 +49,18 @@ void main() {
     await tester.tap(find.text('Send Reset Link'));
     await tester.pumpAndSettle();
 
-    // Sheet should close and snackbar should appear
-    expect(find.text('Password reset link sent to test@tabby.ph! Please check your inbox.'), findsOneWidget);
+    // Offline mode must not claim that a reset email was sent.
+    expect(find.text('Reset Password'), findsOneWidget);
+    expect(
+        find.text(
+            'Authentication service is unavailable. Please try again when online.'),
+        findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
   });
 
-  testWidgets('Notification Center sheet opens and functions from dashboard', (tester) async {
+  testWidgets('Notification Center sheet opens and functions from dashboard',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -85,7 +92,9 @@ void main() {
     expect(find.text('Notifications'), findsNothing);
   });
 
-  testWidgets('Profile screen: Edit profile, QR manager, Add Friend, and Sheets are fully interactive', (tester) async {
+  testWidgets(
+      'Profile screen: Edit profile, QR manager, Add Friend, and Sheets are fully interactive',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -196,7 +205,8 @@ void main() {
     expect(find.text('Sync Data Now'), findsOneWidget);
     await tester.tap(find.text('Sync Data Now'));
     await tester.pumpAndSettle();
-    expect(find.text('All tabs and transactions are fully synchronized.'), findsOneWidget);
+    expect(find.text('All tabs and transactions are fully synchronized.'),
+        findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
 
@@ -251,7 +261,9 @@ void main() {
     expect(find.text('Log In'), findsOneWidget);
   });
 
-  testWidgets('Dashboard filter switching and activity details sheet work cleanly', (tester) async {
+  testWidgets(
+      'Dashboard filter switching and activity details sheet work cleanly',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -285,7 +297,9 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('Profile: Groups creation, Friend management (edit & remove), and QR Ph management', (tester) async {
+  testWidgets(
+      'Profile: Groups creation, Friend management (edit & remove), and QR Ph management',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -355,10 +369,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Create New Group Tab'), findsOneWidget);
-    final groupNameField = find.descendant(
-      of: find.byType(BottomSheet),
-      matching: find.byType(TextField),
-    ).first;
+    final groupNameField = find
+        .descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(TextField),
+        )
+        .first;
     await tester.enterText(groupNameField, 'Gym Barkada');
     await tester.pumpAndSettle();
 
@@ -386,7 +402,8 @@ void main() {
     await tester.tap(find.text('Upload New QR Code Image'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Payment QR Ph code verified and linked!'), findsOneWidget);
+    expect(
+        find.text('Payment QR Ph code verified and linked!'), findsOneWidget);
     expect(find.text('Custom QR Ph Code Active & Verified'), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
@@ -416,13 +433,21 @@ void main() {
     await tester.tap(find.text('Remove Friend'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Are you sure you want to remove Carlos Edriel Yulo from your friends list?'), findsOneWidget);
+    expect(
+        find.text(
+            'Are you sure you want to remove Carlos Edriel Yulo from your friends list?'),
+        findsOneWidget);
     await tester.tap(find.text('Remove'));
     await tester.pumpAndSettle();
-    expect(find.text('Carlos Edriel Yulo has been removed from your friends list.'), findsOneWidget);
+    expect(
+        find.text(
+            'Carlos Edriel Yulo has been removed from your friends list.'),
+        findsOneWidget);
   });
 
-  testWidgets('Tab detail: Clipboard copying, Receipts viewing, and Expense receipt attachment', (tester) async {
+  testWidgets(
+      'Tab detail: Clipboard copying, Receipts viewing, and Expense receipt attachment',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -465,7 +490,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // Enter friend name
-    final nameField = find.widgetWithText(TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
+    final nameField = find.widgetWithText(
+        TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
     await tester.enterText(nameField, 'Alex Dela Cruz');
     await tester.pumpAndSettle();
 
@@ -477,7 +503,8 @@ void main() {
     // Enter description
     final descField = find.descendant(
       of: find.byType(BottomSheet),
-      matching: find.widgetWithText(TextField, 'Dinner, Grocery run, Taxi fare'),
+      matching:
+          find.widgetWithText(TextField, 'Dinner, Grocery run, Taxi fare'),
     );
     await tester.enterText(descField, 'Team Dinner');
     await tester.pumpAndSettle();
@@ -521,7 +548,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Expense Details'), findsOneWidget);
-    expect(find.textContaining('Verified Bill/Receipt Attached'), findsOneWidget);
+    expect(
+        find.textContaining('Verified Bill/Receipt Attached'), findsOneWidget);
 
     // Tap verified bill/receipt attached badge to open preview modal
     await tester.tap(find.textContaining('Verified Bill/Receipt Attached'));
@@ -567,7 +595,9 @@ void main() {
     }
   });
 
-  testWidgets('Tab detail empty state: Shows mascot and Log First Expense CTA when tab has zero entries', (tester) async {
+  testWidgets(
+      'Tab detail empty state: Shows mascot and Log First Expense CTA when tab has zero entries',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -621,7 +651,9 @@ void main() {
     expect(find.widgetWithText(TextField, 'Empty Tab Friend'), findsOneWidget);
   });
 
-  testWidgets('AddExpenseModal chips include both friends and groups with group icon', (tester) async {
+  testWidgets(
+      'AddExpenseModal chips include both friends and groups with group icon',
+      (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -643,10 +675,12 @@ void main() {
     await tester.tap(createGroupBtn, warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    final groupNameField = find.descendant(
-      of: find.byType(BottomSheet),
-      matching: find.byType(TextField),
-    ).first;
+    final groupNameField = find
+        .descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(TextField),
+        )
+        .first;
     await tester.enterText(groupNameField, 'Beach Trip 2026');
     await tester.pumpAndSettle();
 
@@ -698,10 +732,14 @@ void main() {
     await tester.tap(find.text('Delete Group Tab'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Are you sure you want to delete "Beach Trip 2026"?'), findsOneWidget);
+    expect(
+        find.textContaining(
+            'Are you sure you want to delete "Beach Trip 2026"?'),
+        findsOneWidget);
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Group "Beach Trip 2026" has been deleted.'), findsOneWidget);
+    expect(
+        find.text('Group "Beach Trip 2026" has been deleted.'), findsOneWidget);
   });
 }

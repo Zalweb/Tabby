@@ -17,7 +17,9 @@ void main() {
   });
 
   group('E2E All Screens & Buttons Comprehensive Test Suite', () {
-    testWidgets('Home Dashboard: Every button and interactive control works without failure', (tester) async {
+    testWidgets(
+        'Home Dashboard: Every button and interactive control works without failure',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -98,7 +100,9 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('Add Expense Modal: Presets, Categories, Payer/Split toggles, Date picker, and Validations', (tester) async {
+    testWidgets(
+        'Add Expense Modal: Presets, Categories, Payer/Split toggles, Date picker, and Validations',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -119,7 +123,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // 1. Validation: Clear name and tap Save Tab with empty fields
-      final nameField = find.widgetWithText(TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
+      final nameField = find.widgetWithText(
+          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
       await tester.ensureVisible(nameField);
       await tester.enterText(nameField, '');
       await tester.pumpAndSettle();
@@ -129,7 +134,8 @@ void main() {
       await tester.tap(saveBtn1);
       await tester.pumpAndSettle();
       expect(find.text('Please enter a friend or group name'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal))).clearSnackBars();
+      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal)))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       // Enter Name
@@ -141,8 +147,10 @@ void main() {
       await tester.ensureVisible(saveBtn2);
       await tester.tap(saveBtn2);
       await tester.pumpAndSettle();
-      expect(find.text('Please enter an amount greater than PHP 0.00'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal))).clearSnackBars();
+      expect(find.text('Please enter an amount greater than PHP 0.00'),
+          findsOneWidget);
+      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal)))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       // Test Quick Amount Preset Chips (+₱500, +₱250)
@@ -172,7 +180,8 @@ void main() {
       // 4. Description and Note inputs
       final descField = find.descendant(
         of: find.byType(BottomSheet),
-        matching: find.widgetWithText(TextField, 'Dinner, Grocery run, Taxi fare'),
+        matching:
+            find.widgetWithText(TextField, 'Dinner, Grocery run, Taxi fare'),
       );
       await tester.ensureVisible(descField);
       await tester.enterText(descField, 'Supermarket run');
@@ -224,7 +233,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Receipt: Attached'), findsOneWidget);
       expect(find.text('Remove'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal))).clearSnackBars();
+      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal)))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       // 9. Save Tab successfully
@@ -233,12 +243,15 @@ void main() {
       await tester.tap(saveBtn3);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Logged ₱750.00 with Samantha Perez!'), findsOneWidget);
+      expect(find.textContaining('Logged ₱750.00 with Samantha Perez!'),
+          findsOneWidget);
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();
     });
 
-    testWidgets('Tab Detail: Full Remind nudge, Payment settlement, and QR/Receipt interaction flows', (tester) async {
+    testWidgets(
+        'Tab Detail: Full Remind nudge, Payment settlement, and QR/Receipt interaction flows',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -258,7 +271,8 @@ void main() {
       await tester.tap(fab);
       await tester.pumpAndSettle();
 
-      final nameField = find.widgetWithText(TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
+      final nameField = find.widgetWithText(
+          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
       await tester.enterText(nameField, 'Mateo Cruz');
       await tester.pumpAndSettle();
 
@@ -268,7 +282,8 @@ void main() {
 
       final descField = find.descendant(
         of: find.byType(BottomSheet),
-        matching: find.widgetWithText(TextField, 'Dinner, Grocery run, Taxi fare'),
+        matching:
+            find.widgetWithText(TextField, 'Dinner, Grocery run, Taxi fare'),
       );
       await tester.enterText(descField, 'Samgyupsal Feast');
       await tester.pumpAndSettle();
@@ -384,7 +399,10 @@ void main() {
       await tester.tap(find.text('Share Reminder Link'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Reminder link copied to clipboard and sent to Mateo Cruz!'), findsOneWidget);
+      expect(
+          find.textContaining(
+              'Reminder link copied to clipboard and sent to Mateo Cruz!'),
+          findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
 
@@ -414,7 +432,9 @@ void main() {
       expect(find.text('Log New Expense'), findsOneWidget);
     });
 
-    testWidgets('My Tabs: Search bar filtering, clear query, and group tabs handling', (tester) async {
+    testWidgets(
+        'My Tabs: Search bar filtering, clear query, and group tabs handling',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -436,7 +456,8 @@ void main() {
       expect(find.text('Quick Log Expense'), findsOneWidget);
 
       // Log a quick tab with "Jessica"
-      final nameField = find.widgetWithText(TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
+      final nameField = find.widgetWithText(
+          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
       await tester.enterText(nameField, 'Jessica Tan');
       await tester.pumpAndSettle();
 
@@ -454,7 +475,8 @@ void main() {
       expect(find.text('Jessica Tan'), findsOneWidget);
 
       // 2. Header Notification Bell
-      final notifHeaderBtn = find.byIcon(Icons.notifications_none_rounded).first;
+      final notifHeaderBtn =
+          find.byIcon(Icons.notifications_none_rounded).first;
       await tester.tap(notifHeaderBtn);
       await tester.pumpAndSettle();
       expect(find.text('Notifications'), findsOneWidget);
@@ -482,7 +504,9 @@ void main() {
       expect(find.text('No Active Tabs'), findsNothing);
     });
 
-    testWidgets('Onboarding & Authentication: Complete button, validation, and navigation flows', (tester) async {
+    testWidgets(
+        'Onboarding & Authentication: Complete button, validation, and navigation flows',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -539,7 +563,8 @@ void main() {
       final emailField = find.widgetWithText(TextField, 'Email');
       final phoneField = find.widgetWithText(TextField, '+63 9XX XXX XXXX');
       final passField = find.widgetWithText(TextField, 'Password');
-      final confirmPassField = find.widgetWithText(TextField, 'Confirm Password');
+      final confirmPassField =
+          find.widgetWithText(TextField, 'Confirm Password');
 
       await tester.enterText(nameField, 'Juan Dela Cruz');
       await tester.enterText(emailField, 'juan@tabby.ph');
@@ -578,12 +603,16 @@ void main() {
       expect(find.text('Keep tabs. Settle up.'), findsOneWidget);
 
       // 9. Test Continue with Google button on Login screen
-      final googleBtn = find.widgetWithText(TabbyButton, 'Continue with Google');
+      final googleBtn =
+          find.widgetWithText(TabbyButton, 'Continue with Google');
       expect(googleBtn, findsOneWidget);
       await tester.tap(googleBtn);
       await tester.pumpAndSettle();
-      expect(AppState.isAuthenticated.value, isTrue);
-      expect(find.text('Recent Activity'), findsOneWidget);
+      expect(AppState.isAuthenticated.value, isFalse);
+      expect(
+          find.text(
+              'Authentication service is unavailable. Please try again when online.'),
+          findsOneWidget);
 
       // 10. Test Sign Up account creation flow
       AppState.isAuthenticated.value = false;
@@ -597,42 +626,59 @@ void main() {
       expect(find.text('Please fill in all fields'), findsOneWidget);
 
       // Verify invalid email validation
-      await tester.enterText(find.widgetWithText(TextField, 'Full Name'), 'Juan Dela Cruz');
-      await tester.enterText(find.widgetWithText(TextField, 'Email'), 'not-an-email');
-      await tester.enterText(find.widgetWithText(TextField, '+63 9XX XXX XXXX'), '+63 917 123 4567');
-      await tester.enterText(find.widgetWithText(TextField, 'Password'), 'Password123!');
-      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'), 'Password123!');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Full Name'), 'Juan Dela Cruz');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Email'), 'not-an-email');
+      await tester.enterText(find.widgetWithText(TextField, '+63 9XX XXX XXXX'),
+          '+63 917 123 4567');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Password'), 'Password123!');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Confirm Password'), 'Password123!');
       await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
       await tester.pumpAndSettle();
       expect(find.text('Please enter a valid email address'), findsOneWidget);
 
       // Verify short password validation
-      await tester.enterText(find.widgetWithText(TextField, 'Email'), 'juan@tabby.ph');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Email'), 'juan@tabby.ph');
       await tester.enterText(find.widgetWithText(TextField, 'Password'), '123');
-      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'), '123');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Confirm Password'), '123');
       await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
       await tester.pumpAndSettle();
-      expect(find.text('Password must be at least 6 characters'), findsOneWidget);
+      expect(
+          find.text('Password must be at least 6 characters'), findsOneWidget);
 
       // Verify password mismatch validation
-      await tester.enterText(find.widgetWithText(TextField, 'Password'), 'Password123!');
-      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'), 'DifferentPassword!');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Password'), 'Password123!');
+      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'),
+          'DifferentPassword!');
       await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
       await tester.pumpAndSettle();
       expect(find.text('Passwords do not match'), findsOneWidget);
 
       // Verify successful account creation with valid credentials
-      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'), 'Password123!');
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Confirm Password'), 'Password123!');
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
       await tester.pumpAndSettle();
 
-      // Verified routed to Home Dashboard
-      expect(AppState.isAuthenticated.value, isTrue);
-      expect(find.text('Recent Activity'), findsOneWidget);
+      // A configured Supabase session is required; valid form data alone must
+      // not create a local authenticated session.
+      expect(AppState.isAuthenticated.value, isFalse);
+      expect(
+          find.text(
+              'Authentication service is unavailable. Please try again when online.'),
+          findsOneWidget);
     });
 
-    testWidgets('Home Dashboard: Upcoming dues action buttons and Activity details sheet', (tester) async {
+    testWidgets(
+        'Home Dashboard: Upcoming dues action buttons and Activity details sheet',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -653,8 +699,10 @@ void main() {
         await tester.ensureVisible(remindBtn.first);
         await tester.tap(remindBtn.first);
         await tester.pumpAndSettle();
-        expect(find.textContaining('Friendly reminder sent to'), findsOneWidget);
-        ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first)).clearSnackBars();
+        expect(
+            find.textContaining('Friendly reminder sent to'), findsOneWidget);
+        ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
+            .clearSnackBars();
         await tester.pumpAndSettle();
       }
 
@@ -675,7 +723,9 @@ void main() {
       }
     });
 
-    testWidgets('Add Expense Modal: Duplicate expense warning dialog and Preset chips', (tester) async {
+    testWidgets(
+        'Add Expense Modal: Duplicate expense warning dialog and Preset chips',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -715,7 +765,8 @@ void main() {
       expect(find.widgetWithText(TextField, '3100.00'), findsOneWidget);
 
       // Enter friend and description
-      final nameField = find.widgetWithText(TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
+      final nameField = find.widgetWithText(
+          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
       await tester.enterText(nameField, 'Duplicate Test Friend');
       await tester.pumpAndSettle();
 
@@ -732,14 +783,16 @@ void main() {
       await tester.pumpAndSettle();
 
       // Clear SnackBars so it doesn't obstruct FAB tap
-      ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first)).clearSnackBars();
+      ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       // 2. Open Add Expense Modal again to log the EXACT SAME amount with same friend
       await tester.tap(fab);
       await tester.pumpAndSettle();
 
-      final nameField2 = find.widgetWithText(TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
+      final nameField2 = find.widgetWithText(
+          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
       await tester.enterText(nameField2, 'Duplicate Test Friend');
       await tester.pumpAndSettle();
 
@@ -777,7 +830,9 @@ void main() {
       expect(find.text('Quick Log Expense'), findsNothing);
     });
 
-    testWidgets('Tab Detail: User owes (I Paid) settlement, Receipt viewer actions, and Log New Expense', (tester) async {
+    testWidgets(
+        'Tab Detail: User owes (I Paid) settlement, Receipt viewer actions, and Log New Expense',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -797,7 +852,8 @@ void main() {
       await tester.tap(fab);
       await tester.pumpAndSettle();
 
-      final nameField = find.widgetWithText(TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
+      final nameField = find.widgetWithText(
+          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
       await tester.enterText(nameField, 'Carlos Dalisay');
       await tester.pumpAndSettle();
 
@@ -842,7 +898,8 @@ void main() {
       await tester.tap(find.widgetWithText(ChoiceChip, 'GCash'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(TabbyButton, 'Submit Payment Proof'));
+      await tester
+          .tap(find.widgetWithText(TabbyButton, 'Submit Payment Proof'));
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
 
@@ -871,7 +928,8 @@ void main() {
           await tester.tap(attachPhotoBtn);
           await tester.pumpAndSettle();
           expect(find.textContaining('Receipt image attached'), findsOneWidget);
-          ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first)).clearSnackBars();
+          ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
+              .clearSnackBars();
           await tester.pumpAndSettle();
         }
 
@@ -883,7 +941,9 @@ void main() {
       }
     });
 
-    testWidgets('Profile Screen: Deep settings sheets, Avatar options, and Form validations', (tester) async {
+    testWidgets(
+        'Profile Screen: Deep settings sheets, Avatar options, and Form validations',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -910,7 +970,8 @@ void main() {
       expect(find.text('Auto-Lock on Exit'), findsOneWidget);
 
       // Toggle Passcode switch
-      final passcodeSwitch = find.widgetWithText(SwitchListTile, 'Passcode Protection');
+      final passcodeSwitch =
+          find.widgetWithText(SwitchListTile, 'Passcode Protection');
       await tester.tap(passcodeSwitch);
       await tester.pumpAndSettle();
 
@@ -931,7 +992,8 @@ void main() {
       expect(find.text('Gentle Reminder Nudges'), findsOneWidget);
 
       // Toggle Instant Payment Alerts
-      final paymentAlertsSwitch = find.widgetWithText(SwitchListTile, 'Instant Payment Alerts');
+      final paymentAlertsSwitch =
+          find.widgetWithText(SwitchListTile, 'Instant Payment Alerts');
       await tester.tap(paymentAlertsSwitch);
       await tester.pumpAndSettle();
 
@@ -959,7 +1021,8 @@ void main() {
       await tester.tap(find.text('Choose from Gallery'));
       await tester.pumpAndSettle();
       expect(find.text('Profile photo updated successfully.'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen))).clearSnackBars();
+      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       // Open avatar sheet again -> Select Tabby Mascot Style
@@ -968,7 +1031,8 @@ void main() {
       await tester.tap(find.text('Tabby Mascot Style'));
       await tester.pumpAndSettle();
       expect(find.text('Tabby companion avatar applied!'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen))).clearSnackBars();
+      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       // Open avatar sheet again -> Remove Photo
@@ -977,24 +1041,28 @@ void main() {
       await tester.tap(find.text('Remove Photo'));
       await tester.pumpAndSettle();
       expect(find.text('Avatar reset to default initials.'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen))).clearSnackBars();
+      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       // 4. Edit Profile validation: empty name
       await tester.tap(find.text('Edit Profile'));
       await tester.pumpAndSettle();
 
-      final editNameField = find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.byType(TextField),
-      ).first;
+      final editNameField = find
+          .descendant(
+            of: find.byType(BottomSheet),
+            matching: find.byType(TextField),
+          )
+          .first;
       await tester.enterText(editNameField, '');
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(TabbyButton, 'Save Changes'));
       await tester.pumpAndSettle();
       expect(find.text('Please enter a display name.'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen))).clearSnackBars();
+      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.close_rounded));
@@ -1009,7 +1077,8 @@ void main() {
       await tester.tap(find.widgetWithText(TabbyButton, 'Add Friend'));
       await tester.pumpAndSettle();
       expect(find.text('Please enter a name for your friend.'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen))).clearSnackBars();
+      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
+          .clearSnackBars();
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.close_rounded));
@@ -1027,7 +1096,8 @@ void main() {
         await tester.tap(find.widgetWithText(TabbyButton, 'Create Group Tab'));
         await tester.pumpAndSettle();
         expect(find.text('Please enter a group name.'), findsOneWidget);
-        ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen))).clearSnackBars();
+        ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
+            .clearSnackBars();
         await tester.pumpAndSettle();
 
         await tester.tap(find.byIcon(Icons.close_rounded));
@@ -1035,7 +1105,9 @@ void main() {
       }
     });
 
-    testWidgets('Notification Center Sheet: Dues interactive Pay and Remind buttons', (tester) async {
+    testWidgets(
+        'Notification Center Sheet: Dues interactive Pay and Remind buttons',
+        (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -1065,8 +1137,11 @@ void main() {
       if (remindBtn.evaluate().isNotEmpty) {
         await tester.tap(remindBtn.first);
         await tester.pumpAndSettle();
-        expect(find.textContaining('Friendly reminder sent to'), findsOneWidget);
-        ScaffoldMessenger.of(tester.element(find.byType(NotificationCenterSheet))).clearSnackBars();
+        expect(
+            find.textContaining('Friendly reminder sent to'), findsOneWidget);
+        ScaffoldMessenger.of(
+                tester.element(find.byType(NotificationCenterSheet)))
+            .clearSnackBars();
         await tester.pumpAndSettle();
       }
 
@@ -1086,7 +1161,9 @@ void main() {
       }
     });
 
-    testWidgets('App Router 404 Error Screen: Unknown path displays friendly mascot and back button', (tester) async {
+    testWidgets(
+        'App Router 404 Error Screen: Unknown path displays friendly mascot and back button',
+        (tester) async {
       AppState.isAuthenticated.value = true;
       appRouter.go('/unknown-route-that-does-not-exist');
 
@@ -1098,7 +1175,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Page Not Found'), findsOneWidget);
-      expect(find.text("The page you're looking for doesn't exist or has been moved."), findsOneWidget);
+      expect(
+          find.text(
+              "The page you're looking for doesn't exist or has been moved."),
+          findsOneWidget);
       expect(find.widgetWithText(TabbyButton, 'Back to Home'), findsOneWidget);
 
       await tester.tap(find.widgetWithText(TabbyButton, 'Back to Home'));

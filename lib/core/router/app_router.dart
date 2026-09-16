@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../config/app_state.dart';
+import '../config/supabase_config.dart';
 import '../../features/home/presentation/home_dashboard_screen.dart';
 import '../../features/navigation/presentation/main_scaffold.dart';
 import '../../features/profile/presentation/profile_screen.dart';
@@ -15,16 +16,27 @@ import '../../features/tabs/domain/models.dart';
 import '../../shared/widgets/tabby_button.dart';
 import '../../shared/widgets/tabby_mascot_widget.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
-final GlobalKey<NavigatorState> _tabsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tabs');
-final GlobalKey<NavigatorState> _profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
+final GlobalKey<NavigatorState> _rootNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> _homeNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'home');
+final GlobalKey<NavigatorState> _tabsNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'tabs');
+final GlobalKey<NavigatorState> _profileNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'profile');
+
+bool _hasAuthenticatedSession() {
+  if (SupabaseConfig.isInitialized) {
+    return SupabaseConfig.currentUser != null;
+  }
+  return AppState.isAuthenticated.value;
+}
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/onboarding',
   errorBuilder: (context, state) {
-    final isAuthenticated = AppState.isAuthenticated.value;
+    final isAuthenticated = _hasAuthenticatedSession();
     return Scaffold(
       backgroundColor: TabbyColors.bgCanvas,
       appBar: AppBar(
@@ -71,7 +83,8 @@ final GoRouter appRouter = GoRouter(
               TabbyButton(
                 label: isAuthenticated ? 'Back to Home' : 'Back to Login',
                 variant: TabbyButtonVariant.primary,
-                onPressed: () => context.go(isAuthenticated ? '/home' : '/login'),
+                onPressed: () =>
+                    context.go(isAuthenticated ? '/home' : '/login'),
               ),
             ],
           ),
@@ -84,7 +97,7 @@ final GoRouter appRouter = GoRouter(
     AppState.hasSeenOnboarding,
   ]),
   redirect: (context, state) {
-    final bool auth = AppState.isAuthenticated.value;
+    final bool auth = _hasAuthenticatedSession();
     final bool seenOnboarding = AppState.hasSeenOnboarding.value;
     final String path = state.uri.path;
 
