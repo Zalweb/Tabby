@@ -1,24 +1,28 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/config/app_state.dart';
+import '../../../core/config/supabase_config.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
+import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
 import '../../tabs/domain/models.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
   bool _isGoogleLoading = false;
   String? _errorText;
 
@@ -31,19 +35,59 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+      _errorText = null;
+    });
+
     try {
       if (SupabaseTabbyRepository.instance.isConnected) {
-        await SupabaseTabbyRepository.instance.signIn(
+        final authResponse = await SupabaseTabbyRepository.instance.signIn(
           email: email,
           password: password,
         );
+
+        if (authResponse?.user == null && SupabaseConfig.currentUser == null) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _errorText = 'Invalid email or password. Please try again.';
+            });
+          }
+          return;
+        }
+
+        // Successfully authenticated! Load the real user profile and tabs
+        await ref.read(currentUserProvider.notifier).loadFromSupabase();
+        await ref.read(tabbyProvider.notifier).refreshTabs();
+      } else {
+        // Offline / unit-test fallback
+        ref.read(currentUserProvider.notifier).updateProfile(email: email);
+      }
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppState.isAuthenticated.value = true;
+        context.go('/home');
       }
     } catch (e) {
-      debugPrint('[LoginScreen] Live Supabase auth notice: $e');
+      debugPrint('[LoginScreen] Live Supabase auth error: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          final errStr = e.toString().toLowerCase();
+          if (errStr.contains('invalid login credentials') ||
+              errStr.contains('invalid_credentials')) {
+            _errorText = 'Invalid email or password. Please try again.';
+          } else if (errStr.contains('email not confirmed')) {
+            _errorText = 'Please confirm your email before logging in.';
+          } else {
+            _errorText = 'Sign in failed: ${e.toString().replaceAll('AuthApiException', '').replaceAll('AuthException', '').trim()}';
+          }
+        });
+      }
+      return;
     }
-
-    AppState.isAuthenticated.value = true;
-    if (mounted) context.go('/home');
   }
 
   Future<void> _loginWithGoogle() async {
@@ -66,6 +110,10 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() => _isGoogleLoading = false);
           return;
         }
+
+        // Successfully authenticated! Load profile and tabs
+        await ref.read(currentUserProvider.notifier).loadFromSupabase();
+        await ref.read(tabbyProvider.notifier).refreshTabs();
       }
     } catch (e) {
       debugPrint('[LoginScreen] Google sign-in error: $e');
@@ -79,6 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (mounted) {
+      setState(() => _isGoogleLoading = false);
       AppState.isAuthenticated.value = true;
       context.go('/home');
     }
@@ -89,6 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
       text: _emailController.text.contains('@') ? _emailController.text.trim() : '',
     );
     String? resetError;
+    bool isResetting = false;
 
     showModalBottomSheet(
       context: context,
@@ -105,68 +155,90 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: TabbyColors.surfaceWhite,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Reset Password',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Reset Password',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: TabbyColors.brandDarkTeal,
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () => Navigator.pop(context),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Enter your registered email address to receive password reset instructions.',
+                        style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary, height: 1.4),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildTextField(
+                        controller: resetEmailController,
+                        label: 'Email Address',
+                        icon: Icons.email_outlined,
+                      ),
+                      if (resetError != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          resetError!,
+                          style: const TextStyle(color: TabbyColors.alertRed, fontSize: 11),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Enter your registered email address to receive password reset instructions.',
-                      style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary, height: 1.4),
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextField(
-                      controller: resetEmailController,
-                      label: 'Email Address',
-                      icon: Icons.email_outlined,
-                    ),
-                    if (resetError != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        resetError!,
-                        style: const TextStyle(color: TabbyColors.alertRed, fontSize: 11),
+                      const SizedBox(height: 24),
+                      TabbyButton(
+                        label: 'Send Reset Link',
+                        isLoading: isResetting,
+                        onPressed: isResetting
+                            ? null
+                            : () async {
+                                final email = resetEmailController.text.trim();
+                                if (email.isEmpty || !email.contains('@')) {
+                                  setModalState(() {
+                                    resetError = 'Please enter a valid email address.';
+                                  });
+                                  return;
+                                }
+
+                                setModalState(() {
+                                  isResetting = true;
+                                  resetError = null;
+                                });
+
+                                try {
+                                  if (SupabaseConfig.isInitialized) {
+                                    await SupabaseConfig.auth.resetPasswordForEmail(email);
+                                  }
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Password reset link sent to $email! Please check your inbox.'),
+                                        backgroundColor: TabbyColors.brandEmerald,
+                                        duration: const Duration(seconds: 3),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  setModalState(() {
+                                    isResetting = false;
+                                    resetError = 'Failed to send reset link: ${e.toString().replaceAll('AuthApiException', '').replaceAll('AuthException', '').trim()}';
+                                  });
+                                }
+                              },
                       ),
                     ],
-                    const SizedBox(height: 24),
-                    TabbyButton(
-                      label: 'Send Reset Link',
-                      onPressed: () {
-                        final email = resetEmailController.text.trim();
-                        if (email.isEmpty || !email.contains('@')) {
-                          setModalState(() {
-                            resetError = 'Please enter a valid email address.';
-                          });
-                          return;
-                        }
-
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Password reset link sent to $email! Please check your inbox.'),
-                            backgroundColor: TabbyColors.brandEmerald,
-                            duration: const Duration(seconds: 3),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
             );
@@ -249,7 +321,8 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               TabbyButton(
                 label: 'Log In',
-                onPressed: _login,
+                isLoading: _isLoading,
+                onPressed: _isLoading ? null : _login,
               ),
               const SizedBox(height: 16),
               Center(

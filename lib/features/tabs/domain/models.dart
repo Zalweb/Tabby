@@ -175,6 +175,28 @@ class TabbyUser {
       qrCodeUrl: qrCodeUrl ?? this.qrCodeUrl,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'displayName': displayName,
+    'email': email,
+    'phone': phone,
+    'avatarUrl': avatarUrl,
+    'gcashNumber': gcashNumber,
+    'mayaNumber': mayaNumber,
+    'qrCodeUrl': qrCodeUrl,
+  };
+
+  factory TabbyUser.fromMap(Map<String, dynamic> map) => TabbyUser(
+    id: map['id'] as String? ?? '',
+    displayName: map['displayName'] as String? ?? '',
+    email: map['email'] as String? ?? '',
+    phone: map['phone'] as String? ?? '',
+    avatarUrl: map['avatarUrl'] as String?,
+    gcashNumber: map['gcashNumber'] as String? ?? '',
+    mayaNumber: map['mayaNumber'] as String? ?? '',
+    qrCodeUrl: map['qrCodeUrl'] as String?,
+  );
 }
 
 /// Participant in a split transaction
@@ -209,6 +231,22 @@ class ParticipantShare {
       acknowledged: acknowledged ?? this.acknowledged,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+    'userId': userId,
+    'name': name,
+    'shareAmountCentavos': shareAmountCentavos,
+    'isPayer': isPayer,
+    'acknowledged': acknowledged,
+  };
+
+  factory ParticipantShare.fromMap(Map<String, dynamic> map) => ParticipantShare(
+    userId: map['userId'] as String? ?? '',
+    name: map['name'] as String? ?? '',
+    shareAmountCentavos: (map['shareAmountCentavos'] as num?)?.toInt() ?? 0,
+    isPayer: map['isPayer'] as bool? ?? false,
+    acknowledged: map['acknowledged'] as bool? ?? false,
+  );
 }
 
 /// Ledger item (Transaction or Payment) in a Tab
@@ -287,6 +325,81 @@ class LedgerEntry {
       receiptUrl: receiptUrl ?? this.receiptUrl,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'tabId': tabId,
+    'title': title,
+    'category': category.name,
+    'totalAmountCentavos': totalAmountCentavos,
+    'myShareCentavos': myShareCentavos,
+    'counterpartShareCentavos': counterpartShareCentavos,
+    'paidByUserId': paidByUserId,
+    'paidByName': paidByName,
+    'date': date.toIso8601String(),
+    'dueDate': dueDate?.toIso8601String(),
+    'status': status.name,
+    'isPayment': isPayment,
+    'paymentMethod': paymentMethod?.name,
+    'note': note,
+    'receiptUrl': receiptUrl,
+  };
+
+  factory LedgerEntry.fromMap(Map<String, dynamic> map) {
+    ExpenseCategory cat = ExpenseCategory.other;
+    final catName = map['category'] as String?;
+    if (catName != null) {
+      for (final c in ExpenseCategory.values) {
+        if (c.name == catName) {
+          cat = c;
+          break;
+        }
+      }
+    }
+
+    TransactionStatus st = TransactionStatus.acknowledged;
+    final stName = map['status'] as String?;
+    if (stName != null) {
+      for (final s in TransactionStatus.values) {
+        if (s.name == stName) {
+          st = s;
+          break;
+        }
+      }
+    }
+
+    PaymentMethod? pm;
+    final pmName = map['paymentMethod'] as String?;
+    if (pmName != null) {
+      for (final p in PaymentMethod.values) {
+        if (p.name == pmName) {
+          pm = p;
+          break;
+        }
+      }
+    }
+
+    return LedgerEntry(
+      id: map['id'] as String? ?? '',
+      tabId: map['tabId'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      category: cat,
+      totalAmountCentavos: (map['totalAmountCentavos'] as num?)?.toInt() ?? 0,
+      myShareCentavos: (map['myShareCentavos'] as num?)?.toInt() ?? 0,
+      counterpartShareCentavos: (map['counterpartShareCentavos'] as num?)?.toInt() ?? 0,
+      paidByUserId: map['paidByUserId'] as String? ?? '',
+      paidByName: map['paidByName'] as String? ?? '',
+      date: map['date'] != null
+          ? (DateTime.tryParse(map['date'] as String) ?? DateTime.now())
+          : DateTime.now(),
+      dueDate: map['dueDate'] != null ? DateTime.tryParse(map['dueDate'] as String) : null,
+      status: st,
+      isPayment: map['isPayment'] as bool? ?? false,
+      paymentMethod: pm,
+      note: map['note'] as String?,
+      receiptUrl: map['receiptUrl'] as String?,
+    );
+  }
 }
 
 /// Bilateral Tab representation between Current User and Counterpart
@@ -333,6 +446,37 @@ class BilateralTab {
       groupName: groupName ?? this.groupName,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'counterpart': counterpart.toMap(),
+    'netBalanceCentavos': netBalanceCentavos,
+    'itemCount': itemCount,
+    'entries': entries.map((e) => e.toMap()).toList(),
+    'lastUpdated': lastUpdated.toIso8601String(),
+    'isGroupTab': isGroupTab,
+    'groupName': groupName,
+  };
+
+  factory BilateralTab.fromMap(Map<String, dynamic> map) => BilateralTab(
+    id: map['id'] as String? ?? '',
+    counterpart: map['counterpart'] is Map<String, dynamic>
+        ? TabbyUser.fromMap(map['counterpart'] as Map<String, dynamic>)
+        : TabbyUser(id: map['id'] as String? ?? '', displayName: 'Friend', email: '', phone: ''),
+    netBalanceCentavos: (map['netBalanceCentavos'] as num?)?.toInt() ?? 0,
+    itemCount: (map['itemCount'] as num?)?.toInt() ??
+        (map['entries'] as List<dynamic>?)?.length ??
+        0,
+    entries: (map['entries'] as List<dynamic>?)
+            ?.map((e) => LedgerEntry.fromMap(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    lastUpdated: map['lastUpdated'] != null
+        ? (DateTime.tryParse(map['lastUpdated'] as String) ?? DateTime.now())
+        : DateTime.now(),
+    isGroupTab: map['isGroupTab'] as bool? ?? false,
+    groupName: map['groupName'] as String?,
+  );
 }
 
 /// Recent activity item for the feed
@@ -355,6 +499,26 @@ class TabbyActivity {
     this.icon = '',
     this.iconData,
   });
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'actorName': actorName,
+    'description': description,
+    'amountCentavos': amountCentavos,
+    'timestamp': timestamp.toIso8601String(),
+    'icon': icon,
+  };
+
+  factory TabbyActivity.fromMap(Map<String, dynamic> map) => TabbyActivity(
+    id: map['id'] as String? ?? '',
+    actorName: map['actorName'] as String? ?? '',
+    description: map['description'] as String? ?? '',
+    amountCentavos: (map['amountCentavos'] as num?)?.toInt() ?? 0,
+    timestamp: map['timestamp'] != null
+        ? (DateTime.tryParse(map['timestamp'] as String) ?? DateTime.now())
+        : DateTime.now(),
+    icon: map['icon'] as String? ?? '',
+  );
 }
 
 /// Upcoming reminder item
@@ -377,4 +541,26 @@ class UpcomingReminder {
     required this.dueDate,
     required this.isIWhoOwe,
   });
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'tabId': tabId,
+    'friendName': friendName,
+    'description': description,
+    'amountCentavos': amountCentavos,
+    'dueDate': dueDate.toIso8601String(),
+    'isIWhoOwe': isIWhoOwe,
+  };
+
+  factory UpcomingReminder.fromMap(Map<String, dynamic> map) => UpcomingReminder(
+    id: map['id'] as String? ?? '',
+    tabId: map['tabId'] as String? ?? '',
+    friendName: map['friendName'] as String? ?? '',
+    description: map['description'] as String? ?? '',
+    amountCentavos: (map['amountCentavos'] as num?)?.toInt() ?? 0,
+    dueDate: map['dueDate'] != null
+        ? (DateTime.tryParse(map['dueDate'] as String) ?? DateTime.now())
+        : DateTime.now(),
+    isIWhoOwe: map['isIWhoOwe'] as bool? ?? false,
+  );
 }

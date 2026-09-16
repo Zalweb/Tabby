@@ -24,9 +24,16 @@ CREATE TABLE IF NOT EXISTS public.users (
     phone TEXT UNIQUE,
     display_name TEXT NOT NULL,
     avatar_url TEXT,
+    gcash_number TEXT,
+    maya_number TEXT,
+    qr_code_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS gcash_number TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS maya_number TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS qr_code_url TEXT;
 
 DO $$
 BEGIN
@@ -161,10 +168,12 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     currency TEXT NOT NULL DEFAULT 'PHP',
     transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
     due_date DATE,
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'acknowledged', 'disputed', 'cancelled', 'settled')),
+    receipt_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
 
 -- 11. TRANSACTION_PARTICIPANTS TABLE
 CREATE TABLE IF NOT EXISTS public.transaction_participants (
@@ -381,6 +390,10 @@ BEGIN
     ) OR EXISTS (
         SELECT 1 FROM public.tabs
         WHERE id = p_tab_id AND (user_a = p_user_id OR user_b = p_user_id)
+    ) OR EXISTS (
+        SELECT 1 FROM public.tabs t
+        JOIN public.group_members gm ON t.group_id = gm.group_id
+        WHERE t.id = p_tab_id AND gm.user_id = p_user_id AND gm.status = 'active'
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
@@ -422,8 +435,63 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 -- RLS: USERS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view all registered user profiles" ON public.users;
-CREATE POLICY "Users can view all registered user profiles"
-    ON public.users FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Users can view their own profile and connected parties" ON public.users;
+CREATE POLICY "Users can view their own profile and connected parties"
+    ON public.users FOR SELECT
+    TO authenticated
+    USING (
+        -- 1. Self
+        id = auth.uid()
+        -- 2. Direct Bilateral Tab counterpart
+        OR EXISTS (
+            SELECT 1 FROM public.tabs t
+            WHERE (t.user_a = auth.uid() AND t.user_b = public.users.id)
+               OR (t.user_b = auth.uid() AND t.user_a = public.users.id)
+        )
+        -- 3. Multi-party Tab co-participant
+        OR EXISTS (
+            SELECT 1 FROM public.tab_members tm1
+            JOIN public.tab_members tm2 ON tm1.tab_id = tm2.tab_id
+            WHERE tm1.user_id = auth.uid() AND tm2.user_id = public.users.id
+        )
+        -- 4. Shared Group member
+        OR EXISTS (
+            SELECT 1 FROM public.group_members gm1
+            JOIN public.group_members gm2 ON gm1.group_id = gm2.group_id
+            WHERE gm1.user_id = auth.uid() AND gm2.user_id = public.users.id
+              AND gm1.status = 'active' AND gm2.status = 'active'
+        )
+        -- 5. Friendships (requested or accepted)
+        OR EXISTS (
+            SELECT 1 FROM public.friendships f
+            WHERE (f.requester_id = auth.uid() AND f.addressee_id = public.users.id)
+               OR (f.addressee_id = auth.uid() AND f.requester_id = public.users.id)
+        )
+        -- 6. Virtual Contacts claimed
+        OR EXISTS (
+            SELECT 1 FROM public.contacts c
+            WHERE c.owner_user_id = auth.uid() AND c.claimed_user_id = public.users.id
+        )
+    );
+
+-- Sanitized user search function for friend discovery that exposes only public attributes
+CREATE OR REPLACE FUNCTION public.search_users(p_query TEXT)
+RETURNS TABLE (
+    id UUID,
+    display_name TEXT,
+    avatar_url TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.id, u.display_name, u.avatar_url
+    FROM public.users u
+    WHERE u.display_name ILIKE '%' || p_query || '%'
+       OR u.email ILIKE p_query
+    LIMIT 20;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+GRANT EXECUTE ON FUNCTION public.search_users(TEXT) TO authenticated;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.users;
 CREATE POLICY "Users can insert their own profile"
     ON public.users FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
@@ -601,7 +669,12 @@ CREATE POLICY "Tab members can view payments"
     ON public.payments FOR SELECT TO authenticated USING (public.is_tab_member(tab_id, auth.uid()));
 DROP POLICY IF EXISTS "Tab members can submit payments" ON public.payments;
 CREATE POLICY "Tab members can submit payments"
-    ON public.payments FOR INSERT TO authenticated WITH CHECK (submitted_by = auth.uid() AND public.is_tab_member(tab_id, auth.uid()));
+    ON public.payments FOR INSERT TO authenticated WITH CHECK (
+        public.is_tab_member(tab_id, auth.uid()) AND (
+            submitted_by = auth.uid() OR
+            confirmed_by = auth.uid()
+        )
+    );
 DROP POLICY IF EXISTS "Tab members can update payments" ON public.payments;
 CREATE POLICY "Tab members can update payments"
     ON public.payments FOR UPDATE TO authenticated USING (public.is_tab_member(tab_id, auth.uid()));
@@ -946,15 +1019,27 @@ BEGIN
         RETURN v_tab_id;
     END IF;
 
-    INSERT INTO public.tabs (tab_type, status, user_a, user_b)
-    VALUES ('individual', 'active', v_first_user, v_second_user)
-    RETURNING id INTO v_tab_id;
+    -- Create new canonical bilateral tab
+    BEGIN
+        INSERT INTO public.tabs (tab_type, status, user_a, user_b)
+        VALUES ('individual', 'active', v_first_user, v_second_user)
+        RETURNING id INTO v_tab_id;
 
-    INSERT INTO public.tab_members (tab_id, user_id, role)
-    VALUES 
-        (v_tab_id, v_first_user, 'participant'),
-        (v_tab_id, v_second_user, 'participant')
-    ON CONFLICT DO NOTHING;
+        -- Insert both members into tab_members
+        INSERT INTO public.tab_members (tab_id, user_id, role)
+        VALUES 
+            (v_tab_id, v_first_user, 'participant'),
+            (v_tab_id, v_second_user, 'participant')
+        ON CONFLICT DO NOTHING;
+    EXCEPTION WHEN unique_violation THEN
+        SELECT id INTO v_tab_id
+        FROM public.tabs
+        WHERE tab_type = 'individual'
+          AND status = 'active'
+          AND user_a = v_first_user
+          AND user_b = v_second_user
+        LIMIT 1;
+    END;
 
     RETURN v_tab_id;
 END;
@@ -1045,17 +1130,65 @@ BEGIN
         DROP POLICY IF EXISTS "Authenticated users can upload payment proofs" ON storage.objects;
         CREATE POLICY "Authenticated users can upload payment proofs"
             ON storage.objects FOR INSERT TO authenticated
-            WITH CHECK (bucket_id = 'payment-proofs');
+            WITH CHECK (
+                bucket_id = 'payment-proofs' 
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                    OR (storage.foldername(name))[1] = 'receipts'
+                )
+            );
 
         DROP POLICY IF EXISTS "Authenticated users can view payment proofs" ON storage.objects;
         CREATE POLICY "Authenticated users can view payment proofs"
             ON storage.objects FOR SELECT TO authenticated
-            USING (bucket_id = 'payment-proofs');
+            USING (
+                bucket_id = 'payment-proofs'
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                    OR EXISTS (
+                        SELECT 1 FROM public.payment_proofs pp
+                        JOIN public.payments p ON pp.payment_id = p.id
+                        WHERE (pp.file_url = name OR pp.file_name = name OR pp.file_url LIKE '%' || name)
+                          AND public.is_tab_member(p.tab_id, auth.uid())
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM public.transactions tx
+                        WHERE (tx.receipt_url = name OR tx.receipt_url LIKE '%' || name)
+                          AND public.is_tab_member(tx.tab_id, auth.uid())
+                    )
+                )
+            );
 
         DROP POLICY IF EXISTS "Users can delete their own payment proofs" ON storage.objects;
         CREATE POLICY "Users can delete their own payment proofs"
             ON storage.objects FOR DELETE TO authenticated
-            USING (bucket_id = 'payment-proofs' AND (storage.foldername(name))[1] = auth.uid()::text);
+            USING (
+                bucket_id = 'payment-proofs' 
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                )
+            );
+
+        DROP POLICY IF EXISTS "Users can update their own payment proofs" ON storage.objects;
+        CREATE POLICY "Users can update their own payment proofs"
+            ON storage.objects FOR UPDATE TO authenticated
+            USING (
+                bucket_id = 'payment-proofs' 
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                )
+            )
+            WITH CHECK (
+                bucket_id = 'payment-proofs' 
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                )
+            );
     END IF;
 END $$;
 

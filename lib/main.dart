@@ -20,6 +20,8 @@ void main() async {
         final session = data.session;
         if (session != null) {
           AppState.isAuthenticated.value = true;
+        } else {
+          AppState.isAuthenticated.value = false;
         }
       });
     }

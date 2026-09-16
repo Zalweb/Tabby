@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import '../../../shared/widgets/notification_center_sheet.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
 import '../../tabs/application/tabby_providers.dart';
+import '../../tabs/data/supabase_tabby_repository.dart';
 import '../../tabs/domain/models.dart';
 import '../../tabs/presentation/add_expense_modal.dart';
 
@@ -939,6 +941,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _showAvatarOptionsSheet(BuildContext context, TabbyUser user) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Material(
@@ -946,10 +949,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1069,9 +1073,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 
   // 2. Edit Profile Modal Sheet
@@ -1082,120 +1087,156 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final gcashController = TextEditingController(text: user.gcashNumber);
     final mayaController = TextEditingController(text: user.mayaNumber);
 
+    bool isSubmitting = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Material(
-            color: TabbyColors.surfaceWhite,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Material(
+                color: TabbyColors.surfaceWhite,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(
-                          child: Text(
-                            'Edit Profile',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Edit Profile',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () => Navigator.pop(context),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          label: 'Display Name',
+                          controller: nameController,
+                          icon: Icons.person_outline_rounded,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Email Address',
+                          controller: emailController,
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Phone Number',
+                          controller: phoneController,
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'GCash Number',
+                          controller: gcashController,
+                          icon: Icons.account_balance_wallet_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Maya Number',
+                          controller: mayaController,
+                          icon: Icons.credit_card_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 24),
+                        TabbyButton(
+                          label: 'Save Changes',
+                          isLoading: isSubmitting,
+                          onPressed: () {
+                            if (isSubmitting) return;
+
+                            final newName = nameController.text.trim();
+                            final newEmail = emailController.text.trim();
+                            final newPhone = phoneController.text.trim();
+                            final newGcash = gcashController.text.trim();
+                            final newMaya = mayaController.text.trim();
+
+                            if (newName.isEmpty) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter a display name.'),
+                                  backgroundColor: TabbyColors.alertRed,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (newEmail.isNotEmpty && (!newEmail.contains('@') || !newEmail.contains('.'))) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter a valid email address.'),
+                                  backgroundColor: TabbyColors.alertRed,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final phoneDigits = newPhone.replaceAll(RegExp(r'[^0-9]'), '');
+                            if (newPhone.isNotEmpty && phoneDigits.length < 7) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter a valid phone number.'),
+                                  backgroundColor: TabbyColors.alertRed,
+                                ),
+                              );
+                              return;
+                            }
+
+                            setModalState(() => isSubmitting = true);
+
+                            ref.read(currentUserProvider.notifier).updateProfile(
+                                  displayName: newName,
+                                  email: newEmail,
+                                  phone: newPhone,
+                                  gcashNumber: newGcash,
+                                  mayaNumber: newMaya,
+                                );
+
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Profile details updated successfully!'),
+                                backgroundColor: TabbyColors.brandEmerald,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      label: 'Display Name',
-                      controller: nameController,
-                      icon: Icons.person_outline_rounded,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Email Address',
-                      controller: emailController,
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Phone Number',
-                      controller: phoneController,
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'GCash Number',
-                      controller: gcashController,
-                      icon: Icons.account_balance_wallet_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Maya Number',
-                      controller: mayaController,
-                      icon: Icons.credit_card_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 24),
-                    TabbyButton(
-                      label: 'Save Changes',
-                      onPressed: () {
-                        final newName = nameController.text.trim();
-                        final newEmail = emailController.text.trim();
-                        final newPhone = phoneController.text.trim();
-
-                        if (newName.isEmpty) {
-                          ScaffoldMessenger.of(context).clearSnackBars();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please enter a display name.'),
-                              backgroundColor: TabbyColors.alertRed,
-                            ),
-                          );
-                          return;
-                        }
-
-                        ref.read(currentUserProvider.notifier).updateProfile(
-                              displayName: newName,
-                              email: newEmail,
-                              phone: newPhone,
-                              gcashNumber: gcashController.text.trim(),
-                              mayaNumber: mayaController.text.trim(),
-                            );
-
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Profile details updated successfully!'),
-                            backgroundColor: TabbyColors.brandEmerald,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -1206,169 +1247,231 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final gcashController = TextEditingController(text: user.gcashNumber.isNotEmpty ? user.gcashNumber : user.phone);
     final mayaController = TextEditingController(text: user.mayaNumber.isNotEmpty ? user.mayaNumber : user.phone);
 
+    bool isUploading = false;
+    bool isSaving = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Material(
-            color: TabbyColors.surfaceWhite,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Material(
+                color: TabbyColors.surfaceWhite,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(
-                          child: Text(
-                            'Payment QR Ph Settings',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          color: TabbyColors.brandMintAccent,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                ? TabbyColors.brandEmerald
-                                : TabbyColors.borderMint,
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Icon(
-                              Icons.qr_code_2_rounded,
-                              size: 64,
-                              color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                  ? TabbyColors.brandEmerald
-                                  : TabbyColors.brandDarkTeal,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                  ? 'QR Ph Active'
-                                  : 'No QR Linked',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                    ? TabbyColors.brandEmerald
-                                    : TabbyColors.textSecondary,
+                            const Expanded(
+                              child: Text(
+                                'Payment QR Ph Settings',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => Navigator.pop(context),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      label: 'GCash Number',
-                      controller: gcashController,
-                      icon: Icons.account_balance_wallet_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Maya Number',
-                      controller: mayaController,
-                      icon: Icons.credit_card_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        final simulatedQrUrl = 'https://tabby.ph/qr/${user.id}_qrph.png';
-                        ref.read(currentUserProvider.notifier).updateProfile(
-                              qrCodeUrl: simulatedQrUrl,
-                              gcashNumber: gcashController.text.trim(),
-                              mayaNumber: mayaController.text.trim(),
-                            );
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Payment QR Ph code verified and linked!'),
-                            backgroundColor: TabbyColors.brandEmerald,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.upload_file_rounded, size: 18),
-                      label: const Text('Upload New QR Code Image'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: TabbyColors.brandDarkTeal,
-                        minimumSize: const Size(double.infinity, 48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
-                    if (user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      TextButton.icon(
-                        onPressed: () {
-                          ref.read(currentUserProvider.notifier).updateProfile(
-                                qrCodeUrl: '',
-                                gcashNumber: gcashController.text.trim(),
-                                mayaNumber: mayaController.text.trim(),
-                              );
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).clearSnackBars();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Custom QR code removed.'),
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Container(
+                            width: 140,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              color: TabbyColors.brandMintAccent,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
+                                    ? TabbyColors.brandEmerald
+                                    : TabbyColors.borderMint,
+                              ),
                             ),
-                          );
-                        },
-                        icon: const Icon(Icons.delete_outline_rounded, size: 16, color: TabbyColors.alertRed),
-                        label: const Text('Remove QR Code', style: TextStyle(color: TabbyColors.alertRed)),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    TabbyButton(
-                      label: 'Save Payment Details',
-                      onPressed: () {
-                        ref.read(currentUserProvider.notifier).updateProfile(
-                              gcashNumber: gcashController.text.trim(),
-                              mayaNumber: mayaController.text.trim(),
-                            );
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Payment QR and numbers saved!'),
-                            backgroundColor: TabbyColors.brandEmerald,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (isUploading)
+                                  const SizedBox(
+                                    width: 36,
+                                    height: 36,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3,
+                                      valueColor: AlwaysStoppedAnimation(TabbyColors.brandEmerald),
+                                    ),
+                                  )
+                                else ...[
+                                  Icon(
+                                    Icons.qr_code_2_rounded,
+                                    size: 64,
+                                    color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
+                                        ? TabbyColors.brandEmerald
+                                        : TabbyColors.brandDarkTeal,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
+                                        ? 'QR Ph Active'
+                                        : 'No QR Linked',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
+                                          ? TabbyColors.brandEmerald
+                                          : TabbyColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
-                        );
-                      },
+                        ),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          label: 'GCash Number',
+                          controller: gcashController,
+                          icon: Icons.account_balance_wallet_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Maya Number',
+                          controller: mayaController,
+                          icon: Icons.credit_card_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: isUploading || isSaving
+                              ? null
+                              : () async {
+                                  setModalState(() => isUploading = true);
+                                  await Future.delayed(const Duration(milliseconds: 300));
+                                  final simulatedQrUrl = 'https://tabby.ph/qr/${user.id}_qrph.png';
+                                  ref.read(currentUserProvider.notifier).updateProfile(
+                                        qrCodeUrl: simulatedQrUrl,
+                                        gcashNumber: gcashController.text.trim(),
+                                        mayaNumber: mayaController.text.trim(),
+                                      );
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Payment QR Ph code verified and linked!'),
+                                        backgroundColor: TabbyColors.brandEmerald,
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: isUploading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.upload_file_rounded, size: 18),
+                          label: Text(isUploading ? 'Verifying QR Code...' : 'Upload New QR Code Image'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: TabbyColors.brandDarkTeal,
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                        ),
+                        if (user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () {
+                              ref.read(currentUserProvider.notifier).updateProfile(
+                                    qrCodeUrl: '',
+                                    gcashNumber: gcashController.text.trim(),
+                                    mayaNumber: mayaController.text.trim(),
+                                  );
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Custom QR code removed.'),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.delete_outline_rounded, size: 16, color: TabbyColors.alertRed),
+                            label: const Text('Remove QR Code', style: TextStyle(color: TabbyColors.alertRed)),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        TabbyButton(
+                          label: 'Save Payment Details',
+                          isLoading: isSaving,
+                          onPressed: () {
+                            if (isSaving || isUploading) return;
+
+                            final gcash = gcashController.text.trim();
+                            final maya = mayaController.text.trim();
+
+                            final gcashDigits = gcash.replaceAll(RegExp(r'[^0-9]'), '');
+                            if (gcash.isNotEmpty && gcashDigits.length < 10) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter a valid GCash mobile number (at least 10 digits).'),
+                                  backgroundColor: TabbyColors.alertRed,
+                                ),
+                              );
+                              return;
+                            }
+
+                            final mayaDigits = maya.replaceAll(RegExp(r'[^0-9]'), '');
+                            if (maya.isNotEmpty && mayaDigits.length < 10) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please enter a valid Maya mobile number (at least 10 digits).'),
+                                  backgroundColor: TabbyColors.alertRed,
+                                ),
+                              );
+                              return;
+                            }
+
+                            setModalState(() => isSaving = true);
+
+                            ref.read(currentUserProvider.notifier).updateProfile(
+                                  gcashNumber: gcash,
+                                  mayaNumber: maya,
+                                );
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Payment QR and numbers saved!'),
+                                backgroundColor: TabbyColors.brandEmerald,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -1429,8 +1532,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
                       ),
                       value: settings.biometricsEnabled,
-                      onChanged: (val) {
-                        notifier.update(biometricsEnabled: val);
+                      onChanged: (val) async {
+                        await notifier.toggleBiometrics(val);
                       },
                     ),
                     const Divider(height: 1),
@@ -1620,81 +1723,84 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _showCurrencyPrecisionSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return Material(
           color: TabbyColors.surfaceWhite,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Integer Centavo Precision',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: TabbyColors.brandDarkTeal,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const TabbyMascotWidget(
-                  emotion: MascotEmotion.calculating,
-                  size: 50,
-                  showBubble: false,
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'ADR-001 Financial Standard',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Tabby computes and stores all currency internally as integer centavos (1 PHP = 100 centavos). This guarantees absolute mathematical accuracy and eliminates IEEE-754 floating-point rounding errors when splitting odd bills across multiple friends.',
-                  style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary, height: 1.5),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: TabbyColors.brandMintAccent,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Row(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.verified_outlined, color: TabbyColors.brandEmerald, size: 24),
-                      SizedBox(width: 12),
-                      Expanded(
+                      const Expanded(
                         child: Text(
-                          'Example: ₱1,000.00 is stored as 100000 centavos. A 3-way split divides exactly into 33334¢, 33333¢, and 33333¢ with zero lost centavos.',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: TabbyColors.brandDarkTeal),
+                          'Integer Centavo Precision',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(sheetContext),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 20),
-                TabbyButton(
-                  label: 'Got it',
-                  variant: TabbyButtonVariant.primary,
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  const TabbyMascotWidget(
+                    emotion: MascotEmotion.calculating,
+                    size: 50,
+                    showBubble: false,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'ADR-001 Financial Standard',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Tabby computes and stores all currency internally as integer centavos (1 PHP = 100 centavos). This guarantees absolute mathematical accuracy and eliminates IEEE-754 floating-point rounding errors when splitting odd bills across multiple friends.',
+                    style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: TabbyColors.brandMintAccent,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.verified_outlined, color: TabbyColors.brandEmerald, size: 24),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Example: ₱1,000.00 is stored as 100000 centavos. A 3-way split divides exactly into 33334¢, 33333¢, and 33333¢ with zero lost centavos.',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: TabbyColors.brandDarkTeal),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TabbyButton(
+                    label: 'Got it',
+                    variant: TabbyButtonVariant.primary,
+                    onPressed: () => Navigator.pop(sheetContext),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -1704,85 +1810,90 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // 5. Backend & Offline Sync Diagnostics Sheet
   void _showSyncDiagnosticsSheet(BuildContext context) {
+    final messenger = ScaffoldMessenger.of(context);
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return Material(
           color: TabbyColors.surfaceWhite,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Backend & Offline Sync',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: TabbyColors.brandDarkTeal,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Backend & Offline Sync',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyColors.brandDarkTeal,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildDiagnosticsRow(
-                  icon: Icons.cloud_done_rounded,
-                  title: 'Supabase BaaS',
-                  subtitle: 'PostgreSQL 15+ relational database with RLS',
-                  status: 'Connected',
-                  statusColor: TabbyColors.brandEmerald,
-                ),
-                const Divider(height: 20),
-                _buildDiagnosticsRow(
-                  icon: Icons.storage_rounded,
-                  title: 'Drift Local Cache',
-                  subtitle: 'Offline-first SQLite local store on device',
-                  status: 'Synchronized',
-                  statusColor: TabbyColors.brandEmerald,
-                ),
-                const Divider(height: 20),
-                _buildDiagnosticsRow(
-                  icon: Icons.security_rounded,
-                  title: 'Row Level Security',
-                  subtitle: 'Audited user-scoped permissions active',
-                  status: 'Enforced',
-                  statusColor: TabbyColors.accentBlue,
-                ),
-                const SizedBox(height: 24),
-                TabbyButton(
-                  label: 'Sync Data Now',
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('All tabs and transactions are fully synchronized.'),
-                      backgroundColor: TabbyColors.brandEmerald,
-                    ),
-                  );
-                },
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(sheetContext),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDiagnosticsRow(
+                    icon: Icons.cloud_done_rounded,
+                    title: 'Supabase BaaS',
+                    subtitle: 'PostgreSQL 15+ relational database with RLS',
+                    status: 'Connected',
+                    statusColor: TabbyColors.brandEmerald,
+                  ),
+                  const Divider(height: 20),
+                  _buildDiagnosticsRow(
+                    icon: Icons.storage_rounded,
+                    title: 'Drift Local Cache',
+                    subtitle: 'Offline-first SQLite local store on device',
+                    status: 'Synchronized',
+                    statusColor: TabbyColors.brandEmerald,
+                  ),
+                  const Divider(height: 20),
+                  _buildDiagnosticsRow(
+                    icon: Icons.security_rounded,
+                    title: 'Row Level Security',
+                    subtitle: 'Audited user-scoped permissions active',
+                    status: 'Enforced',
+                    statusColor: TabbyColors.accentBlue,
+                  ),
+                  const SizedBox(height: 24),
+                  TabbyButton(
+                    label: 'Sync Data Now',
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      ref.read(tabbyProvider.notifier).refreshTabs();
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('All tabs and transactions are fully synchronized.'),
+                          backgroundColor: TabbyColors.brandEmerald,
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   // 6. Help Center & FAQ Sheet
   void _showHelpCenterSheet(BuildContext context) {
@@ -1909,112 +2020,158 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final phoneController = TextEditingController();
     final emailController = TextEditingController();
     final gcashController = TextEditingController();
+    final mayaController = TextEditingController();
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Material(
-            color: TabbyColors.surfaceWhite,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Material(
+                color: TabbyColors.surfaceWhite,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(
-                          child: Text(
-                            'Add a New Friend',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Add a New Friend',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => Navigator.pop(sheetContext),
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () => Navigator.pop(context),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          label: 'Friend\'s Full Name',
+                          controller: nameController,
+                          icon: Icons.person_outline_rounded,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Mobile Number (+63 9XX XXX XXXX)',
+                          controller: phoneController,
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Email (optional)',
+                          controller: emailController,
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'GCash Number (optional)',
+                          controller: gcashController,
+                          icon: Icons.account_balance_wallet_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Maya Number (optional)',
+                          controller: mayaController,
+                          icon: Icons.credit_card_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 24),
+                        TabbyButton(
+                          label: isSubmitting ? 'Adding...' : 'Add Friend',
+                          isLoading: isSubmitting,
+                          onPressed: isSubmitting
+                              ? null
+                              : () {
+                                  final name = nameController.text.trim();
+                                  final phone = phoneController.text.trim();
+                                  final email = emailController.text.trim();
+
+                                  if (name.isEmpty) {
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please enter a name for your friend.'),
+                                        backgroundColor: TabbyColors.alertRed,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  if (phone.isNotEmpty) {
+                                    final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+                                    if (cleanDigits.length < 10) {
+                                      ScaffoldMessenger.of(context).clearSnackBars();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please enter a valid mobile number (min 10 digits).'),
+                                          backgroundColor: TabbyColors.alertRed,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                  }
+
+                                  if (email.isNotEmpty &&
+                                      !RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please enter a valid email address.'),
+                                        backgroundColor: TabbyColors.alertRed,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  setModalState(() => isSubmitting = true);
+
+                                  ref.read(tabbyProvider.notifier).addFriend(
+                                        name: name,
+                                        phone: phone.isNotEmpty ? phone : '+63 900 000 0000',
+                                        email: email,
+                                        gcashNumber: gcashController.text.trim(),
+                                        mayaNumber: mayaController.text.trim(),
+                                      );
+
+                                  Navigator.pop(sheetContext);
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Added $name to your friends list!'),
+                                      backgroundColor: TabbyColors.brandEmerald,
+                                    ),
+                                  );
+                                },
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      label: 'Friend\'s Full Name',
-                      controller: nameController,
-                      icon: Icons.person_outline_rounded,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Mobile Number (+63 9XX XXX XXXX)',
-                      controller: phoneController,
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Email (optional)',
-                      controller: emailController,
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'GCash / Maya Number (optional)',
-                      controller: gcashController,
-                      icon: Icons.account_balance_wallet_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 24),
-                    TabbyButton(
-                      label: 'Add Friend',
-                      onPressed: () {
-                        final name = nameController.text.trim();
-                        final phone = phoneController.text.trim();
-
-                        if (name.isEmpty) {
-                          ScaffoldMessenger.of(context).clearSnackBars();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please enter a name for your friend.'),
-                              backgroundColor: TabbyColors.alertRed,
-                            ),
-                          );
-                          return;
-                        }
-
-                        ref.read(tabbyProvider.notifier).addFriend(
-                              name: name,
-                              phone: phone.isNotEmpty ? phone : '+63 900 000 0000',
-                              email: emailController.text.trim(),
-                              gcashNumber: gcashController.text.trim(),
-                            );
-
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Added $name to your friends list!'),
-                            backgroundColor: TabbyColors.brandEmerald,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -2025,119 +2182,122 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     ScaffoldMessenger.of(context).clearSnackBars();
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return Material(
           color: TabbyColors.surfaceWhite,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            friend.displayName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              friend.displayName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: TabbyColors.brandDarkTeal,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            friend.phone.isNotEmpty ? friend.phone : 'Connected Friend',
-                            style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              friend.phone.isNotEmpty ? friend.phone : 'Connected Friend',
+                              style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.iconBgMint,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.receipt_long_rounded, color: TabbyColors.brandEmerald, size: 20),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(sheetContext),
+                      ),
+                    ],
                   ),
-                  title: const Text('Open Ledger & Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('View running balance and transaction history', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.go('/tabs/${friend.id}');
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.iconBgBlue,
-                      borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.iconBgMint,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.receipt_long_rounded, color: TabbyColors.brandEmerald, size: 20),
                     ),
-                    child: const Icon(Icons.add_circle_outline_rounded, color: TabbyColors.accentBlue, size: 20),
+                    title: const Text('Open Ledger & Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text('View running balance and transaction history', style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      context.go('/tabs/${friend.id}');
+                    },
                   ),
-                  title: const Text('Log Shared Expense', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Split a new bill or record an expense', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    AddExpenseModal.show(context, initialCounterpartId: friend.id);
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.iconBgMint,
-                      borderRadius: BorderRadius.circular(12),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.iconBgBlue,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.add_circle_outline_rounded, color: TabbyColors.accentBlue, size: 20),
                     ),
-                    child: const Icon(Icons.edit_outlined, color: TabbyColors.brandEmerald, size: 20),
+                    title: const Text('Log Shared Expense', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text('Split a new bill or record an expense', style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      AddExpenseModal.show(context, initialCounterpartId: friend.id);
+                    },
                   ),
-                  title: const Text('Edit Friend Details', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Update name, mobile, or payment numbers', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showEditFriendSheet(context, friend);
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(12),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.iconBgMint,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.edit_outlined, color: TabbyColors.brandEmerald, size: 20),
                     ),
-                    child: const Icon(Icons.person_remove_rounded, color: TabbyColors.alertRed, size: 20),
+                    title: const Text('Edit Friend Details', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text('Update name, mobile, or payment numbers', style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _showEditFriendSheet(context, friend);
+                    },
                   ),
-                  title: const Text('Remove Friend', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: TabbyColors.alertRed)),
-                  subtitle: const Text('Remove from your friends list', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showRemoveFriendConfirmation(context, friend);
-                  },
-                ),
-              ],
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.person_remove_rounded, color: TabbyColors.alertRed, size: 20),
+                    ),
+                    title: const Text('Remove Friend', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: TabbyColors.alertRed)),
+                    subtitle: const Text('Remove from your friends list', style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _showRemoveFriendConfirmation(context, friend);
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -2153,121 +2313,158 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final emailController = TextEditingController(text: friend.email);
     final gcashController = TextEditingController(text: friend.gcashNumber);
     final mayaController = TextEditingController(text: friend.mayaNumber);
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-          child: Material(
-            color: TabbyColors.surfaceWhite,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Material(
+                color: TabbyColors.surfaceWhite,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Expanded(
-                          child: Text(
-                            'Edit Friend Details',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Edit Friend Details',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => Navigator.pop(sheetContext),
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () => Navigator.pop(context),
+                        const SizedBox(height: 16),
+                        _buildInputField(
+                          label: 'Friend\'s Full Name',
+                          controller: nameController,
+                          icon: Icons.person_outline_rounded,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Mobile Number (+63 9XX XXX XXXX)',
+                          controller: phoneController,
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Email Address (optional)',
+                          controller: emailController,
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'GCash Number (optional)',
+                          controller: gcashController,
+                          icon: Icons.account_balance_wallet_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildInputField(
+                          label: 'Maya Number (optional)',
+                          controller: mayaController,
+                          icon: Icons.credit_card_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 24),
+                        TabbyButton(
+                          label: isSubmitting ? 'Saving...' : 'Save Changes',
+                          isLoading: isSubmitting,
+                          onPressed: isSubmitting
+                              ? null
+                              : () {
+                                  final name = nameController.text.trim();
+                                  final phone = phoneController.text.trim();
+                                  final email = emailController.text.trim();
+
+                                  if (name.isEmpty) {
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please enter a valid friend name.'),
+                                        backgroundColor: TabbyColors.alertRed,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  if (phone.isNotEmpty) {
+                                    final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+                                    if (cleanDigits.length < 10) {
+                                      ScaffoldMessenger.of(context).clearSnackBars();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please enter a valid mobile number (min 10 digits).'),
+                                          backgroundColor: TabbyColors.alertRed,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                  }
+
+                                  if (email.isNotEmpty &&
+                                      !RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please enter a valid email address.'),
+                                        backgroundColor: TabbyColors.alertRed,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  setModalState(() => isSubmitting = true);
+
+                                  ref.read(tabbyProvider.notifier).updateFriend(
+                                        id: friend.id,
+                                        name: name,
+                                        phone: phone.isNotEmpty ? phone : friend.phone,
+                                        email: email,
+                                        gcashNumber: gcashController.text.trim(),
+                                        mayaNumber: mayaController.text.trim(),
+                                      );
+
+                                  Navigator.pop(sheetContext);
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Updated details for $name!'),
+                                      backgroundColor: TabbyColors.brandEmerald,
+                                    ),
+                                  );
+                                },
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildInputField(
-                      label: 'Friend\'s Full Name',
-                      controller: nameController,
-                      icon: Icons.person_outline_rounded,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Mobile Number (+63 9XX XXX XXXX)',
-                      controller: phoneController,
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Email Address (optional)',
-                      controller: emailController,
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'GCash Number (optional)',
-                      controller: gcashController,
-                      icon: Icons.account_balance_wallet_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildInputField(
-                      label: 'Maya Number (optional)',
-                      controller: mayaController,
-                      icon: Icons.credit_card_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 24),
-                    TabbyButton(
-                      label: 'Save Changes',
-                      onPressed: () {
-                        final name = nameController.text.trim();
-                        final phone = phoneController.text.trim();
-
-                        if (name.isEmpty) {
-                          ScaffoldMessenger.of(context).clearSnackBars();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Please enter a valid friend name.'),
-                              backgroundColor: TabbyColors.alertRed,
-                            ),
-                          );
-                          return;
-                        }
-
-                        ref.read(tabbyProvider.notifier).updateFriend(
-                              id: friend.id,
-                              name: name,
-                              phone: phone.isNotEmpty ? phone : friend.phone,
-                              email: emailController.text.trim(),
-                              gcashNumber: gcashController.text.trim(),
-                              mayaNumber: mayaController.text.trim(),
-                            );
-
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Updated details for $name!'),
-                            backgroundColor: TabbyColors.brandEmerald,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -2331,12 +2528,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final customMemberController = TextEditingController();
     final friends = ref.read(friendsProvider);
     final selectedFriendIds = <String>{};
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
@@ -2368,7 +2566,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                             IconButton(
                               icon: const Icon(Icons.close_rounded),
-                              onPressed: () => Navigator.pop(context),
+                              onPressed: () => Navigator.pop(sheetContext),
                             ),
                           ],
                         ),
@@ -2430,49 +2628,55 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         const SizedBox(height: 24),
                         TabbyButton(
-                          label: 'Create Group Tab',
-                          onPressed: () {
-                            final groupName = nameController.text.trim();
-                            if (groupName.isEmpty) {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please enter a group name.'),
-                                  backgroundColor: TabbyColors.alertRed,
-                                ),
-                              );
-                              return;
-                            }
+                          label: isSubmitting ? 'Creating...' : 'Create Group Tab',
+                          isLoading: isSubmitting,
+                          onPressed: isSubmitting
+                              ? null
+                              : () {
+                                  final groupName = nameController.text.trim();
+                                  if (groupName.isEmpty) {
+                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please enter a group name.'),
+                                        backgroundColor: TabbyColors.alertRed,
+                                      ),
+                                    );
+                                    return;
+                                  }
 
-                            final memberNames = <String>[];
-                            for (final id in selectedFriendIds) {
-                              final f = friends.where((x) => x.id == id).firstOrNull;
-                              if (f != null) memberNames.add(f.displayName);
-                            }
+                                  setModalState(() => isSubmitting = true);
 
-                            final custom = customMemberController.text.trim();
-                            if (custom.isNotEmpty) {
-                              memberNames.add(custom);
-                            }
+                                  final memberNames = <String>[];
+                                  for (final id in selectedFriendIds) {
+                                    final f = friends.where((x) => x.id == id).firstOrNull;
+                                    if (f != null) memberNames.add(f.displayName);
+                                  }
 
-                            if (memberNames.isEmpty) {
-                              memberNames.add('Barkada Member');
-                            }
+                                  final custom = customMemberController.text.trim();
+                                  if (custom.isNotEmpty) {
+                                    memberNames.add(custom);
+                                  }
 
-                            ref.read(tabbyProvider.notifier).addGroupTab(
-                                  groupName: groupName,
-                                  memberNames: memberNames,
-                                );
+                                  if (memberNames.isEmpty) {
+                                    memberNames.add('Barkada Member');
+                                  }
 
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Group "$groupName" created successfully!'),
-                                backgroundColor: TabbyColors.brandEmerald,
-                              ),
-                            );
-                          },
+                                  ref.read(tabbyProvider.notifier).addGroupTab(
+                                        groupName: groupName,
+                                        memberNames: memberNames,
+                                        memberUserIds: selectedFriendIds.toList(),
+                                      );
+
+                                  Navigator.pop(sheetContext);
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Group "$groupName" created successfully!'),
+                                      backgroundColor: TabbyColors.brandEmerald,
+                                    ),
+                                  );
+                                },
                         ),
                       ],
                     ),
@@ -2490,103 +2694,106 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _showGroupOptionsSheet(BuildContext context, BilateralTab group) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return Material(
           color: TabbyColors.surfaceWhite,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            group.groupName ?? group.counterpart.displayName,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              group.groupName ?? group.counterpart.displayName,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: TabbyColors.brandDarkTeal,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            group.counterpart.phone.isNotEmpty
-                                ? group.counterpart.phone
-                                : 'Group Tab',
-                            style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              group.counterpart.phone.isNotEmpty
+                                  ? group.counterpart.phone
+                                  : 'Group Tab',
+                              style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.iconBgMint,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.receipt_long_rounded, color: TabbyColors.brandEmerald, size: 20),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(sheetContext),
+                      ),
+                    ],
                   ),
-                  title: const Text('Open Group Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('View group balance and expenses', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.go('/tabs/${group.id}');
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.iconBgBlue,
-                      borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.iconBgMint,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.receipt_long_rounded, color: TabbyColors.brandEmerald, size: 20),
                     ),
-                    child: const Icon(Icons.add_circle_outline_rounded, color: TabbyColors.accentBlue, size: 20),
+                    title: const Text('Open Group Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text('View group balance and expenses', style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      context.go('/tabs/${group.id}');
+                    },
                   ),
-                  title: const Text('Log Group Expense', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Add a shared bill or split for this group', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    AddExpenseModal.show(context, initialCounterpartId: group.id);
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(12),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.iconBgBlue,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.add_circle_outline_rounded, color: TabbyColors.accentBlue, size: 20),
                     ),
-                    child: const Icon(Icons.delete_outline_rounded, color: TabbyColors.alertRed, size: 20),
+                    title: const Text('Log Group Expense', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text('Add a shared bill or split for this group', style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      AddExpenseModal.show(context, initialCounterpartId: group.id);
+                    },
                   ),
-                  title: const Text('Delete Group Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: TabbyColors.alertRed)),
-                  subtitle: const Text('Remove group tab and associated records', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showRemoveGroupConfirmation(context, group);
-                  },
-                ),
-              ],
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.delete_outline_rounded, color: TabbyColors.alertRed, size: 20),
+                    ),
+                    title: const Text('Delete Group Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: TabbyColors.alertRed)),
+                    subtitle: const Text('Remove group tab and associated records', style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      _showRemoveGroupConfirmation(context, group);
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -2650,7 +2857,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _showLogoutConfirmation(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
@@ -2669,14 +2876,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel', style: TextStyle(color: TabbyColors.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 AppState.isAuthenticated.value = false;
-                context.go('/login');
+                ref.read(currentUserProvider.notifier).reset();
+                ref.read(tabbyProvider.notifier).reset();
+                if (context.mounted) context.go('/login');
+                unawaited(SupabaseTabbyRepository.instance.signOut());
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: TabbyColors.alertRed,

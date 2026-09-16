@@ -307,16 +307,26 @@ BEGIN
     END IF;
 
     -- Create new canonical bilateral tab
-    INSERT INTO public.tabs (tab_type, status, user_a, user_b)
-    VALUES ('individual', 'active', v_first_user, v_second_user)
-    RETURNING id INTO v_tab_id;
+    BEGIN
+        INSERT INTO public.tabs (tab_type, status, user_a, user_b)
+        VALUES ('individual', 'active', v_first_user, v_second_user)
+        RETURNING id INTO v_tab_id;
 
-    -- Insert both members into tab_members
-    INSERT INTO public.tab_members (tab_id, user_id, role)
-    VALUES 
-        (v_tab_id, v_first_user, 'participant'),
-        (v_tab_id, v_second_user, 'participant')
-    ON CONFLICT DO NOTHING;
+        -- Insert both members into tab_members
+        INSERT INTO public.tab_members (tab_id, user_id, role)
+        VALUES 
+            (v_tab_id, v_first_user, 'participant'),
+            (v_tab_id, v_second_user, 'participant')
+        ON CONFLICT DO NOTHING;
+    EXCEPTION WHEN unique_violation THEN
+        SELECT id INTO v_tab_id
+        FROM public.tabs
+        WHERE tab_type = 'individual'
+          AND status = 'active'
+          AND user_a = v_first_user
+          AND user_b = v_second_user
+        LIMIT 1;
+    END;
 
     RETURN v_tab_id;
 END;

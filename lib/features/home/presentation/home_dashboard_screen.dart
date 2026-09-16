@@ -32,7 +32,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
         bottom: false,
         child: RefreshIndicator(
           onRefresh: () async {
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future.wait([
+              ref.read(tabbyProvider.notifier).refreshTabs(),
+              ref.read(currentUserProvider.notifier).loadFromSupabase(),
+            ]);
           },
           color: TabbyColors.brandEmerald,
           child: CustomScrollView(
@@ -597,8 +600,10 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                                   backgroundColor: reminder.isIWhoOwe
                                       ? TabbyColors.iconBgBlue
                                       : TabbyColors.iconBgMint,
-                                  child: Text(
-                                    reminder.friendName.substring(0, 1).toUpperCase(),
+                                   child: Text(
+                                    reminder.friendName.isNotEmpty
+                                        ? reminder.friendName.substring(0, 1).toUpperCase()
+                                        : '?',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
                                       color: reminder.isIWhoOwe
@@ -782,7 +787,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
 
                           return Column(
                             children: filteredActivities.map((act) {
-                              final displayName = (act.actorName == 'Frienzal' || act.actorName == currentUser.displayName)
+                              final displayName = (act.actorName == 'You' || act.actorName == currentUser.displayName)
                                   ? 'You'
                                   : act.actorName;
                               return Container(

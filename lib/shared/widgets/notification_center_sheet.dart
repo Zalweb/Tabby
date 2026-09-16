@@ -173,7 +173,9 @@ class NotificationCenterSheet extends ConsumerWidget {
                                       ? TabbyColors.iconBgBlue
                                       : TabbyColors.iconBgMint,
                                   child: Text(
-                                    reminder.friendName.substring(0, 1).toUpperCase(),
+                                    reminder.friendName.isNotEmpty
+                                        ? reminder.friendName.substring(0, 1).toUpperCase()
+                                        : '?',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 13,
@@ -303,7 +305,7 @@ class NotificationCenterSheet extends ConsumerWidget {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        '${act.actorName == 'Frienzal' ? 'You' : act.actorName} ${act.description}',
+                                        '${(act.actorName == 'You' || act.actorName == ref.watch(currentUserProvider).displayName) ? 'You' : act.actorName} ${act.description}',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,

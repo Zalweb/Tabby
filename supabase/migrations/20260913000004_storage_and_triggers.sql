@@ -34,26 +34,79 @@ BEGIN
         SELECT 1 FROM information_schema.tables 
         WHERE table_schema = 'storage' AND table_name = 'objects'
     ) THEN
-        -- Allow authenticated users to upload payment proofs
+        -- Allow authenticated users to upload payment proofs into their isolated user folder
         DROP POLICY IF EXISTS "Authenticated users can upload payment proofs" ON storage.objects;
         CREATE POLICY "Authenticated users can upload payment proofs"
             ON storage.objects FOR INSERT
             TO authenticated
-            WITH CHECK (bucket_id = 'payment-proofs');
+            WITH CHECK (
+                bucket_id = 'payment-proofs' 
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                    OR (storage.foldername(name))[1] = 'receipts'
+                )
+            );
 
-        -- Allow authenticated users to read payment proofs
+        -- Allow users to read payment proofs they uploaded, or attached to tabs they are members of
         DROP POLICY IF EXISTS "Authenticated users can view payment proofs" ON storage.objects;
         CREATE POLICY "Authenticated users can view payment proofs"
             ON storage.objects FOR SELECT
             TO authenticated
-            USING (bucket_id = 'payment-proofs');
+            USING (
+                bucket_id = 'payment-proofs'
+                AND (
+                    -- Owner / uploader
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                    -- Counterpart / participant in the associated tab payment
+                    OR EXISTS (
+                        SELECT 1 FROM public.payment_proofs pp
+                        JOIN public.payments p ON pp.payment_id = p.id
+                        WHERE (pp.file_url = name OR pp.file_name = name OR pp.file_url LIKE '%' || name)
+                          AND public.is_tab_member(p.tab_id, auth.uid())
+                    )
+                    -- Counterpart / participant in the associated tab transaction
+                    OR EXISTS (
+                        SELECT 1 FROM public.transactions tx
+                        WHERE (tx.receipt_url = name OR tx.receipt_url LIKE '%' || name)
+                          AND public.is_tab_member(tx.tab_id, auth.uid())
+                    )
+                )
+            );
 
-        -- Allow users to delete their own unconfirmed uploads
+        -- Allow users to delete only their own uploads
         DROP POLICY IF EXISTS "Users can delete their own payment proofs" ON storage.objects;
         CREATE POLICY "Users can delete their own payment proofs"
             ON storage.objects FOR DELETE
             TO authenticated
-            USING (bucket_id = 'payment-proofs' AND (storage.foldername(name))[1] = auth.uid()::text);
+            USING (
+                bucket_id = 'payment-proofs' 
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                )
+            );
+
+        -- Allow users to update only their own uploads
+        DROP POLICY IF EXISTS "Users can update their own payment proofs" ON storage.objects;
+        CREATE POLICY "Users can update their own payment proofs"
+            ON storage.objects FOR UPDATE
+            TO authenticated
+            USING (
+                bucket_id = 'payment-proofs' 
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                )
+            )
+            WITH CHECK (
+                bucket_id = 'payment-proofs' 
+                AND (
+                    (storage.foldername(name))[1] = auth.uid()::text
+                    OR name LIKE auth.uid()::text || '/%'
+                )
+            );
     END IF;
 END $$;
 

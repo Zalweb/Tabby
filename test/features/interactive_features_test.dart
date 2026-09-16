@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tabby/main.dart';
@@ -7,6 +8,7 @@ import 'package:tabby/core/router/app_router.dart';
 
 void main() {
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
     AppState.isAuthenticated.value = true;
     AppState.hasSeenOnboarding.value = true;
   });

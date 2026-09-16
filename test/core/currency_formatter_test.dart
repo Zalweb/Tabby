@@ -28,6 +28,15 @@ void main() {
       expect(CurrencyFormatter.parseToCentavos('250'), 25000);
       expect(CurrencyFormatter.parseToCentavos('0'), 0);
       expect(CurrencyFormatter.parseToCentavos(''), 0);
+      expect(CurrencyFormatter.parseToCentavos('-150.50'), -15050);
+      expect(CurrencyFormatter.parseToCentavos('-0.50'), -50);
+      expect(CurrencyFormatter.parseToCentavos('-₱1,250.50'), -125050);
+      expect(CurrencyFormatter.parseToCentavos('-250'), -25000);
+      expect(CurrencyFormatter.parseToCentavos('(150.50)'), -15050);
+      expect(CurrencyFormatter.parseToCentavos('(₱1,250.50)'), -125050);
+      expect(CurrencyFormatter.parseToCentavos('-0.05'), -5);
+      expect(CurrencyFormatter.parseToCentavos('-0'), 0);
+      expect(CurrencyFormatter.parseToCentavos('-.50'), -50);
     });
 
     test('guarantees zero floating-point drift on repeated centavo arithmetic', () {

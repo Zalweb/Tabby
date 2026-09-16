@@ -3,12 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/config/supabase_config.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
 import '../application/tabby_providers.dart';
-import '../data/mock_tabby_repository.dart';
 import '../domain/models.dart';
 import 'add_expense_modal.dart';
 
@@ -31,7 +31,7 @@ class TabDetailScreen extends ConsumerWidget {
           backgroundColor: TabbyColors.brandEmerald,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: TabbyColors.brandDarkTeal),
-            onPressed: () => context.go('/tabs'),
+            onPressed: () => context.canPop() ? context.pop() : context.go('/tabs'),
           ),
         ),
         body: Center(
@@ -83,7 +83,7 @@ class TabDetailScreen extends ConsumerWidget {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.arrow_back, color: TabbyColors.brandDarkTeal),
-                            onPressed: () => context.go('/tabs'),
+                            onPressed: () => context.canPop() ? context.pop() : context.go('/tabs'),
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -366,7 +366,9 @@ class TabDetailScreen extends ConsumerWidget {
                               child: Text(
                                 tab.isGroupTab
                                     ? 'G'
-                                    : tab.counterpart.displayName.substring(0, 1).toUpperCase(),
+                                    : (tab.counterpart.displayName.isNotEmpty
+                                        ? tab.counterpart.displayName.substring(0, 1).toUpperCase()
+                                        : '?'),
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -585,13 +587,14 @@ class TabDetailScreen extends ConsumerWidget {
 
   Widget _buildLedgerEntryCard(BuildContext context, WidgetRef ref, LedgerEntry entry) {
     final dateFormat = DateFormat('HH:mm - MMM d');
+    final currentUser = ref.watch(currentUserProvider);
     final isPayment = entry.isPayment;
-    final amountPrefix = isPayment ? '+' : (entry.paidByUserId == MockTabbyRepository.currentUser.id ? '+' : '-');
+    final isMyEntry = entry.paidByUserId == currentUser.id ||
+        (SupabaseConfig.isInitialized && entry.paidByUserId == SupabaseConfig.currentUserId);
+    final amountPrefix = isPayment ? '+' : (isMyEntry ? '+' : '-');
     final amountColor = isPayment
         ? TabbyColors.brandEmerald
-        : (entry.paidByUserId == MockTabbyRepository.currentUser.id
-            ? TabbyColors.brandDarkTeal
-            : TabbyColors.accentBlue);
+        : (isMyEntry ? TabbyColors.brandDarkTeal : TabbyColors.accentBlue);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -769,6 +772,7 @@ class TabDetailScreen extends ConsumerWidget {
   void _showNudgeModal(BuildContext context, WidgetRef ref, BilateralTab tab) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
@@ -777,76 +781,78 @@ class TabDetailScreen extends ConsumerWidget {
             color: TabbyColors.surfaceWhite,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Send Friendly Reminder',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: TabbyColors.brandDarkTeal,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Send Friendly Reminder',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: TabbyColors.brandDarkTeal,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const TabbyMascotWidget(
+                  emotion: MascotEmotion.gentleNudge,
+                  size: 52,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: TabbyColors.brandMintAccent,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'Hey ${tab.counterpart.displayName}! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                      color: TabbyColors.brandDarkTeal,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const TabbyMascotWidget(
-                emotion: MascotEmotion.gentleNudge,
-                size: 52,
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: TabbyColors.brandMintAccent,
-                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Text(
-                  'Hey ${tab.counterpart.displayName}! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: TabbyColors.brandDarkTeal,
-                  ),
+                const SizedBox(height: 20),
+                TabbyButton(
+                  label: 'Share Reminder Link',
+                  variant: TabbyButtonVariant.primary,
+                  icon: const Icon(Icons.share_rounded, size: 18, color: TabbyColors.surfaceWhite),
+                  onPressed: () {
+                    final reminderMsg =
+                        'Hey ${tab.counterpart.displayName}! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!';
+                    Clipboard.setData(ClipboardData(text: reminderMsg));
+                    ref.read(tabbyProvider.notifier).sendGentleNudge(
+                      tabId: tab.id,
+                      friendName: tab.counterpart.displayName,
+                      amountCentavos: tab.netBalanceCentavos,
+                    );
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Reminder link copied to clipboard and sent to ${tab.counterpart.displayName}!'),
+                        backgroundColor: TabbyColors.brandDarkTeal,
+                      ),
+                    );
+                  },
                 ),
-              ),
-              const SizedBox(height: 20),
-              TabbyButton(
-                label: 'Share Reminder Link',
-                variant: TabbyButtonVariant.primary,
-                icon: const Icon(Icons.share_rounded, size: 18, color: TabbyColors.surfaceWhite),
-                onPressed: () {
-                  final reminderMsg =
-                      'Hey ${tab.counterpart.displayName}! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!';
-                  Clipboard.setData(ClipboardData(text: reminderMsg));
-                  ref.read(tabbyProvider.notifier).sendGentleNudge(
-                    tabId: tab.id,
-                    friendName: tab.counterpart.displayName,
-                    amountCentavos: tab.netBalanceCentavos,
-                  );
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Reminder link copied to clipboard and sent to ${tab.counterpart.displayName}!'),
-                      backgroundColor: TabbyColors.brandDarkTeal,
-                    ),
-                  );
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -863,6 +869,7 @@ class TabDetailScreen extends ConsumerWidget {
     final amountController = TextEditingController(
       text: (tab.netBalanceCentavos.abs() / 100).toStringAsFixed(2),
     );
+    bool isSubmitting = false;
 
     showModalBottomSheet(
       context: context,
@@ -882,107 +889,124 @@ class TabDetailScreen extends ConsumerWidget {
                 color: TabbyColors.surfaceWhite,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          isPayingMe ? 'Confirm Payment Received' : 'Record Settlement',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isPayingMe ? 'Confirm Payment Received' : 'Record Settlement',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: TabbyColors.brandDarkTeal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Payment Method',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: TabbyColors.textSecondary,
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: PaymentMethod.values.map((method) {
+                        final isSelected = selectedMethod == method;
+                        return ChoiceChip(
+                          avatar: Icon(method.iconData, size: 16, color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal),
+                          label: Text(method.label),
+                          selected: isSelected,
+                          selectedColor: TabbyColors.brandEmerald,
+                          labelStyle: TextStyle(
+                            color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                          onSelected: (val) {
+                            setModalState(() {
+                              selectedMethod = method;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Amount (PHP)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: TabbyColors.textSecondary,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Payment Method',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: TabbyColors.textSecondary,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: PaymentMethod.values.map((method) {
-                      final isSelected = selectedMethod == method;
-                      return ChoiceChip(
-                        avatar: Icon(method.iconData, size: 16, color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal),
-                        label: Text(method.label),
-                        selected: isSelected,
-                        selectedColor: TabbyColors.brandEmerald,
-                        labelStyle: TextStyle(
-                          color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                        onSelected: (val) {
-                          setModalState(() {
-                            selectedMethod = method;
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Amount (PHP)',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: TabbyColors.textSecondary,
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        prefixText: '₱ ',
+                        hintText: '0.00',
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
-                      prefixText: '₱ ',
-                      hintText: '0.00',
+                    const SizedBox(height: 20),
+                    TabbyButton(
+                      label: isPayingMe ? 'Confirm Payment' : 'Submit Payment Proof',
+                      variant: TabbyButtonVariant.primary,
+                      isLoading: isSubmitting,
+                      onPressed: () {
+                        if (isSubmitting) return;
+
+                        final centavos = CurrencyFormatter.parseToCentavos(amountController.text);
+                        if (centavos <= 0) {
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please enter an amount greater than ₱0.00'),
+                              backgroundColor: TabbyColors.alertRed,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setModalState(() => isSubmitting = true);
+
+                        ref.read(tabbyProvider.notifier).settleTab(
+                          tabId: tab.id,
+                          amountCentavos: centavos,
+                          method: selectedMethod,
+                          isPayingMe: isPayingMe,
+                        );
+
+                        Navigator.pop(context);
+
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Settlement recorded successfully!'),
+                            backgroundColor: TabbyColors.brandEmerald,
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  TabbyButton(
-                    label: isPayingMe ? 'Confirm Payment' : 'Submit Payment Proof',
-                    variant: TabbyButtonVariant.primary,
-                    onPressed: () {
-                      final centavos = CurrencyFormatter.parseToCentavos(amountController.text);
-                      if (centavos <= 0) return;
-
-                      ref.read(tabbyProvider.notifier).settleTab(
-                        tabId: tab.id,
-                        amountCentavos: centavos,
-                        method: selectedMethod,
-                        isPayingMe: isPayingMe,
-                      );
-
-                      Navigator.pop(context);
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Settlement recorded successfully!'),
-                          backgroundColor: TabbyColors.brandEmerald,
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -994,6 +1018,7 @@ class TabDetailScreen extends ConsumerWidget {
   void _showPaymentInfoSheet(BuildContext context, BilateralTab tab) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Material(
@@ -1135,18 +1160,23 @@ class TabDetailScreen extends ConsumerWidget {
     final dateFormat = DateFormat('MMMM d, yyyy • h:mm a');
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.85,
+          ),
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
             color: TabbyColors.surfaceWhite,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1378,12 +1408,13 @@ class TabDetailScreen extends ConsumerWidget {
               TabbyButton(
                 label: 'Close',
                 variant: TabbyButtonVariant.outline,
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(sheetContext),
               ),
             ],
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
@@ -1718,104 +1749,106 @@ class TabDetailScreen extends ConsumerWidget {
             color: TabbyColors.surfaceWhite,
             borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${tab.counterpart.displayName}\'s QR Ph',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: TabbyColors.brandDarkTeal,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Container(
-                width: 220,
-                height: 220,
-                decoration: BoxDecoration(
-                  color: TabbyColors.brandMintAccent,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: TabbyColors.borderMint),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.qr_code_2_rounded, size: 120, color: TabbyColors.brandDarkTeal),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: TabbyColors.brandEmerald,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'QR Ph Official',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: TabbyColors.surfaceWhite),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${tab.counterpart.displayName}\'s QR Ph',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: TabbyColors.brandDarkTeal,
                         ),
                       ),
-                    ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: 220,
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: TabbyColors.brandMintAccent,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: TabbyColors.borderMint),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.qr_code_2_rounded, size: 120, color: TabbyColors.brandDarkTeal),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: TabbyColors.brandEmerald,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'QR Ph Official',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: TabbyColors.surfaceWhite),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Scan using GCash, Maya, or any Philippine banking app to settle up with ${tab.counterpart.displayName}.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: TabbyButton(
-                      label: 'Copy QR String',
-                      variant: TabbyButtonVariant.outline,
-                      icon: const Icon(Icons.copy_rounded, size: 16, color: TabbyColors.brandDarkTeal),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(
-                          text: '00020101021226580009PH.PAYMAYA0111${tab.counterpart.phone.replaceAll(RegExp(r'[^0-9]'), '')}5204601453036085802PH5912${tab.counterpart.displayName}',
-                        ));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('QR Ph payload copied to clipboard!'),
-                            backgroundColor: TabbyColors.brandEmerald,
-                          ),
-                        );
-                      },
+                const SizedBox(height: 16),
+                Text(
+                  'Scan using GCash, Maya, or any Philippine banking app to settle up with ${tab.counterpart.displayName}.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TabbyButton(
+                        label: 'Copy QR String',
+                        variant: TabbyButtonVariant.outline,
+                        icon: const Icon(Icons.copy_rounded, size: 16, color: TabbyColors.brandDarkTeal),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(
+                            text: '00020101021226580009PH.PAYMAYA0111${tab.counterpart.phone.replaceAll(RegExp(r'[^0-9]'), '')}5204601453036085802PH5912${tab.counterpart.displayName}',
+                          ));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('QR Ph payload copied to clipboard!'),
+                              backgroundColor: TabbyColors.brandEmerald,
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TabbyButton(
-                      label: 'Save QR Image',
-                      variant: TabbyButtonVariant.primary,
-                      icon: const Icon(Icons.download_rounded, size: 16, color: TabbyColors.surfaceWhite),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('QR code image saved to gallery!'),
-                            backgroundColor: TabbyColors.brandEmerald,
-                          ),
-                        );
-                      },
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TabbyButton(
+                        label: 'Save QR Image',
+                        variant: TabbyButtonVariant.primary,
+                        icon: const Icon(Icons.download_rounded, size: 16, color: TabbyColors.surfaceWhite),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('QR code image saved to gallery!'),
+                              backgroundColor: TabbyColors.brandEmerald,
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },

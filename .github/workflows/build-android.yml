@@ -55,10 +55,14 @@ jobs:
         env:
           GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
           GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           flutter build apk --release \
             --dart-define=GOOGLE_IOS_CLIENT_ID=$GOOGLE_IOS_CLIENT_ID \
-            --dart-define=GOOGLE_ANDROID_CLIENT_ID=$GOOGLE_ANDROID_CLIENT_ID
+            --dart-define=GOOGLE_ANDROID_CLIENT_ID=$GOOGLE_ANDROID_CLIENT_ID \
+            --dart-define=SUPABASE_URL=$SUPABASE_URL \
+            --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
 
       - name: Rename APK
         run: |

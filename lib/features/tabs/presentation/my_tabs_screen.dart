@@ -345,96 +345,103 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
 
                     // Content Area
                     Expanded(
-                      child: filteredTabs.isEmpty
-                          ? SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                              child: Center(
+                      child: RefreshIndicator(
+                        onRefresh: () async {
+                          await ref.read(tabbyProvider.notifier).refreshTabs();
+                        },
+                        color: TabbyColors.brandEmerald,
+                        child: filteredTabs.isEmpty
+                            ? SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const TabbyMascotWidget(
+                                        emotion: MascotEmotion.sleeping,
+                                        size: 70,
+                                        showBubble: false,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'No Active Tabs',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          color: TabbyColors.brandDarkTeal,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Start keeping tabs with your friends!',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: TabbyColors.textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton.icon(
+                                        onPressed: () => AddExpenseModal.show(context),
+                                        icon: const Icon(Icons.add_rounded, size: 18),
+                                        label: const Text('Add Your First Tab'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: TabbyColors.brandEmerald,
+                                          foregroundColor: TabbyColors.surfaceWhite,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
                                 child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const TabbyMascotWidget(
-                                      emotion: MascotEmotion.sleeping,
-                                      size: 70,
-                                      showBubble: false,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    const Text(
-                                      'No Active Tabs',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w800,
-                                        color: TabbyColors.brandDarkTeal,
+                                    // Section 1: THEY OWE YOU
+                                    if (theyOweYouTabs.isNotEmpty) ...[
+                                      _buildSectionHeader(
+                                        title: 'THEY OWE YOU',
+                                        totalCentavos: totalTheyOweCentavos,
+                                        color: TabbyColors.brandEmerald,
+                                        count: theyOweYouTabs.length,
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'No active tabs found. You are completely settled up.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13,
+                                      const SizedBox(height: 8),
+                                      ...theyOweYouTabs.map((tab) => _buildTabCard(context, tab)),
+                                      const SizedBox(height: 20),
+                                    ],
+
+                                    // Section 2: YOU OWE
+                                    if (youOweTabs.isNotEmpty) ...[
+                                      _buildSectionHeader(
+                                        title: 'YOU OWE',
+                                        totalCentavos: totalYouOweCentavos,
+                                        color: TabbyColors.accentBlue,
+                                        count: youOweTabs.length,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ...youOweTabs.map((tab) => _buildTabCard(context, tab)),
+                                      const SizedBox(height: 20),
+                                    ],
+
+                                    // Section 3: FULLY SETTLED
+                                    if (settledTabs.isNotEmpty) ...[
+                                      _buildSectionHeader(
+                                        title: 'FULLY SETTLED',
+                                        totalCentavos: 0,
                                         color: TabbyColors.textSecondary,
+                                        count: settledTabs.length,
                                       ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    ElevatedButton.icon(
-                                      onPressed: () => AddExpenseModal.show(context),
-                                      icon: const Icon(Icons.add, size: 18),
-                                      label: const Text('Log a New Tab'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: TabbyColors.brandEmerald,
-                                        foregroundColor: TabbyColors.surfaceWhite,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                                      ),
-                                    ),
+                                      const SizedBox(height: 8),
+                                      ...settledTabs.map((tab) => _buildTabCard(context, tab)),
+                                    ],
                                   ],
                                 ),
                               ),
-                            )
-                          : SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Section 1: THEY OWE YOU
-                                  if (theyOweYouTabs.isNotEmpty) ...[
-                                    _buildSectionHeader(
-                                      title: 'THEY OWE YOU',
-                                      totalCentavos: totalTheyOweCentavos,
-                                      color: TabbyColors.brandEmerald,
-                                      count: theyOweYouTabs.length,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ...theyOweYouTabs.map((tab) => _buildTabCard(context, tab)),
-                                    const SizedBox(height: 20),
-                                  ],
-
-                                  // Section 2: YOU OWE
-                                  if (youOweTabs.isNotEmpty) ...[
-                                    _buildSectionHeader(
-                                      title: 'YOU OWE',
-                                      totalCentavos: totalYouOweCentavos,
-                                      color: TabbyColors.accentBlue,
-                                      count: youOweTabs.length,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ...youOweTabs.map((tab) => _buildTabCard(context, tab)),
-                                    const SizedBox(height: 20),
-                                  ],
-
-                                  // Section 3: FULLY SETTLED
-                                  if (settledTabs.isNotEmpty) ...[
-                                    _buildSectionHeader(
-                                      title: 'FULLY SETTLED',
-                                      totalCentavos: 0,
-                                      color: TabbyColors.textSecondary,
-                                      count: settledTabs.length,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ...settledTabs.map((tab) => _buildTabCard(context, tab)),
-                                  ],
-                                ],
-                              ),
-                            ),
+                      ),
                     ),
                   ],
                 ),
@@ -546,7 +553,9 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                 child: Text(
                   tab.isGroupTab
                       ? 'G'
-                      : tab.counterpart.displayName.substring(0, 1).toUpperCase(),
+                      : (tab.counterpart.displayName.isNotEmpty
+                          ? tab.counterpart.displayName.substring(0, 1).toUpperCase()
+                          : '?'),
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,

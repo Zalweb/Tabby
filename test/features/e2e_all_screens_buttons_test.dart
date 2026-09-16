@@ -591,13 +591,39 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Create your account'), findsOneWidget);
 
+      // Verify empty fields validation
+      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Please fill in all fields'), findsOneWidget);
+
+      // Verify invalid email validation
       await tester.enterText(find.widgetWithText(TextField, 'Full Name'), 'Juan Dela Cruz');
-      await tester.enterText(find.widgetWithText(TextField, 'Email'), 'juan@tabby.ph');
+      await tester.enterText(find.widgetWithText(TextField, 'Email'), 'not-an-email');
       await tester.enterText(find.widgetWithText(TextField, '+63 9XX XXX XXXX'), '+63 917 123 4567');
       await tester.enterText(find.widgetWithText(TextField, 'Password'), 'Password123!');
       await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'), 'Password123!');
+      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
       await tester.pumpAndSettle();
+      expect(find.text('Please enter a valid email address'), findsOneWidget);
 
+      // Verify short password validation
+      await tester.enterText(find.widgetWithText(TextField, 'Email'), 'juan@tabby.ph');
+      await tester.enterText(find.widgetWithText(TextField, 'Password'), '123');
+      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'), '123');
+      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Password must be at least 6 characters'), findsOneWidget);
+
+      // Verify password mismatch validation
+      await tester.enterText(find.widgetWithText(TextField, 'Password'), 'Password123!');
+      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'), 'DifferentPassword!');
+      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Passwords do not match'), findsOneWidget);
+
+      // Verify successful account creation with valid credentials
+      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'), 'Password123!');
+      await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
       await tester.pumpAndSettle();
 
@@ -1058,6 +1084,26 @@ void main() {
         await tester.tap(find.byIcon(Icons.close_rounded));
         await tester.pumpAndSettle();
       }
+    });
+
+    testWidgets('App Router 404 Error Screen: Unknown path displays friendly mascot and back button', (tester) async {
+      AppState.isAuthenticated.value = true;
+      appRouter.go('/unknown-route-that-does-not-exist');
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: TabbyApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Page Not Found'), findsOneWidget);
+      expect(find.text("The page you're looking for doesn't exist or has been moved."), findsOneWidget);
+      expect(find.widgetWithText(TabbyButton, 'Back to Home'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TabbyButton, 'Back to Home'));
+      await tester.pumpAndSettle();
+      expect(find.text('Recent Activity'), findsOneWidget);
     });
   });
 }

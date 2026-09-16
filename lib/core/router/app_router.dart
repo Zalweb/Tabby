@@ -10,6 +10,11 @@ import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 
+import '../theme/tabby_colors.dart';
+import '../../features/tabs/domain/models.dart';
+import '../../shared/widgets/tabby_button.dart';
+import '../../shared/widgets/tabby_mascot_widget.dart';
+
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
 final GlobalKey<NavigatorState> _tabsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tabs');
@@ -18,6 +23,62 @@ final GlobalKey<NavigatorState> _profileNavigatorKey = GlobalKey<NavigatorState>
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: '/onboarding',
+  errorBuilder: (context, state) {
+    final isAuthenticated = AppState.isAuthenticated.value;
+    return Scaffold(
+      backgroundColor: TabbyColors.bgCanvas,
+      appBar: AppBar(
+        backgroundColor: TabbyColors.brandEmerald,
+        title: const Text(
+          'Tabby',
+          style: TextStyle(
+            color: TabbyColors.brandDarkTeal,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const TabbyMascotWidget(
+                emotion: MascotEmotion.idleNeutral,
+                size: 90,
+                showBubble: false,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Page Not Found',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: TabbyColors.brandDarkTeal,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                "The page you're looking for doesn't exist or has been moved.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: TabbyColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              TabbyButton(
+                label: isAuthenticated ? 'Back to Home' : 'Back to Login',
+                variant: TabbyButtonVariant.primary,
+                onPressed: () => context.go(isAuthenticated ? '/home' : '/login'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  },
   refreshListenable: Listenable.merge([
     AppState.isAuthenticated,
     AppState.hasSeenOnboarding,

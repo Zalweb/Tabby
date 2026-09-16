@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import '../../../core/config/supabase_config.dart';
 import '../data/mock_tabby_repository.dart';
 import '../data/supabase_tabby_repository.dart';
+import '../data/tabby_local_cache.dart';
 import '../domain/models.dart';
 import 'tabby_state.dart';
 
@@ -25,17 +28,53 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   }
 
   Future<void> _loadTabs() async {
-    String currentUserId = MockTabbyRepository.currentUser.id;
-    if (SupabaseConfig.isInitialized) {
-      try {
-        currentUserId = SupabaseConfig.currentUserId ?? currentUserId;
-      } catch (_) {}
+    // 1. Offline resilience: load from local cache first to prevent blank screens
+    try {
+      final cachedTabs = await TabbyLocalCache.loadTabs();
+      final cachedActivities = await TabbyLocalCache.loadActivities();
+      final cachedReminders = await TabbyLocalCache.loadReminders();
+      if (mounted && (cachedTabs != null || cachedActivities != null || cachedReminders != null)) {
+        state = state.copyWith(
+          tabs: cachedTabs ?? state.tabs,
+          activities: cachedActivities ?? state.activities,
+          reminders: cachedReminders ?? state.reminders,
+        );
+      }
+    } catch (e) {
+      debugPrint('[TabbyNotifier] Local cache load warning: $e');
     }
 
-    final tabs = await SupabaseTabbyRepository.instance.fetchTabs(currentUserId);
-    if (mounted) {
-      state = state.copyWith(tabs: tabs);
+    // 2. Fetch live data from Supabase backend
+    String currentUserId = MockTabbyRepository.currentUser.id;
+    if (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null) {
+      currentUserId = SupabaseConfig.currentUserId!;
     }
+
+    try {
+      final tabs = await SupabaseTabbyRepository.instance.fetchTabs(currentUserId);
+      if (mounted) {
+        if (tabs.isNotEmpty || (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null)) {
+          state = state.copyWith(tabs: tabs);
+          await TabbyLocalCache.saveTabs(tabs);
+        }
+      }
+    } catch (e) {
+      debugPrint('[TabbyNotifier] Live fetch error: $e');
+    }
+  }
+
+  Future<void> refreshTabs() async {
+    await _loadTabs();
+  }
+
+  void reset() {
+    state = SupabaseConfig.isInitialized
+        ? const TabbyDashboardState(tabs: [], activities: [], reminders: [])
+        : TabbyDashboardState(
+            tabs: MockTabbyRepository.getInitialTabs(),
+            activities: MockTabbyRepository.getInitialActivities(),
+            reminders: MockTabbyRepository.getInitialReminders(),
+          );
   }
 
   Timer? _emotionTimer;
@@ -167,35 +206,52 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       emotionCustomMessage: 'Tab logged successfully! Calculating balances...',
     );
 
+    TabbyLocalCache.saveTabs(updatedTabs);
+    TabbyLocalCache.saveActivities([newActivity, ...state.activities]);
+    TabbyLocalCache.saveReminders(updatedReminders);
+
     // Synchronize with Supabase backend
     if (SupabaseConfig.isInitialized) {
       try {
-        // Ensure counterpart exists in public.users (handles typed-name friends with synthetic IDs)
-        final resolvedCounterpartId = await SupabaseTabbyRepository.instance
-            .ensureUserExists(counterpartId, counterpartName);
+        final isGroupTab = existingTabIndex >= 0 && state.tabs[existingTabIndex].isGroupTab;
 
-        String realTabId = resolvedCounterpartId;
-        if (existingTabIndex < 0) {
+        // Ensure counterpart exists in public.users (handles typed-name friends with synthetic IDs)
+        final resolvedCounterpartId = isGroupTab
+            ? counterpartId
+            : await SupabaseTabbyRepository.instance
+                .ensureUserExists(counterpartId, counterpartName);
+
+        String? realTabId;
+        if (existingTabIndex >= 0 &&
+            SupabaseTabbyRepository.isValidUuid(state.tabs[existingTabIndex].id)) {
+          realTabId = state.tabs[existingTabIndex].id;
+        } else if (!isGroupTab &&
+            SupabaseTabbyRepository.isValidUuid(currentUserId) &&
+            SupabaseTabbyRepository.isValidUuid(resolvedCounterpartId) &&
+            currentUserId != resolvedCounterpartId) {
           realTabId = await SupabaseConfig.getOrCreateBilateralTab(
             userA: currentUserId,
             userB: resolvedCounterpartId,
           );
         }
 
-        await SupabaseTabbyRepository.instance.logExpense(
-          tabId: realTabId,
-          title: title.trim().isEmpty ? category.displayName : title.trim(),
-          totalAmountCentavos: totalAmountCentavos,
-          category: category,
-          paidByUserId: paidByMe ? currentUserId : resolvedCounterpartId,
-          myShareCentavos: myShare,
-          counterpartShareCentavos: counterpartShare,
-          currentUserId: currentUserId,
-          counterpartId: resolvedCounterpartId,
-          dueDate: dueDate,
-        );
+        if (realTabId != null) {
+          await SupabaseTabbyRepository.instance.logExpense(
+            tabId: realTabId,
+            title: title.trim().isEmpty ? category.displayName : title.trim(),
+            totalAmountCentavos: totalAmountCentavos,
+            category: category,
+            paidByUserId: paidByMe ? currentUserId : resolvedCounterpartId,
+            myShareCentavos: myShare,
+            counterpartShareCentavos: counterpartShare,
+            currentUserId: currentUserId,
+            counterpartId: resolvedCounterpartId,
+            dueDate: dueDate,
+            receiptUrl: receiptUrl,
+          );
 
-        await _loadTabs();
+          await _loadTabs();
+        }
       } catch (e) {
         debugPrint('[TabbyNotifier] Supabase sync error: $e');
       }
@@ -216,14 +272,14 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
     final now = DateTime.now();
 
-    final tabIndex = state.tabs.indexWhere((t) => t.id == tabId);
+    final tabIndex = state.tabs.indexWhere((t) => t.id == tabId || t.counterpart.id == tabId);
     if (tabIndex < 0) return;
 
     final tab = state.tabs[tabIndex];
 
     final paymentEntry = LedgerEntry(
       id: 'payment-${now.millisecondsSinceEpoch}',
-      tabId: tabId,
+      tabId: tab.id,
       title: isPayingMe
           ? '${tab.counterpart.displayName} paid via ${method.label}'
           : 'You paid ${tab.counterpart.displayName} via ${method.label}',
@@ -257,7 +313,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     updatedTabs[tabIndex] = updatedTab;
 
     // Filter out resolved reminders for this tab if now settled
-    final updatedReminders = state.reminders.where((r) => r.tabId != tabId || newNetBalance.abs() > 0).toList();
+    final updatedReminders = state.reminders.where((r) => (r.tabId != tab.id && r.tabId != tab.counterpart.id) || newNetBalance.abs() > 0).toList();
 
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
@@ -278,18 +334,37 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           : 'Payment recorded! Remaining balance updated.',
     );
 
+    TabbyLocalCache.saveTabs(updatedTabs);
+    TabbyLocalCache.saveActivities([newActivity, ...state.activities]);
+    TabbyLocalCache.saveReminders(updatedReminders);
+
     // Synchronize payment with Supabase backend
     if (SupabaseConfig.isInitialized) {
       try {
-        await SupabaseTabbyRepository.instance.recordPayment(
-          tabId: tabId,
-          amountCentavos: amountCentavos,
-          method: method,
-          paidByUserId: isPayingMe ? tab.counterpart.id : currentUserId,
-          receivedByUserId: isPayingMe ? currentUserId : tab.counterpart.id,
-          note: note,
-        );
-        await _loadTabs();
+        String? realTabId;
+        if (SupabaseTabbyRepository.isValidUuid(tab.id)) {
+          realTabId = tab.id;
+        } else if (SupabaseTabbyRepository.isValidUuid(currentUserId) &&
+            SupabaseTabbyRepository.isValidUuid(tab.counterpart.id) &&
+            currentUserId != tab.counterpart.id) {
+          realTabId = await SupabaseConfig.getOrCreateBilateralTab(
+            userA: currentUserId,
+            userB: tab.counterpart.id,
+          );
+        }
+
+        if (realTabId != null) {
+          await SupabaseTabbyRepository.instance.recordPayment(
+            tabId: realTabId,
+            amountCentavos: amountCentavos,
+            method: method,
+            paidByUserId: isPayingMe ? tab.counterpart.id : currentUserId,
+            receivedByUserId: isPayingMe ? currentUserId : tab.counterpart.id,
+            note: note,
+            confirmedByUserId: isPayingMe ? currentUserId : null,
+          );
+          await _loadTabs();
+        }
       } catch (e) {
         debugPrint('[TabbyNotifier] Supabase sync error: $e');
       }
@@ -383,16 +458,23 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       iconData: Icons.person_add_rounded,
     );
 
+    final updatedTabs = [newTab, ...state.tabs];
+    final updatedActivities = [newActivity, ...state.activities];
+
     state = state.copyWith(
-      tabs: [newTab, ...state.tabs],
-      activities: [newActivity, ...state.activities],
+      tabs: updatedTabs,
+      activities: updatedActivities,
     );
+
+    TabbyLocalCache.saveTabs(updatedTabs);
+    TabbyLocalCache.saveActivities(updatedActivities);
   }
 
   /// Adds a new group tab
   void addGroupTab({
     required String groupName,
     required List<String> memberNames,
+    List<String>? memberUserIds,
   }) {
     final now = DateTime.now();
     final groupId = 'group-${groupName.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}-${now.millisecondsSinceEpoch % 10000}';
@@ -421,10 +503,31 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       iconData: Icons.group_add_rounded,
     );
 
+    final updatedTabs = [groupTab, ...state.tabs];
+    final updatedActivities = [newActivity, ...state.activities];
+
     state = state.copyWith(
-      tabs: [groupTab, ...state.tabs],
-      activities: [newActivity, ...state.activities],
+      tabs: updatedTabs,
+      activities: updatedActivities,
     );
+
+    TabbyLocalCache.saveTabs(updatedTabs);
+    TabbyLocalCache.saveActivities(updatedActivities);
+
+    if (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null) {
+      SupabaseTabbyRepository.instance.createGroupTab(
+        groupName: groupName,
+        currentUserId: SupabaseConfig.currentUserId!,
+        memberUserIds: memberUserIds,
+      ).then((newTabId) {
+        if (newTabId != null) {
+          _loadTabs();
+        }
+      }).catchError((e) {
+        debugPrint('[TabbyNotifier] createGroupTab warning: $e');
+        return null;
+      });
+    }
   }
 
   /// Updates details of an existing friend
@@ -452,6 +555,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     }).toList();
 
     state = state.copyWith(tabs: updatedTabs);
+    TabbyLocalCache.saveTabs(updatedTabs);
   }
 
   /// Removes a friend and their bilateral tab
@@ -472,11 +576,21 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       iconData: Icons.person_remove_rounded,
     );
 
+    final updatedActivities = [newActivity, ...state.activities];
+
     state = state.copyWith(
       tabs: updatedTabs,
+      activities: updatedActivities,
       reminders: updatedReminders,
-      activities: [newActivity, ...state.activities],
     );
+
+    TabbyLocalCache.saveTabs(updatedTabs);
+    TabbyLocalCache.saveActivities(updatedActivities);
+    TabbyLocalCache.saveReminders(updatedReminders);
+
+    if (SupabaseConfig.isInitialized && tabToRemove != null && SupabaseTabbyRepository.isValidUuid(tabToRemove.id)) {
+      SupabaseTabbyRepository.instance.archiveTab(tabToRemove.id);
+    }
   }
 
   /// Removes a group tab and its associated records
@@ -497,11 +611,21 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       iconData: Icons.delete_outline_rounded,
     );
 
+    final updatedActivities = [newActivity, ...state.activities];
+
     state = state.copyWith(
       tabs: updatedTabs,
       reminders: updatedReminders,
-      activities: [newActivity, ...state.activities],
+      activities: updatedActivities,
     );
+
+    TabbyLocalCache.saveTabs(updatedTabs);
+    TabbyLocalCache.saveActivities(updatedActivities);
+    TabbyLocalCache.saveReminders(updatedReminders);
+
+    if (SupabaseConfig.isInitialized && groupToRemove != null && SupabaseTabbyRepository.isValidUuid(groupToRemove.id)) {
+      SupabaseTabbyRepository.instance.archiveTab(groupToRemove.id);
+    }
   }
 
   /// Attaches a receipt or bill photo URL to a transaction entry
@@ -526,6 +650,11 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     updatedTabs[tabIndex] = updatedTab;
 
     state = state.copyWith(tabs: updatedTabs);
+    TabbyLocalCache.saveTabs(updatedTabs);
+
+    if (SupabaseConfig.isInitialized && SupabaseTabbyRepository.isValidUuid(entryId)) {
+      SupabaseTabbyRepository.instance.attachReceipt(entryId, receiptUrl);
+    }
   }
 
   @override
@@ -537,7 +666,51 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
 /// Current user profile state notifier
 class CurrentUserNotifier extends StateNotifier<TabbyUser> {
-  CurrentUserNotifier() : super(MockTabbyRepository.currentUser);
+  CurrentUserNotifier() : super(_resolveInitialUser()) {
+    loadFromSupabase();
+  }
+
+  static TabbyUser _resolveInitialUser() {
+    if (SupabaseConfig.isInitialized && SupabaseConfig.currentUser != null) {
+      final user = SupabaseConfig.currentUser!;
+      final meta = user.userMetadata ?? {};
+      return TabbyUser(
+        id: user.id,
+        displayName: meta['display_name'] as String? ??
+            (user.email?.split('@').first ?? 'User'),
+        email: user.email ?? '',
+        phone: (meta['phone'] ?? user.phone) as String? ?? '',
+        avatarUrl: meta['avatar_url'] as String?,
+      );
+    }
+    return MockTabbyRepository.currentUser;
+  }
+
+  Future<void> loadFromSupabase() async {
+    if (!SupabaseConfig.isInitialized) return;
+    final authUser = SupabaseConfig.currentUser;
+    if (authUser == null) return;
+
+    final profile = await SupabaseTabbyRepository.instance.fetchUserProfile(authUser.id);
+    if (profile != null) {
+      state = profile;
+    } else {
+      final meta = authUser.userMetadata ?? {};
+      final displayName = meta['display_name'] as String? ??
+          (authUser.email?.split('@').first ?? 'User');
+      final phone = (meta['phone'] ?? authUser.phone) as String? ?? '';
+
+      await SupabaseTabbyRepository.instance.ensureUserExists(authUser.id, displayName);
+
+      state = TabbyUser(
+        id: authUser.id,
+        displayName: displayName,
+        email: authUser.email ?? '',
+        phone: phone,
+        avatarUrl: meta['avatar_url'] as String?,
+      );
+    }
+  }
 
   void updateProfile({
     String? displayName,
@@ -557,6 +730,22 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
       mayaNumber: mayaNumber,
       qrCodeUrl: qrCodeUrl,
     );
+
+    if (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null) {
+      SupabaseTabbyRepository.instance.updateUserProfile(
+        userId: state.id,
+        displayName: displayName,
+        phone: phone,
+        avatarUrl: avatarUrl,
+        gcashNumber: gcashNumber,
+        mayaNumber: mayaNumber,
+        qrCodeUrl: qrCodeUrl,
+      );
+    }
+  }
+
+  void reset() {
+    state = MockTabbyRepository.currentUser;
   }
 }
 
@@ -658,16 +847,85 @@ class UserSettings {
 }
 
 class UserSettingsNotifier extends StateNotifier<UserSettings> {
-  UserSettingsNotifier() : super(const UserSettings());
+  static const _storage = FlutterSecureStorage();
+  static final _auth = LocalAuthentication();
 
-  void update({
+  UserSettingsNotifier() : super(const UserSettings()) {
+    _loadPersistedSettings();
+  }
+
+  Future<void> _loadPersistedSettings() async {
+    try {
+      final bioStr = await _storage.read(key: 'tabby_biometrics_enabled');
+      final passStr = await _storage.read(key: 'tabby_passcode_enabled');
+      final lockStr = await _storage.read(key: 'tabby_auto_lock_enabled');
+      final notifStr = await _storage.read(key: 'tabby_notifications_enabled');
+      final payStr = await _storage.read(key: 'tabby_payment_alerts_enabled');
+      final remStr = await _storage.read(key: 'tabby_reminder_nudges_enabled');
+
+      state = UserSettings(
+        biometricsEnabled: bioStr != null ? bioStr == 'true' : true,
+        passcodeEnabled: passStr != null ? passStr == 'true' : false,
+        autoLockEnabled: lockStr != null ? lockStr == 'true' : true,
+        notificationsEnabled: notifStr != null ? notifStr == 'true' : true,
+        paymentAlertsEnabled: payStr != null ? payStr == 'true' : true,
+        reminderNudgesEnabled: remStr != null ? remStr == 'true' : true,
+      );
+    } catch (e) {
+      debugPrint('[UserSettingsNotifier] Error loading settings: $e');
+    }
+  }
+
+  Future<bool> toggleBiometrics(bool enable) async {
+    if (enable) {
+      try {
+        final canCheck = await _auth.canCheckBiometrics;
+        final isSupported = await _auth.isDeviceSupported();
+        if (!canCheck && !isSupported) {
+          debugPrint('[UserSettingsNotifier] Biometrics not supported on device');
+          return false;
+        }
+
+        final didAuthenticate = await _auth.authenticate(
+          localizedReason: 'Confirm biometric identity to secure Tabby',
+          options: const AuthenticationOptions(stickyAuth: true, biometricOnly: true),
+        );
+
+        if (!didAuthenticate) {
+          return false;
+        }
+      } catch (e) {
+        debugPrint('[UserSettingsNotifier] Biometric check failed: $e');
+        return false;
+      }
+    }
+
+    state = state.copyWith(biometricsEnabled: enable);
+    try {
+      await _storage.write(key: 'tabby_biometrics_enabled', value: enable.toString());
+    } catch (e) {
+      debugPrint('[UserSettingsNotifier] Error saving biometrics: $e');
+    }
+    return true;
+  }
+
+  Future<void> toggleNotifications(bool enable) async {
+    state = state.copyWith(notificationsEnabled: enable);
+    try {
+      await _storage.write(key: 'tabby_notifications_enabled', value: enable.toString());
+    } catch (e) {
+      debugPrint('[UserSettingsNotifier] Error saving notifications: $e');
+    }
+  }
+
+  Future<void> update({
     bool? biometricsEnabled,
     bool? passcodeEnabled,
     bool? autoLockEnabled,
     bool? notificationsEnabled,
     bool? paymentAlertsEnabled,
     bool? reminderNudgesEnabled,
-  }) {
+  }) async {
     state = state.copyWith(
       biometricsEnabled: biometricsEnabled,
       passcodeEnabled: passcodeEnabled,
@@ -676,6 +934,29 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
       paymentAlertsEnabled: paymentAlertsEnabled,
       reminderNudgesEnabled: reminderNudgesEnabled,
     );
+
+    try {
+      if (biometricsEnabled != null) {
+        await _storage.write(key: 'tabby_biometrics_enabled', value: biometricsEnabled.toString());
+      }
+      if (passcodeEnabled != null) {
+        await _storage.write(key: 'tabby_passcode_enabled', value: passcodeEnabled.toString());
+      }
+      if (autoLockEnabled != null) {
+        await _storage.write(key: 'tabby_auto_lock_enabled', value: autoLockEnabled.toString());
+      }
+      if (notificationsEnabled != null) {
+        await _storage.write(key: 'tabby_notifications_enabled', value: notificationsEnabled.toString());
+      }
+      if (paymentAlertsEnabled != null) {
+        await _storage.write(key: 'tabby_payment_alerts_enabled', value: paymentAlertsEnabled.toString());
+      }
+      if (reminderNudgesEnabled != null) {
+        await _storage.write(key: 'tabby_reminder_nudges_enabled', value: reminderNudgesEnabled.toString());
+      }
+    } catch (e) {
+      debugPrint('[UserSettingsNotifier] Error saving settings: $e');
+    }
   }
 }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/config/app_state.dart';
+import '../../../core/config/supabase_config.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
@@ -22,6 +23,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
   String? _errorText;
 
   Future<void> _signup() async {
@@ -35,32 +37,80 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       setState(() => _errorText = 'Please fill in all fields');
       return;
     }
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() => _errorText = 'Please enter a valid email address');
+      return;
+    }
+    if (phone.replaceAll(RegExp(r'\D'), '').length < 10) {
+      setState(() => _errorText = 'Please enter a valid phone number (at least 10 digits)');
+      return;
+    }
+    if (password.length < 6) {
+      setState(() => _errorText = 'Password must be at least 6 characters');
+      return;
+    }
     if (password != confirm) {
       setState(() => _errorText = 'Passwords do not match');
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+      _errorText = null;
+    });
+
     try {
       if (SupabaseTabbyRepository.instance.isConnected) {
-        await SupabaseTabbyRepository.instance.signUp(
+        final res = await SupabaseTabbyRepository.instance.signUp(
           email: email,
           password: password,
           displayName: name,
           phone: phone,
         );
+
+        if (res?.user == null && SupabaseConfig.currentUser == null) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _errorText = 'Account creation failed. Please try again.';
+            });
+          }
+          return;
+        }
+
+        // Successfully created account! Load real profile and tabs
+        await ref.read(currentUserProvider.notifier).loadFromSupabase();
+        await ref.read(tabbyProvider.notifier).refreshTabs();
+      } else {
+        ref.read(currentUserProvider.notifier).updateProfile(
+              displayName: name,
+              email: email,
+              phone: phone,
+            );
+      }
+
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppState.isAuthenticated.value = true;
+        context.go('/home');
       }
     } catch (e) {
-      debugPrint('[SignUpScreen] Live Supabase auth notice: $e');
+      debugPrint('[SignUpScreen] Live Supabase auth error: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          final err = e.toString().toLowerCase();
+          if (err.contains('already registered') || err.contains('user already exists')) {
+            _errorText = 'An account with this email already exists. Please log in.';
+          } else if (err.contains('weak password') || err.contains('at least 6 characters')) {
+            _errorText = 'Password must be at least 6 characters.';
+          } else {
+            _errorText = 'Sign up failed: ${e.toString().replaceAll('AuthApiException', '').replaceAll('AuthException', '').trim()}';
+          }
+        });
+      }
+      return;
     }
-
-    ref.read(currentUserProvider.notifier).updateProfile(
-          displayName: name,
-          email: email,
-          phone: phone,
-        );
-
-    AppState.isAuthenticated.value = true;
-    if (mounted) context.go('/home');
   }
 
   @override
@@ -153,7 +203,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
               const SizedBox(height: 32),
               TabbyButton(
                 label: 'Create Account',
-                onPressed: _signup,
+                isLoading: _isLoading,
+                onPressed: _isLoading ? null : _signup,
               ),
               const SizedBox(height: 32),
               Row(

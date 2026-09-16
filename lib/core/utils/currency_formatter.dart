@@ -38,14 +38,25 @@ class CurrencyFormatter {
     return formatted;
   }
 
-  /// Parses a string representation (e.g. '150.50', '₱1,250.00', '250') into integer centavos.
+  /// Parses a string representation (e.g. '150.50', '₱1,250.00', '250', '-150.50') into integer centavos.
   static int parseToCentavos(String input) {
     if (input.trim().isEmpty) return 0;
     // Remove symbols, commas, spaces
     final cleaned = input.replaceAll('₱', '').replaceAll(',', '').trim();
     if (cleaned.isEmpty) return 0;
 
-    final parts = cleaned.split('.');
+    bool isNegative = false;
+    String absCleaned = cleaned;
+    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+      isNegative = true;
+      absCleaned = cleaned.substring(1, cleaned.length - 1).trim();
+    } else if (cleaned.startsWith('-')) {
+      isNegative = true;
+      absCleaned = cleaned.substring(1).trim();
+    }
+    if (absCleaned.isEmpty) return 0;
+
+    final parts = absCleaned.split('.');
     final wholeStr = parts[0];
     final whole = int.tryParse(wholeStr) ?? 0;
 
@@ -61,7 +72,7 @@ class CurrencyFormatter {
       centavos += frac;
     }
 
-    return centavos;
+    return isNegative ? -centavos : centavos;
   }
 
   /// Converts accumulated keypad digits into centavos.

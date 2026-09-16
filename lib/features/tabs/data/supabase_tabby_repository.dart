@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/config/supabase_config.dart';
 import '../domain/models.dart';
 import 'mock_tabby_repository.dart';
+import 'tabby_local_cache.dart';
 
 /// Live Supabase Repository for Tabby.
 /// Communicates with Supabase PostgreSQL 15+ backend via PostgREST and GoTrue.
@@ -121,34 +122,80 @@ class SupabaseTabbyRepository {
   static BilateralTab? parseTabRow(
     Map<String, dynamic> tabRow,
     String currentUserId, {
-    int netBalance = 0,
+    int? netBalance,
   }) {
     final tabId = tabRow['id'] as String? ?? '';
     if (tabId.isEmpty) return null;
 
-    // Find counterpart member (anyone who is not the current user)
+    final isGroup = (tabRow['tab_type'] as String?) == 'group' ||
+        tabRow['group_id'] != null ||
+        tabRow['groups'] != null;
+
+    final groupData = tabRow['groups'] as Map<String, dynamic>?;
+    final groupName = groupData?['name'] as String? ?? tabRow['group_name'] as String? ?? 'Group Tab';
+
+    // Find counterpart member (anyone who is not the current user) and build member lookup map
     final membersList = (tabRow['tab_members'] as List<dynamic>?) ?? [];
+    final Map<String, String> memberNameById = {};
     Map<String, dynamic>? counterpartMember;
     for (final m in membersList) {
-      if ((m as Map<String, dynamic>)['user_id'] != currentUserId) {
-        counterpartMember = m;
-        break;
+      final mMap = m as Map<String, dynamic>;
+      final mId = (mMap['user_id'] ?? mMap['contact_id']) as String? ?? '';
+      final mUser = mMap['users'] as Map<String, dynamic>?;
+      if (mId.isNotEmpty) {
+        final rawMeta = mUser?['raw_user_meta_data'] as Map<String, dynamic>?;
+        final dName = (mUser?['display_name'] ??
+                rawMeta?['display_name'] ??
+                mUser?['name'] ??
+                mMap['name']) as String? ??
+            '';
+        if (dName.isNotEmpty) {
+          memberNameById[mId] = dName;
+        }
+      }
+      if (mId != currentUserId && counterpartMember == null) {
+        counterpartMember = mMap;
       }
     }
 
-    if (counterpartMember == null) return null;
+    if (counterpartMember == null && !isGroup) {
+      final userA = tabRow['user_a'] as String?;
+      final userB = tabRow['user_b'] as String?;
+      final fallbackCounterpartId = (userA != null && userA != currentUserId)
+          ? userA
+          : (userB != null && userB != currentUserId ? userB : null);
+      if (fallbackCounterpartId != null && fallbackCounterpartId.isNotEmpty) {
+        counterpartMember = {
+          'user_id': fallbackCounterpartId,
+          'users': {'display_name': memberNameById[fallbackCounterpartId] ?? 'Friend'},
+        };
+      }
+    }
 
-    final counterpartUserId = counterpartMember['user_id'] as String? ?? '';
-    final counterpartUserRow =
-        counterpartMember['users'] as Map<String, dynamic>?;
+    if (counterpartMember == null && !isGroup) return null;
 
-    final counterpart = TabbyUser(
-      id: counterpartUserId,
-      displayName:
-          counterpartUserRow?['display_name'] as String? ?? 'Friend',
-      email: counterpartUserRow?['email'] as String? ?? '',
-      phone: counterpartUserRow?['phone'] as String? ?? '',
-    );
+    final TabbyUser counterpart;
+    if (isGroup) {
+      final groupId = tabRow['group_id'] as String? ?? tabId;
+      counterpart = TabbyUser(
+        id: groupId,
+        displayName: groupName,
+        email: '',
+        phone: '',
+      );
+    } else {
+      final counterpartUserId = counterpartMember!['user_id'] as String? ?? '';
+      final counterpartUserRow =
+          counterpartMember['users'] as Map<String, dynamic>?;
+
+      counterpart = TabbyUser(
+        id: counterpartUserId,
+        displayName:
+            counterpartUserRow?['display_name'] as String? ?? 'Friend',
+        email: counterpartUserRow?['email'] as String? ?? '',
+        phone: counterpartUserRow?['phone'] as String? ?? '',
+      );
+    }
 
     // Build ledger entries from transactions
     final List<LedgerEntry> entries = [];
@@ -156,19 +203,25 @@ class SupabaseTabbyRepository {
     final txList = (tabRow['transactions'] as List<dynamic>?) ?? [];
     for (final txRaw in txList) {
       final tx = txRaw as Map<String, dynamic>;
-      final pList =
-          (tx['transaction_participants'] as List<dynamic>?) ?? [];
+      final pList = (tx['transaction_participants'] as List<dynamic>?) ??
+          (tx['transaction_splits'] as List<dynamic>?) ??
+          [];
       int myShare = 0;
       int counterpartShare = 0;
+      String? actualPayerId;
 
       for (final pRaw in pList) {
         final p = pRaw as Map<String, dynamic>;
-        final pUserId = p['user_id'] as String?;
+        final pUserId = (p['user_id'] ?? p['contact_id']) as String?;
         final shareAmt = (p['share_amount_centavos'] as num?)?.toInt() ?? 0;
+        final role = p['participant_role'] as String?;
+        if (role == 'payer' && pUserId != null && pUserId.isNotEmpty) {
+          actualPayerId = pUserId;
+        }
         if (pUserId == currentUserId) {
           myShare = shareAmt;
-        } else if (pUserId == counterpart.id) {
-          counterpartShare = shareAmt;
+        } else {
+          counterpartShare += shareAmt;
         }
       }
 
@@ -176,24 +229,41 @@ class SupabaseTabbyRepository {
       final dueDateStr = tx['due_date'] as String?;
       final totalAmt =
           (tx['total_amount_centavos'] as num?)?.toInt() ?? 0;
-      final createdBy = tx['created_by'] as String? ?? '';
+      final createdBy = (tx['created_by'] ?? tx['paid_by']) as String? ?? '';
+      final payerId = actualPayerId ?? (tx['paid_by'] as String?) ?? createdBy;
+
+      // If no participants were recorded, fall back to payer-debtor calculation
+      if (pList.isEmpty) {
+        if (payerId == currentUserId) {
+          myShare = 0;
+          counterpartShare = totalAmt;
+        } else {
+          myShare = totalAmt;
+          counterpartShare = 0;
+        }
+      }
+
+      final isMePayer = payerId == currentUserId;
+      final payerName = isMePayer
+          ? 'You'
+          : (memberNameById[payerId] ?? counterpart.displayName);
 
       entries.add(LedgerEntry(
         id: tx['id'] as String? ?? 'tx-$tabId',
         tabId: tabId,
-        title: tx['description'] as String? ?? '',
+        title: (tx['description'] ?? tx['title']) as String? ?? '',
         category: unmapCategory(tx['category']),
         totalAmountCentavos: totalAmt,
         myShareCentavos: myShare,
         counterpartShareCentavos: counterpartShare,
-        paidByUserId: createdBy,
-        paidByName:
-            createdBy == currentUserId ? 'You' : counterpart.displayName,
+        paidByUserId: payerId,
+        paidByName: payerName,
         date: dateStr != null
             ? DateTime.tryParse(dateStr) ?? DateTime.now()
             : DateTime.now(),
         dueDate: dueDateStr != null ? DateTime.tryParse(dueDateStr) : null,
         status: unmapTransactionStatus(tx['status']),
+        receiptUrl: (tx['receipt_url'] ?? tx['payment_proof_url']) as String?,
       ));
     }
 
@@ -202,23 +272,31 @@ class SupabaseTabbyRepository {
     for (final payRaw in payList) {
       final pay = payRaw as Map<String, dynamic>;
       final submittedBy = pay['submitted_by'] as String? ?? '';
-      final isCounterpartPaying = submittedBy == counterpart.id;
-      final dateStr = pay['submitted_at'] as String?;
+      final isMePaying = submittedBy == currentUserId;
+      final payerName = isMePaying
+          ? 'You'
+          : (memberNameById[submittedBy] ?? (isGroup ? 'Group Member' : counterpart.displayName));
+      final dateStr = (pay['submitted_at'] ?? pay['created_at']) as String?;
       final payAmt = (pay['amount_centavos'] as num?)?.toInt() ?? 0;
+
+      final proofList = (pay['payment_proofs'] as List<dynamic>?) ?? [];
+      final proofUrl = proofList.isNotEmpty
+          ? (proofList.first as Map<String, dynamic>)['file_url'] as String?
+          : null;
+      final receiptUrl = proofUrl ?? (pay['payment_proof_url'] ?? pay['receipt_url']) as String?;
 
       entries.add(LedgerEntry(
         id: pay['id'] as String? ?? 'pay-$tabId',
         tabId: tabId,
-        title: isCounterpartPaying
-            ? '${counterpart.displayName} paid'
-            : 'You paid',
+        title: isMePaying
+            ? 'You paid'
+            : '$payerName paid',
         category: ExpenseCategory.borrowedCash,
         totalAmountCentavos: payAmt,
         myShareCentavos: 0,
         counterpartShareCentavos: 0,
         paidByUserId: submittedBy,
-        paidByName:
-            isCounterpartPaying ? counterpart.displayName : 'You',
+        paidByName: payerName,
         date: dateStr != null
             ? DateTime.tryParse(dateStr) ?? DateTime.now()
             : DateTime.now(),
@@ -226,6 +304,7 @@ class SupabaseTabbyRepository {
         isPayment: true,
         paymentMethod: unmapPaymentMethod(pay['payment_method']),
         note: pay['note'] as String?,
+        receiptUrl: receiptUrl,
       ));
     }
 
@@ -235,54 +314,56 @@ class SupabaseTabbyRepository {
     final lastUpdatedStr = tabRow['updated_at'] as String? ??
         tabRow['created_at'] as String?;
 
+    final effectiveNetBalance = netBalance ??
+        MockTabbyRepository.calculateNetBalance(entries, currentUserId);
+
     return BilateralTab(
       id: tabId,
       counterpart: counterpart,
-      netBalanceCentavos: netBalance,
+      netBalanceCentavos: effectiveNetBalance,
       itemCount: entries.length,
       entries: entries,
       lastUpdated: lastUpdatedStr != null
           ? DateTime.tryParse(lastUpdatedStr) ?? DateTime.now()
           : DateTime.now(),
+      isGroupTab: isGroup,
+      groupName: isGroup ? groupName : null,
     );
   }
 
   /// Ensures a user row exists in public.users.
-  /// For real UUID IDs, upserts the record. For synthetic IDs (non-UUID),
-  /// looks up or creates a user by display_name and returns the canonical UUID.
+  /// For real UUID IDs, upserts the record if it is the current user.
+  /// For synthetic IDs (non-UUID), looks up user by display_name.
   Future<String> ensureUserExists(String id, String displayName) async {
     if (!isConnected) return id;
 
+    final currentUserId = SupabaseConfig.currentUserId;
     if (_isValidUuid(id)) {
-      try {
-        await SupabaseConfig.client.from(SupabaseConfig.tableUsers).upsert({
-          'id': id,
-          'display_name': displayName,
-          'updated_at': DateTime.now().toIso8601String(),
-        }, onConflict: 'id');
-      } catch (e) {
-        debugPrint('[SupabaseTabbyRepository] ensureUserExists upsert warning: $e');
+      // Only upsert self to respect RLS policy auth.uid() = id
+      if (currentUserId != null && id == currentUserId) {
+        try {
+          await SupabaseConfig.client.from(SupabaseConfig.tableUsers).upsert({
+            'id': id,
+            'display_name': displayName,
+            'updated_at': DateTime.now().toIso8601String(),
+          }, onConflict: 'id');
+        } catch (e) {
+          debugPrint('[SupabaseTabbyRepository] ensureUserExists upsert warning: $e');
+        }
       }
       return id;
     }
 
-    // Synthetic ID: find or create by display_name
+    // Synthetic ID: find by display_name if exists
     try {
       final existing = await SupabaseConfig.client
           .from(SupabaseConfig.tableUsers)
           .select('id')
-          .eq('display_name', displayName)
+          .ilike('display_name', displayName)
+          .limit(1)
           .maybeSingle();
       if (existing != null && existing['id'] != null) {
         return existing['id'] as String;
-      }
-      final inserted = await SupabaseConfig.client
-          .from(SupabaseConfig.tableUsers)
-          .insert({'display_name': displayName})
-          .select('id')
-          .maybeSingle();
-      if (inserted != null && inserted['id'] != null) {
-        return inserted['id'] as String;
       }
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] ensureUserExists synthetic warning: $e');
@@ -334,7 +415,7 @@ class SupabaseTabbyRepository {
     }
   }
 
-  /// Sign in with Email and Password
+  /// Sign in with Email or Phone and Password
   Future<AuthResponse?> signIn({
     required String email,
     required String password,
@@ -342,14 +423,90 @@ class SupabaseTabbyRepository {
     if (!isConnected) return null;
 
     try {
+      final isPhone = !email.contains('@') && RegExp(r'^\+?[0-9\s\-]+$').hasMatch(email);
       final response = await SupabaseConfig.auth.signInWithPassword(
-        email: email,
+        email: isPhone ? null : email,
+        phone: isPhone ? email.replaceAll(RegExp(r'[\s\-]'), '') : null,
         password: password,
       );
       return response;
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] Sign in error: $e');
       rethrow;
+    }
+  }
+
+  /// Fetches profile of [userId] from Supabase public.users
+  Future<TabbyUser?> fetchUserProfile(String userId) async {
+    if (!isConnected || !_isValidUuid(userId)) return null;
+
+    try {
+      final data = await SupabaseConfig.client
+          .from(SupabaseConfig.tableUsers)
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final authUser = SupabaseConfig.currentUser;
+      final meta = authUser?.userMetadata ?? {};
+
+      if (data != null) {
+        final displayName = (data['display_name'] as String?)?.isNotEmpty == true
+            ? data['display_name'] as String
+            : (meta['display_name'] as String?)?.isNotEmpty == true
+                ? meta['display_name'] as String
+                : (authUser?.email?.split('@').first ?? 'User');
+
+        return TabbyUser(
+          id: userId,
+          displayName: displayName,
+          email: (data['email'] as String?) ?? authUser?.email ?? '',
+          phone: (data['phone'] as String?) ?? (meta['phone'] as String?) ?? '',
+          avatarUrl: data['avatar_url'] as String? ?? meta['avatar_url'] as String?,
+          gcashNumber: (data['gcash_number'] as String?) ?? '',
+          mayaNumber: (data['maya_number'] as String?) ?? '',
+          qrCodeUrl: data['qr_code_url'] as String?,
+        );
+      }
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] fetchUserProfile error: $e');
+    }
+    return null;
+  }
+
+  /// Updates profile in Supabase public.users
+  Future<void> updateUserProfile({
+    required String userId,
+    String? displayName,
+    String? phone,
+    String? avatarUrl,
+    String? gcashNumber,
+    String? mayaNumber,
+    String? qrCodeUrl,
+  }) async {
+    if (!isConnected || !_isValidUuid(userId)) return;
+
+    try {
+      final updates = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (displayName != null) updates['display_name'] = displayName;
+      if (phone != null) updates['phone'] = phone;
+      if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+      if (gcashNumber != null) updates['gcash_number'] = gcashNumber;
+      if (mayaNumber != null) updates['maya_number'] = mayaNumber;
+      if (qrCodeUrl != null) updates['qr_code_url'] = qrCodeUrl;
+
+      await SupabaseConfig.client
+          .from(SupabaseConfig.tableUsers)
+          .upsert({
+            'id': userId,
+            ...updates,
+          }, onConflict: 'id');
+
+      debugPrint('[SupabaseTabbyRepository] updateUserProfile saved to Supabase');
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] updateUserProfile error: $e');
     }
   }
 
@@ -453,12 +610,46 @@ class SupabaseTabbyRepository {
 
   /// Sign out
   Future<void> signOut() async {
+    try {
+      await TabbyLocalCache.clearCache();
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] clearCache error: $e');
+    }
+
     if (!isConnected) return;
     try {
       await SupabaseConfig.auth.signOut();
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] Sign out error: $e');
     }
+  }
+
+  /// Searches for registered users by display name or email using sanitized RPC
+  Future<List<TabbyUser>> searchUsers(String query) async {
+    if (!isConnected || query.trim().isEmpty) return [];
+
+    try {
+      final res = await SupabaseConfig.client.rpc(
+        'search_users',
+        params: {'p_query': query.trim()},
+      );
+
+      if (res is List) {
+        return res.map((r) {
+          final row = r as Map<String, dynamic>;
+          return TabbyUser(
+            id: row['id'] as String? ?? '',
+            displayName: row['display_name'] as String? ?? '',
+            avatarUrl: row['avatar_url'] as String?,
+            email: '',
+            phone: '',
+          );
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] searchUsers error: $e');
+    }
+    return [];
   }
 
   // ---------------------------------------------------------------------------
@@ -483,23 +674,25 @@ class SupabaseTabbyRepository {
       final tabsData = await SupabaseConfig.client
           .from(SupabaseConfig.tableTabs)
           .select(
-            'id, tab_type, status, created_at, updated_at,'
+            'id, tab_type, group_id, status, created_at, updated_at, user_a, user_b,'
+            'groups ( id, name, avatar_url ),'
             'tab_members ('
             '  user_id,'
             '  users ( id, display_name, email, phone )'
             '),'
             'transactions ('
             '  id, created_by, transaction_type, category, description,'
-            '  total_amount_centavos, currency, due_date, status, created_at,'
+            '  total_amount_centavos, currency, due_date, status, created_at, receipt_url,'
             '  transaction_participants ('
             '    user_id, participant_role, share_amount_centavos, acknowledged'
             '  )'
             '),'
             'payments ('
-            '  id, submitted_by, amount_centavos, payment_method, note, status, submitted_at'
+            '  id, submitted_by, amount_centavos, payment_method, note, status, submitted_at,'
+            '  payment_proofs ( file_url )'
             ')',
           )
-          .or('user_a.eq.$currentUserId,user_b.eq.$currentUserId');
+          .neq('status', 'archived');
 
       if (tabsData.isEmpty) {
         return [];
@@ -512,7 +705,7 @@ class SupabaseTabbyRepository {
         if (tabId.isEmpty) continue;
 
         // Fetch live RPC balance for this tab
-        int netBalance = 0;
+        int? netBalance;
         try {
           netBalance = await SupabaseConfig.getNetBalance(
             tabId: tabId,
@@ -540,6 +733,100 @@ class SupabaseTabbyRepository {
   // Write Operations
   // ---------------------------------------------------------------------------
 
+  /// Creates a group and an associated group tab in Supabase.
+  Future<String?> createGroupTab({
+    required String groupName,
+    required String currentUserId,
+    List<String>? memberUserIds,
+  }) async {
+    if (!isConnected || !_isValidUuid(currentUserId)) return null;
+
+    try {
+      // 1. Create group in public.groups
+      final groupRes = await SupabaseConfig.client
+          .from(SupabaseConfig.tableGroups)
+          .insert({
+            'name': groupName,
+            'created_by': currentUserId,
+          })
+          .select('id')
+          .maybeSingle();
+
+      if (groupRes == null || groupRes['id'] == null) return null;
+      final groupId = groupRes['id'] as String;
+
+      // 2. Add creator as admin member
+      await SupabaseConfig.client
+          .from(SupabaseConfig.tableGroupMembers)
+          .insert({
+            'group_id': groupId,
+            'user_id': currentUserId,
+            'role': 'admin',
+            'status': 'active',
+          });
+
+      // 3. Add other members if valid UUIDs
+      if (memberUserIds != null) {
+        for (final mId in memberUserIds) {
+          if (_isValidUuid(mId) && mId != currentUserId) {
+            try {
+              await SupabaseConfig.client
+                  .from(SupabaseConfig.tableGroupMembers)
+                  .insert({
+                    'group_id': groupId,
+                    'user_id': mId,
+                    'role': 'member',
+                    'status': 'active',
+                  });
+            } catch (e) {
+              debugPrint('[SupabaseTabbyRepository] add member warning: $e');
+            }
+          }
+        }
+      }
+
+      // 4. Create group tab in public.tabs
+      final tabRes = await SupabaseConfig.client
+          .from(SupabaseConfig.tableTabs)
+          .insert({
+            'tab_type': 'group',
+            'group_id': groupId,
+            'status': 'active',
+          })
+          .select('id')
+          .maybeSingle();
+
+      if (tabRes != null && tabRes['id'] != null) {
+        final tabId = tabRes['id'] as String;
+        final tabMembers = <Map<String, dynamic>>[
+          {
+            'tab_id': tabId,
+            'user_id': currentUserId,
+            'role': 'admin',
+          }
+        ];
+        if (memberUserIds != null) {
+          for (final mId in memberUserIds) {
+            if (_isValidUuid(mId) && mId != currentUserId) {
+              tabMembers.add({
+                'tab_id': tabId,
+                'user_id': mId,
+                'role': 'participant',
+              });
+            }
+          }
+        }
+        await SupabaseConfig.client
+            .from(SupabaseConfig.tableTabMembers)
+            .insert(tabMembers);
+        return tabId;
+      }
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] createGroupTab error: $e');
+    }
+    return null;
+  }
+
   /// Logs an expense to Supabase (ADR-001: integer centavos BIGINT).
   Future<void> logExpense({
     required String tabId,
@@ -552,15 +839,22 @@ class SupabaseTabbyRepository {
     required String currentUserId,
     required String counterpartId,
     DateTime? dueDate,
+    String? receiptUrl,
   }) async {
     if (!isConnected) return;
+
+    // Only insert if tabId is a valid UUID
+    if (!_isValidUuid(tabId)) {
+      debugPrint('[SupabaseTabbyRepository] logExpense skipped: tabId ($tabId) is not a valid UUID');
+      return;
+    }
 
     try {
       final inserted = await SupabaseConfig.client
           .from(SupabaseConfig.tableTransactions)
           .insert({
             'tab_id': tabId,
-            'created_by': paidByUserId,
+            'created_by': currentUserId,
             'transaction_type': 'shared_expense',
             'category': _mapCategory(category),
             'description': title.isEmpty ? category.displayName : title,
@@ -569,6 +863,8 @@ class SupabaseTabbyRepository {
             'status': 'acknowledged',
             if (dueDate != null)
               'due_date': dueDate.toIso8601String().split('T')[0],
+            if (receiptUrl != null && receiptUrl.isNotEmpty)
+              'receipt_url': receiptUrl,
           })
           .select('id')
           .maybeSingle();
@@ -592,20 +888,53 @@ class SupabaseTabbyRepository {
           });
         }
 
-        // Debtor participant
-        final debtorId =
-            paidByUserId == currentUserId ? counterpartId : currentUserId;
-        final debtorShare = paidByUserId == currentUserId
-            ? counterpartShareCentavos
-            : myShareCentavos;
-        if (_isValidUuid(debtorId) && debtorId != paidByUserId) {
-          participants.add({
-            'transaction_id': txId,
-            'user_id': debtorId,
-            'participant_role': 'debtor',
-            'share_amount_centavos': debtorShare,
-            'acknowledged': false,
-          });
+        // Debtor participant(s)
+        List<Map<String, dynamic>> tabMembers = [];
+        try {
+          final membersRes = await SupabaseConfig.client
+              .from(SupabaseConfig.tableTabMembers)
+              .select('user_id')
+              .eq('tab_id', tabId);
+          tabMembers = List<Map<String, dynamic>>.from(membersRes);
+        } catch (e) {
+          debugPrint('[SupabaseTabbyRepository] tabMembers lookup warning: $e');
+        }
+
+        final otherMembers = tabMembers
+            .map((m) => m['user_id'] as String?)
+            .where((uid) => uid != null && _isValidUuid(uid) && uid != paidByUserId)
+            .cast<String>()
+            .toList();
+
+        if (otherMembers.isNotEmpty) {
+          // Multi-party / group tab: distribute debtor share among other members
+          final remainingAmount = totalAmountCentavos - (paidByUserId == currentUserId ? myShareCentavos : 0);
+          final perMemberShare = remainingAmount > 0 ? (remainingAmount ~/ otherMembers.length) : counterpartShareCentavos;
+          for (final memberId in otherMembers) {
+            participants.add({
+              'transaction_id': txId,
+              'user_id': memberId,
+              'participant_role': 'debtor',
+              'share_amount_centavos': perMemberShare,
+              'acknowledged': false,
+            });
+          }
+        } else {
+          // Bilateral tab: single debtor
+          final debtorId =
+              paidByUserId == currentUserId ? counterpartId : currentUserId;
+          final debtorShare = paidByUserId == currentUserId
+              ? counterpartShareCentavos
+              : myShareCentavos;
+          if (_isValidUuid(debtorId) && debtorId != paidByUserId) {
+            participants.add({
+              'transaction_id': txId,
+              'user_id': debtorId,
+              'participant_role': 'debtor',
+              'share_amount_centavos': debtorShare,
+              'acknowledged': false,
+            });
+          }
         }
 
         if (participants.isNotEmpty) {
@@ -627,17 +956,26 @@ class SupabaseTabbyRepository {
     required String paidByUserId,
     required String receivedByUserId,
     String? note,
+    String? confirmedByUserId,
   }) async {
     if (!isConnected) return;
 
-    // Only insert if tabId is a valid UUID (bilateral tabs created via RPC return UUIDs)
-    if (!_isValidUuid(tabId)) {
+    // Only insert if tabId and paidByUserId are valid UUIDs
+    if (!_isValidUuid(tabId) || !_isValidUuid(paidByUserId)) {
       debugPrint(
-          '[SupabaseTabbyRepository] recordPayment skipped: tabId is not a valid UUID');
+          '[SupabaseTabbyRepository] recordPayment skipped: tabId ($tabId) or paidByUserId ($paidByUserId) is not a valid UUID');
       return;
     }
 
     try {
+      final currentUserId = SupabaseConfig.currentUserId;
+      final isCreditorRecording =
+          currentUserId != null && currentUserId == receivedByUserId;
+      final confirmedBy =
+          confirmedByUserId ?? (isCreditorRecording ? currentUserId : null);
+      final validConfirmedBy =
+          (confirmedBy != null && _isValidUuid(confirmedBy)) ? confirmedBy : null;
+
       await SupabaseConfig.client.from(SupabaseConfig.tablePayments).insert({
         'tab_id': tabId,
         'submitted_by': paidByUserId,
@@ -645,9 +983,38 @@ class SupabaseTabbyRepository {
         'payment_method': _mapPaymentMethod(method),
         if (note != null && note.isNotEmpty) 'note': note,
         'status': 'confirmed',
+        if (validConfirmedBy != null) 'confirmed_by': validConfirmedBy,
+        if (validConfirmedBy != null)
+          'confirmed_at': DateTime.now().toUtc().toIso8601String(),
       });
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] recordPayment error: $e');
+    }
+  }
+
+  /// Archives a tab in Supabase.
+  Future<void> archiveTab(String tabId) async {
+    if (!isConnected || !_isValidUuid(tabId)) return;
+    try {
+      await SupabaseConfig.client
+          .from(SupabaseConfig.tableTabs)
+          .update({'status': 'archived'})
+          .eq('id', tabId);
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] archiveTab error: $e');
+    }
+  }
+
+  /// Attaches a receipt URL to an existing transaction in Supabase.
+  Future<void> attachReceipt(String transactionId, String receiptUrl) async {
+    if (!isConnected || !_isValidUuid(transactionId)) return;
+    try {
+      await SupabaseConfig.client
+          .from(SupabaseConfig.tableTransactions)
+          .update({'receipt_url': receiptUrl})
+          .eq('id', transactionId);
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] attachReceipt error: $e');
     }
   }
 }

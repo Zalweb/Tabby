@@ -21,6 +21,10 @@ BEGIN
     ) OR EXISTS (
         SELECT 1 FROM public.tabs
         WHERE id = p_tab_id AND (user_a = p_user_id OR user_b = p_user_id)
+    ) OR EXISTS (
+        SELECT 1 FROM public.tabs t
+        JOIN public.group_members gm ON t.group_id = gm.group_id
+        WHERE t.id = p_tab_id AND gm.user_id = p_user_id AND gm.status = 'active'
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
@@ -67,10 +71,63 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view all registered user profiles" ON public.users;
-CREATE POLICY "Users can view all registered user profiles"
+DROP POLICY IF EXISTS "Users can view their own profile and connected parties" ON public.users;
+CREATE POLICY "Users can view their own profile and connected parties"
     ON public.users FOR SELECT
     TO authenticated
-    USING (true);
+    USING (
+        -- 1. Self: User can always view their own profile
+        id = auth.uid()
+        -- 2. Direct Bilateral Tab counterpart
+        OR EXISTS (
+            SELECT 1 FROM public.tabs t
+            WHERE (t.user_a = auth.uid() AND t.user_b = public.users.id)
+               OR (t.user_b = auth.uid() AND t.user_a = public.users.id)
+        )
+        -- 3. Multi-party Tab co-participant
+        OR EXISTS (
+            SELECT 1 FROM public.tab_members tm1
+            JOIN public.tab_members tm2 ON tm1.tab_id = tm2.tab_id
+            WHERE tm1.user_id = auth.uid() AND tm2.user_id = public.users.id
+        )
+        -- 4. Shared Group member
+        OR EXISTS (
+            SELECT 1 FROM public.group_members gm1
+            JOIN public.group_members gm2 ON gm1.group_id = gm2.group_id
+            WHERE gm1.user_id = auth.uid() AND gm2.user_id = public.users.id
+              AND gm1.status = 'active' AND gm2.status = 'active'
+        )
+        -- 5. Friendships (requested or accepted)
+        OR EXISTS (
+            SELECT 1 FROM public.friendships f
+            WHERE (f.requester_id = auth.uid() AND f.addressee_id = public.users.id)
+               OR (f.addressee_id = auth.uid() AND f.requester_id = public.users.id)
+        )
+        -- 6. Virtual Contacts claimed
+        OR EXISTS (
+            SELECT 1 FROM public.contacts c
+            WHERE c.owner_user_id = auth.uid() AND c.claimed_user_id = public.users.id
+        )
+    );
+
+-- Sanitized user search function for friend discovery that exposes only public attributes
+CREATE OR REPLACE FUNCTION public.search_users(p_query TEXT)
+RETURNS TABLE (
+    id UUID,
+    display_name TEXT,
+    avatar_url TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT u.id, u.display_name, u.avatar_url
+    FROM public.users u
+    WHERE u.display_name ILIKE '%' || p_query || '%'
+       OR u.email ILIKE p_query
+    LIMIT 20;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+GRANT EXECUTE ON FUNCTION public.search_users(TEXT) TO authenticated;
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.users;
 CREATE POLICY "Users can insert their own profile"
@@ -395,7 +452,12 @@ DROP POLICY IF EXISTS "Tab members can submit payments" ON public.payments;
 CREATE POLICY "Tab members can submit payments"
     ON public.payments FOR INSERT
     TO authenticated
-    WITH CHECK (submitted_by = auth.uid() AND public.is_tab_member(tab_id, auth.uid()));
+    WITH CHECK (
+        public.is_tab_member(tab_id, auth.uid()) AND (
+            submitted_by = auth.uid() OR
+            confirmed_by = auth.uid()
+        )
+    );
 
 DROP POLICY IF EXISTS "Tab members can update payments" ON public.payments;
 CREATE POLICY "Tab members can update payments"

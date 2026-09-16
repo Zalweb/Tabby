@@ -19,9 +19,17 @@ CREATE TABLE IF NOT EXISTS public.users (
     phone TEXT UNIQUE,
     display_name TEXT NOT NULL,
     avatar_url TEXT,
+    gcash_number TEXT,
+    maya_number TEXT,
+    qr_code_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure columns exist if table was already created
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS gcash_number TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS maya_number TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS qr_code_url TEXT;
 
 -- Link to auth.users if running in Supabase environment
 DO $$
@@ -187,9 +195,13 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
     due_date DATE,
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'acknowledged', 'disputed', 'cancelled', 'settled')),
+    receipt_url TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Ensure receipt_url exists if table was already created
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
 
 -- ============================================================================
 -- 11. TRANSACTION_PARTICIPANTS TABLE

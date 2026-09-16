@@ -40,6 +40,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   bool _isEqualSplit = true;
   DateTime? _selectedDueDate;
   String? _receiptUrl;
+  bool _isSubmitting = false;
 
   // Preset quick amount chips in pesos
   final List<int> _quickAmounts = [100, 250, 500, 1000, 2000];
@@ -83,6 +84,8 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   }
 
   void _submitExpense() {
+    if (_isSubmitting) return;
+
     final name = _friendNameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -95,7 +98,18 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
     }
 
     _selectedFriendName = name;
-    if (_selectedFriendId.isEmpty || !_selectedFriendId.startsWith('user-')) {
+    final friends = ref.read(friendsProvider);
+    final groups = ref.read(groupsProvider);
+    final friendMatch = friends.where((f) => f.displayName.toLowerCase() == name.toLowerCase()).firstOrNull;
+    final groupMatch = groups.where((g) => (g.groupName ?? g.counterpart.displayName).toLowerCase() == name.toLowerCase()).firstOrNull;
+
+    if (friendMatch != null) {
+      _selectedFriendId = friendMatch.id;
+    } else if (groupMatch != null) {
+      _selectedFriendId = groupMatch.id;
+    } else if (_selectedFriendId.isNotEmpty && _selectedFriendName.toLowerCase() == name.toLowerCase()) {
+      // Retain pre-selected or pre-filled valid ID (e.g. from bilateral tab)
+    } else {
       _selectedFriendId = 'user-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}';
     }
 
@@ -129,6 +143,10 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   }
 
   void _commitExpense(int centavos) {
+    if (_isSubmitting) return;
+    if (mounted) {
+      setState(() => _isSubmitting = true);
+    }
     ref.read(tabbyProvider.notifier).addExpense(
           counterpartId: _selectedFriendId,
           counterpartName: _selectedFriendName,
@@ -714,7 +732,8 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             TabbyButton(
               label: 'Save Tab',
               variant: TabbyButtonVariant.primary,
-              onPressed: _submitExpense,
+              isLoading: _isSubmitting,
+              onPressed: _isSubmitting ? null : _submitExpense,
             ),
           ],
         ),
