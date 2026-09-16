@@ -728,8 +728,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const SizedBox(height: 24),
 
                       // Friends List Section Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        runSpacing: 8,
                         children: [
                           const Text(
                             'Friends',
@@ -752,7 +753,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ),
                               const SizedBox(width: 8),
                               InkWell(
-                                onTap: () => _showAddFriendSheet(context),
+                                onTap: () => _showConnectByIdSheet(context),
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -770,7 +771,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       ),
                                       SizedBox(width: 4),
                                       Text(
-                                        'Add',
+                                        'Connect',
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w700,
@@ -814,7 +815,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 const Text(
-                                  'Add your friends or log your first shared expense.',
+                                  'Connect with friends using their shareable Tabby ID.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 12,
@@ -823,9 +824,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 ElevatedButton.icon(
-                                  onPressed: () => _showAddFriendSheet(context),
-                                  icon: const Icon(Icons.person_add_rounded, size: 16),
-                                  label: const Text('Add a Friend'),
+                                  onPressed: () => _showConnectByIdSheet(context),
+                                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+                                  label: const Text('Connect by Tabby ID'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: TabbyColors.brandEmerald,
                                     foregroundColor: TabbyColors.surfaceWhite,
@@ -874,7 +875,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                       ),
                                     ),
                                     subtitle: Text(
-                                      friend.phone.isNotEmpty ? friend.phone : 'Connected Friend',
+                                      friend.friendCode?.isNotEmpty == true
+                                          ? 'Connected'
+                                          : (friend.phone.isNotEmpty
+                                              ? friend.phone
+                                              : 'Saved contact'),
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: TabbyColors.textSecondary,
@@ -2262,171 +2267,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // 8. Add Friend Modal Sheet
-  void _showAddFriendSheet(BuildContext context) {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final emailController = TextEditingController();
-    final gcashController = TextEditingController();
-    final mayaController = TextEditingController();
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: Material(
-                color: TabbyColors.surfaceWhite,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Add a New Friend',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: TabbyColors.brandDarkTeal,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed: () => Navigator.pop(sheetContext),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildInputField(
-                          label: 'Friend\'s Full Name',
-                          controller: nameController,
-                          icon: Icons.person_outline_rounded,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'Mobile Number (+63 9XX XXX XXXX)',
-                          controller: phoneController,
-                          icon: Icons.phone_outlined,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'Email (optional)',
-                          controller: emailController,
-                          icon: Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'GCash Number (optional)',
-                          controller: gcashController,
-                          icon: Icons.account_balance_wallet_outlined,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'Maya Number (optional)',
-                          controller: mayaController,
-                          icon: Icons.credit_card_outlined,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 24),
-                        TabbyButton(
-                          label: isSubmitting ? 'Adding...' : 'Add Friend',
-                          isLoading: isSubmitting,
-                          onPressed: isSubmitting
-                              ? null
-                              : () async {
-                                  final name = nameController.text.trim();
-                                  final phone = phoneController.text.trim();
-                                  final email = emailController.text.trim();
-
-                                  if (name.isEmpty) {
-                                    ScaffoldMessenger.of(context).clearSnackBars();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Please enter a name for your friend.'),
-                                        backgroundColor: TabbyColors.alertRed,
-                                      ),
-                                    );
-                                    return;
-                                  }
-
-                                  if (phone.isNotEmpty) {
-                                    final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
-                                    if (cleanDigits.length < 10) {
-                                      ScaffoldMessenger.of(context).clearSnackBars();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Please enter a valid mobile number (min 10 digits).'),
-                                          backgroundColor: TabbyColors.alertRed,
-                                        ),
-                                      );
-                                      return;
-                                    }
-                                  }
-
-                                  if (email.isNotEmpty &&
-                                      !RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
-                                    ScaffoldMessenger.of(context).clearSnackBars();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Please enter a valid email address.'),
-                                        backgroundColor: TabbyColors.alertRed,
-                                      ),
-                                    );
-                                    return;
-                                  }
-
-                                  setModalState(() => isSubmitting = true);
-
-                                  await ref.read(tabbyProvider.notifier).addFriend(
-                                        name: name,
-                                        phone: phone.isNotEmpty ? phone : '+63 900 000 0000',
-                                        email: email,
-                                        gcashNumber: gcashController.text.trim(),
-                                        mayaNumber: mayaController.text.trim(),
-                                      );
-
-                                  if (context.mounted) {
-                                    Navigator.pop(sheetContext);
-                                    ScaffoldMessenger.of(context).clearSnackBars();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Added $name to your friends list!'),
-                                        backgroundColor: TabbyColors.brandEmerald,
-                                      ),
-                                    );
-                                  }
-                                },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   // 7b. Friend Options Sheet
   void _showFriendOptionsSheet(BuildContext context, TabbyUser friend) {
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -2462,7 +2302,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              friend.phone.isNotEmpty ? friend.phone : 'Connected Friend',
+                              friend.friendCode?.isNotEmpty == true
+                                  ? 'Connected'
+                                  : (friend.phone.isNotEmpty
+                                      ? friend.phone
+                                      : 'Saved contact'),
                               style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
                             ),
                           ],

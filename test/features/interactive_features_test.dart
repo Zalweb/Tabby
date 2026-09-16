@@ -161,27 +161,15 @@ void main() {
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
 
-    // 4. Add Friend
-    final addFriendBtn = find.text('Add');
-    await tester.ensureVisible(addFriendBtn);
-    await tester.tap(addFriendBtn);
+    // 4. Connect Friend flow
+    final connectBtn = find.text('Connect');
+    await tester.ensureVisible(connectBtn);
+    await tester.tap(connectBtn);
     await tester.pumpAndSettle();
-
-    expect(find.text('Add a New Friend'), findsOneWidget);
-    final friendFields = find.descendant(
-      of: find.byType(BottomSheet),
-      matching: find.byType(TextField),
-    );
-    await tester.enterText(friendFields.at(0), 'Bea Alonzo');
-    await tester.enterText(friendFields.at(1), '+63 917 555 1234');
+    expect(find.text('Connect with a Friend'), findsOneWidget);
+    expect(find.text('Friend\'s Full Name'), findsNothing);
+    await tester.tap(find.byIcon(Icons.close_rounded).last);
     await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Add Friend'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Added Bea Alonzo to your friends list!'), findsOneWidget);
-    expect(find.text('Bea Alonzo'), findsOneWidget);
-    expect(find.text('1 friend'), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
 
@@ -315,20 +303,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 1. Add a friend first
-    final addFriendBtn = find.text('Add');
-    await tester.ensureVisible(addFriendBtn);
-    await tester.tap(addFriendBtn);
-    await tester.pumpAndSettle();
-
-    final friendFields = find.descendant(
-      of: find.byType(BottomSheet),
-      matching: find.byType(TextField),
+    // 1. Seed a saved contact for friend-management coverage.
+    final profileContainer = ProviderScope.containerOf(
+      tester.element(find.text('Profile & Settings')),
     );
-    await tester.enterText(friendFields.at(0), 'Carlos Yulo');
-    await tester.enterText(friendFields.at(1), '+63 918 111 2222');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Add Friend'));
+    await profileContainer.read(tabbyProvider.notifier).addFriend(
+          name: 'Carlos Yulo',
+          phone: '+63 918 111 2222',
+        );
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
     expect(find.text('Carlos Yulo'), findsOneWidget);

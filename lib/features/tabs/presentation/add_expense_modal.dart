@@ -31,6 +31,7 @@ class AddExpenseModal extends ConsumerStatefulWidget {
 class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
   late String _selectedFriendId;
   late String _selectedFriendName;
+  bool _selectedFriendIsConnected = false;
   final TextEditingController _friendNameController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -54,6 +55,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
       if (match != null) {
         _selectedFriendId = match.isGroupTab ? match.id : match.counterpart.id;
         _selectedFriendName = match.isGroupTab ? (match.groupName ?? match.counterpart.displayName) : match.counterpart.displayName;
+        _selectedFriendIsConnected = !match.isGroupTab && _isConnectedFriend(match.counterpart);
         _friendNameController.text = _selectedFriendName;
       } else {
         _selectedFriendId = widget.initialCounterpartId!;
@@ -65,6 +67,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
       if (friends.isNotEmpty) {
         _selectedFriendId = friends.first.id;
         _selectedFriendName = friends.first.displayName;
+        _selectedFriendIsConnected = _isConnectedFriend(friends.first);
         _friendNameController.text = friends.first.displayName;
       } else {
         _selectedFriendId = '';
@@ -105,12 +108,15 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
 
     if (friendMatch != null) {
       _selectedFriendId = friendMatch.id;
+      _selectedFriendIsConnected = _isConnectedFriend(friendMatch);
     } else if (groupMatch != null) {
       _selectedFriendId = groupMatch.id;
+      _selectedFriendIsConnected = false;
     } else if (_selectedFriendId.isNotEmpty && _selectedFriendName.toLowerCase() == name.toLowerCase()) {
       // Retain pre-selected or pre-filled valid ID (e.g. from bilateral tab)
     } else {
       _selectedFriendId = 'user-${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}';
+      _selectedFriendIsConnected = false;
     }
 
     final centavos = CurrencyFormatter.parseToCentavos(_amountController.text);
@@ -157,6 +163,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
           category: _selectedCategory,
           paidByMe: _paidByMe,
           isEqualSplit: _isEqualSplit,
+          isConnectedFriend: _selectedFriendIsConnected,
           dueDate: _selectedDueDate,
           receiptUrl: _receiptUrl,
         );
@@ -218,8 +225,18 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
     final groups = ref.watch(groupsProvider);
 
     final allParticipants = [
-      ...friends.map((f) => (id: f.id, name: f.displayName, isGroup: false)),
-      ...groups.map((g) => (id: g.id, name: g.groupName ?? g.counterpart.displayName, isGroup: true)),
+      ...friends.map((f) => (
+            id: f.id,
+            name: f.displayName,
+            isGroup: false,
+            isConnected: _isConnectedFriend(f),
+          )),
+      ...groups.map((g) => (
+            id: g.id,
+            name: g.groupName ?? g.counterpart.displayName,
+            isGroup: true,
+            isConnected: false,
+          )),
     ];
 
     return Container(
@@ -302,10 +319,13 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                     final groupMatch = groups.where((g) => (g.groupName ?? g.counterpart.displayName).toLowerCase() == val.trim().toLowerCase()).firstOrNull;
                     if (match != null) {
                       _selectedFriendId = match.id;
+                      _selectedFriendIsConnected = _isConnectedFriend(match);
                     } else if (groupMatch != null) {
                       _selectedFriendId = groupMatch.id;
+                      _selectedFriendIsConnected = false;
                     } else {
                       _selectedFriendId = 'user-${val.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '-')}';
+                      _selectedFriendIsConnected = false;
                     }
                   });
                 },
@@ -329,7 +349,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
             if (allParticipants.isNotEmpty) ...[
               const SizedBox(height: 8),
               SizedBox(
-                height: 38,
+                height: 66,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: allParticipants.length,
@@ -338,27 +358,42 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
                     final p = allParticipants[index];
                     final isSelected = p.id == _selectedFriendId ||
                         p.name.toLowerCase() == _friendNameController.text.trim().toLowerCase();
-                    return ChoiceChip(
-                      avatar: p.isGroup
-                          ? const Icon(Icons.group_rounded, size: 14, color: TabbyColors.brandDarkTeal)
-                          : null,
-                      label: Text(p.name),
-                      selected: isSelected,
-                      selectedColor: TabbyColors.brandEmerald,
-                      labelStyle: TextStyle(
-                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                        color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
-                        fontSize: 12,
-                      ),
-                      onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _selectedFriendId = p.id;
-                            _selectedFriendName = p.name;
-                            _friendNameController.text = p.name;
-                          });
-                        }
-                      },
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ChoiceChip(
+                          avatar: p.isGroup
+                              ? const Icon(Icons.group_rounded, size: 14, color: TabbyColors.brandDarkTeal)
+                              : null,
+                          label: Text(p.name),
+                          selected: isSelected,
+                          selectedColor: TabbyColors.brandEmerald,
+                          labelStyle: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
+                            fontSize: 12,
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _selectedFriendId = p.id;
+                                _selectedFriendName = p.name;
+                                _selectedFriendIsConnected = p.isConnected;
+                                _friendNameController.text = p.name;
+                              });
+                            }
+                          },
+                        ),
+                        if (!p.isGroup)
+                          Text(
+                            p.isConnected ? 'Connected' : 'Saved contact',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: TabbyColors.textSecondary,
+                            ),
+                          ),
+                      ],
                     );
                   },
                 ),
@@ -740,4 +775,7 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
       ),
     );
   }
+
+  bool _isConnectedFriend(TabbyUser friend) =>
+      friend.friendCode?.trim().isNotEmpty == true;
 }

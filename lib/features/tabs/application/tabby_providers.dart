@@ -231,6 +231,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required ExpenseCategory category,
     required bool paidByMe,
     required bool isEqualSplit,
+    bool isConnectedFriend = false,
     DateTime? dueDate,
     String? receiptUrl,
   }) async {
@@ -390,9 +391,11 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           );
         }
 
-        // If not a group and not a registered user, resolve or create contact tab
+        // Connected accounts must stay on the bilateral-tab path. Do not
+        // silently create a private contact tab if that path is unavailable.
         if (realTabId == null &&
             !isGroupTab &&
+            !isConnectedFriend &&
             SupabaseTabbyRepository.isValidUuid(currentUserId)) {
           final contactResult =
               await SupabaseTabbyRepository.instance.getOrCreateContactTab(

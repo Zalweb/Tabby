@@ -1068,20 +1068,14 @@ void main() {
       await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
 
-      // 5. Add Friend validation: empty name
-      final addFriendBtn = find.text('Add');
-      await tester.ensureVisible(addFriendBtn);
-      await tester.tap(addFriendBtn);
+      // 5. Connect Friend flow replaces the old manual friend form.
+      final connectAction = find.text('Connect');
+      await tester.ensureVisible(connectAction);
+      await tester.tap(connectAction);
       await tester.pumpAndSettle();
-
-      await tester.tap(find.widgetWithText(TabbyButton, 'Add Friend'));
-      await tester.pumpAndSettle();
-      expect(find.text('Please enter a name for your friend.'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
-          .clearSnackBars();
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byIcon(Icons.close_rounded));
+      expect(find.text('Connect with a Friend'), findsOneWidget);
+      expect(find.text('Friend\'s Full Name'), findsNothing);
+      await tester.tap(find.byIcon(Icons.close_rounded).last);
       await tester.pumpAndSettle();
 
       // 6. Create Group validation: empty group name
