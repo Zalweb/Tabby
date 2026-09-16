@@ -16,6 +16,9 @@ void main() {
     final manifest = File(
       '${projectRoot.path}/android/app/src/main/AndroidManifest.xml',
     ).readAsStringSync();
+    final supabaseConfig = File(
+      '${projectRoot.path}/supabase/config.toml',
+    ).readAsStringSync();
     final activityFiles = Directory(
       '${projectRoot.path}/android/app/src/main/kotlin',
     )
@@ -31,5 +34,6 @@ void main() {
     expect(gradle, contains('applicationId = "com.zalweb.tabby"'));
     expect(manifest, contains('android:name=".MainActivity"'));
     expect(activity, contains('package com.zalweb.tabby'));
+    expect(supabaseConfig, contains('"io.supabase.tabby://login-callback"'));
   });
 }

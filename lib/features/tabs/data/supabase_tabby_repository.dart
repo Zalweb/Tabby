@@ -573,7 +573,9 @@ class SupabaseTabbyRepository {
           androidClientId.isNotEmpty ? androidClientId : defaultGoogleClientId;
 
       final googleSignIn = GoogleSignIn(
-        clientId: effectiveClientId,
+        clientId: (kIsWeb || defaultTargetPlatform == TargetPlatform.iOS)
+            ? effectiveClientId
+            : null,
         serverClientId: effectiveServerClientId,
         scopes: ['email', 'profile'],
       );
