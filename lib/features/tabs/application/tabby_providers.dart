@@ -35,6 +35,14 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         ? SupabaseConfig.currentUserId!
         : MockTabbyRepository.currentUser.id;
 
+    if (hasLiveSession) {
+      final requests = await SupabaseTabbyRepository.instance
+          .fetchFriendRequests(currentUserId);
+      if (mounted) {
+        state = state.copyWith(friendRequests: requests);
+      }
+    }
+
     // 1. Offline resilience: load from local cache first to prevent blank screens
     List<BilateralTab>? cachedTabs;
     try {
@@ -160,6 +168,47 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
   Future<void> refreshTabs() async {
     await _loadTabs();
+  }
+
+  Future<TabbyUser?> findFriendByCode(String friendCode) {
+    return SupabaseTabbyRepository.instance.findUserByFriendCode(friendCode);
+  }
+
+  Future<FriendRequest?> sendFriendRequestByCode(String friendCode) async {
+    final request = await SupabaseTabbyRepository.instance
+        .sendFriendRequest(friendCode: friendCode);
+    if (request != null && mounted) {
+      state = state.copyWith(
+        friendRequests: [
+          request,
+          ...state.friendRequests.where((existing) => existing.id != request.id),
+        ],
+      );
+    }
+    return request;
+  }
+
+  Future<bool> respondToFriendRequest({
+    required String friendshipId,
+    required bool accept,
+  }) async {
+    final tabId = await SupabaseTabbyRepository.instance.respondToFriendRequest(
+      friendshipId: friendshipId,
+      accept: accept,
+    );
+    if (!mounted || !SupabaseTabbyRepository.instance.isConnected || tabId == null) {
+      return false;
+    }
+
+    state = state.copyWith(
+      friendRequests: state.friendRequests
+          .where((request) => request.id != friendshipId)
+          .toList(),
+    );
+    if (accept && tabId.isNotEmpty) {
+      await _loadTabs();
+    }
+    return true;
   }
 
   void reset() {
@@ -977,6 +1026,7 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
         email: user.email ?? '',
         phone: (meta['phone'] ?? user.phone) as String? ?? '',
         avatarUrl: meta['avatar_url'] as String?,
+        friendCode: meta['friend_code'] as String?,
       );
     }
     return MockTabbyRepository.currentUser;
@@ -1006,6 +1056,7 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
         email: authUser.email ?? '',
         phone: phone,
         avatarUrl: meta['avatar_url'] as String?,
+        friendCode: meta['friend_code'] as String?,
       );
     }
   }

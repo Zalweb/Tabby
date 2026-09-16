@@ -6,6 +6,8 @@ import 'core/config/app_state.dart';
 import 'core/config/supabase_config.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/tabby_theme.dart';
+import 'features/app_update/domain/app_update_models.dart';
+import 'features/app_update/presentation/app_update_prompt.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,13 +33,20 @@ void main() async {
 
   runApp(
     const ProviderScope(
-      child: TabbyApp(),
+      child: TabbyApp(enableUpdateCheck: true),
     ),
   );
 }
 
 class TabbyApp extends StatelessWidget {
-  const TabbyApp({super.key});
+  const TabbyApp({
+    super.key,
+    this.updateChecker,
+    this.enableUpdateCheck,
+  });
+
+  final AppUpdateChecker? updateChecker;
+  final bool? enableUpdateCheck;
 
   @override
   Widget build(BuildContext context) {
@@ -59,15 +68,20 @@ class TabbyApp extends StatelessWidget {
         final content = child ?? const SizedBox.shrink();
 
         // Constrain to realistic iPhone hardware frame on desktop browser viewports
-        if (shouldRenderDeviceFrame(
+        final appContent = shouldRenderDeviceFrame(
           isWeb: kIsWeb,
           platform: defaultTargetPlatform,
           size: MediaQuery.of(context).size,
-        )) {
-          return IPhoneDeviceFrameWrapper(child: content);
-        }
+        )
+            ? IPhoneDeviceFrameWrapper(child: content)
+            : content;
 
-        return content;
+        return AppUpdatePrompt(
+          checker: updateChecker,
+          enabled: enableUpdateCheck ?? false,
+          navigatorKey: appRouter.routerDelegate.navigatorKey,
+          child: appContent,
+        );
       },
     );
   }

@@ -11,6 +11,7 @@ class MockTabbyRepository {
     avatarUrl: null,
     gcashNumber: '0917-888-1234',
     mayaNumber: '0917-888-1234',
+    friendCode: 'TAB-9N6R3Q',
   );
 
   static final List<TabbyUser> sampleFriends = [];

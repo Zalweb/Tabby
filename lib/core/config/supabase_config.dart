@@ -53,6 +53,10 @@ class SupabaseConfig {
   static const String rpcGetOrCreateBilateralTab = 'get_or_create_bilateral_tab';
   static const String rpcClaimContact = 'claim_contact';
   static const String rpcValidateTransactionSplit = 'validate_transaction_split';
+  static const String rpcFindUserByFriendCode = 'find_user_by_friend_code';
+  static const String rpcSendFriendRequest = 'send_friend_request';
+  static const String rpcListFriendRequests = 'list_friend_requests';
+  static const String rpcRespondFriendRequest = 'respond_friend_request';
 
   // --------------------------------------------------------------------------
   // State & Initialization

@@ -6,6 +6,27 @@ import '../domain/models.dart';
 import 'mock_tabby_repository.dart';
 import 'tabby_local_cache.dart';
 
+class GoogleSignInClientConfiguration {
+  final String? clientId;
+  final String serverClientId;
+
+  const GoogleSignInClientConfiguration({
+    required this.clientId,
+    required this.serverClientId,
+  });
+}
+
+GoogleSignInClientConfiguration googleSignInClientConfiguration({
+  required TargetPlatform platform,
+  required String iosClientId,
+  required String webClientId,
+}) {
+  return GoogleSignInClientConfiguration(
+    clientId: platform == TargetPlatform.iOS ? iosClientId : null,
+    serverClientId: webClientId,
+  );
+}
+
 /// Live Supabase Repository for Tabby.
 /// Communicates with Supabase PostgreSQL 15+ backend via PostgREST and GoTrue.
 /// Falls back to MockTabbyRepository only when Supabase is not initialized (unit tests / offline).
@@ -14,6 +35,114 @@ class SupabaseTabbyRepository {
   static final SupabaseTabbyRepository instance = SupabaseTabbyRepository._();
 
   bool get isConnected => SupabaseConfig.isInitialized;
+
+  /// Maps the sanitized flat row returned by friend-request RPCs.
+  ///
+  /// This is intentionally public so the PostgREST boundary can be tested
+  /// without opening a live Supabase session.
+  static FriendRequest parseFriendRequestRow(
+    Map<String, dynamic> row, {
+    String? currentUserId,
+  }) {
+    return FriendRequest.fromMap(row, currentUserId: currentUserId);
+  }
+
+  static Map<String, dynamic>? _responseMap(dynamic response) {
+    if (response is Map) {
+      return Map<String, dynamic>.from(response);
+    }
+    if (response is List && response.isNotEmpty && response.first is Map) {
+      return Map<String, dynamic>.from(response.first as Map);
+    }
+    return null;
+  }
+
+  /// Looks up a registered account by its exact, shareable Tabby ID.
+  Future<TabbyUser?> findUserByFriendCode(String friendCode) async {
+    if (!isConnected) return null;
+    final normalized = normalizeFriendCode(friendCode);
+    if (normalized == null) return null;
+
+    try {
+      final response = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcFindUserByFriendCode,
+        params: {'p_friend_code': normalized},
+      );
+      final row = _responseMap(response);
+      return row == null ? null : TabbyUser.fromMap(row);
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] findUserByFriendCode error: $e');
+      return null;
+    }
+  }
+
+  /// Sends a pending friend request using a shareable Tabby ID.
+  Future<FriendRequest?> sendFriendRequest({required String friendCode}) async {
+    if (!isConnected) return null;
+    final normalized = normalizeFriendCode(friendCode);
+    if (normalized == null) return null;
+
+    try {
+      final response = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcSendFriendRequest,
+        params: {'p_friend_code': normalized},
+      );
+      final row = _responseMap(response);
+      if (row == null) return null;
+      return parseFriendRequestRow(
+        row,
+        currentUserId: SupabaseConfig.currentUserId,
+      );
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] sendFriendRequest error: $e');
+      return null;
+    }
+  }
+
+  /// Loads requests involving the authenticated user.
+  Future<List<FriendRequest>> fetchFriendRequests(String currentUserId) async {
+    if (!isConnected || !_isValidUuid(currentUserId)) return [];
+
+    try {
+      final response = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcListFriendRequests,
+      );
+      if (response is! List) return [];
+      return response
+          .whereType<Map>()
+          .map((row) => parseFriendRequestRow(
+                Map<String, dynamic>.from(row),
+                currentUserId: currentUserId,
+              ))
+          .toList();
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] fetchFriendRequests error: $e');
+      return [];
+    }
+  }
+
+  /// Accepts or declines a request. Accept returns the canonical tab ID.
+  Future<String?> respondToFriendRequest({
+    required String friendshipId,
+    required bool accept,
+  }) async {
+    if (!isConnected || !_isValidUuid(friendshipId)) return null;
+
+    try {
+      final response = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcRespondFriendRequest,
+        params: {
+          'p_friendship_id': friendshipId,
+          'p_accept': accept,
+        },
+      );
+      final row = _responseMap(response);
+      return row?['tab_id'] as String?;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] respondToFriendRequest error: $e');
+      return null;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Category mapping helpers (DB uses snake_case)
@@ -210,6 +339,7 @@ class SupabaseTabbyRepository {
         displayName: counterpartUserRow?['display_name'] as String? ?? 'Friend',
         email: counterpartUserRow?['email'] as String? ?? '',
         phone: counterpartUserRow?['phone'] as String? ?? '',
+        friendCode: counterpartUserRow?['friend_code'] as String?,
       );
     }
 
@@ -486,6 +616,7 @@ class SupabaseTabbyRepository {
           gcashNumber: (data['gcash_number'] as String?) ?? '',
           mayaNumber: (data['maya_number'] as String?) ?? '',
           qrCodeUrl: data['qr_code_url'] as String?,
+          friendCode: data['friend_code'] as String?,
         );
       }
     } catch (e) {
@@ -553,30 +684,36 @@ class SupabaseTabbyRepository {
     }
 
     // ── Native iOS / Android: native Google Sign-In SDK with web OAuth fallback ──
-    const defaultGoogleClientId =
+    const defaultIosGoogleClientId =
         '137141086000-qnr5kedgh9miig5mmaaq90efn90gckmm.apps.googleusercontent.com';
+    const defaultWebGoogleClientId =
+        '137141086000-p2o6c1hminjif8i5f739n3a6ils7ucmm.apps.googleusercontent.com';
 
     try {
-      // Read compile-time client IDs or fall back to default Google Client ID
+      // Read compile-time client IDs or use platform-specific defaults.
       const iosClientId = String.fromEnvironment(
         'GOOGLE_IOS_CLIENT_ID',
-        defaultValue: defaultGoogleClientId,
+        defaultValue: defaultIosGoogleClientId,
       );
-      const androidClientId = String.fromEnvironment(
-        'GOOGLE_ANDROID_CLIENT_ID',
-        defaultValue: defaultGoogleClientId,
+      const webClientId = String.fromEnvironment(
+        'GOOGLE_WEB_CLIENT_ID',
+        defaultValue: defaultWebGoogleClientId,
       );
 
-      final effectiveClientId =
-          iosClientId.isNotEmpty ? iosClientId : defaultGoogleClientId;
-      final effectiveServerClientId =
-          androidClientId.isNotEmpty ? androidClientId : defaultGoogleClientId;
+      // Android resolves its native client from the registered package/SHA-1.
+      // The Web client is required as serverClientId for Supabase's ID-token
+      // exchange.
+      final clientConfiguration = googleSignInClientConfiguration(
+        platform: defaultTargetPlatform,
+        iosClientId:
+            iosClientId.isNotEmpty ? iosClientId : defaultIosGoogleClientId,
+        webClientId:
+            webClientId.isNotEmpty ? webClientId : defaultWebGoogleClientId,
+      );
 
       final googleSignIn = GoogleSignIn(
-        clientId: (kIsWeb || defaultTargetPlatform == TargetPlatform.iOS)
-            ? effectiveClientId
-            : null,
-        serverClientId: effectiveServerClientId,
+        clientId: clientConfiguration.clientId,
+        serverClientId: clientConfiguration.serverClientId,
         scopes: ['email', 'profile'],
       );
 
@@ -699,7 +836,7 @@ class SupabaseTabbyRepository {
             'groups ( id, name, avatar_url ),'
             'tab_members ('
             '  user_id, contact_id,'
-            '  users ( id, display_name, email, phone ),'
+            '  users ( id, display_name, email, phone, friend_code ),'
             '  contacts ( id, display_name, email, phone )'
             '),'
             'transactions ('

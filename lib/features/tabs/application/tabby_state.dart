@@ -6,6 +6,7 @@ class TabbyDashboardState {
   final List<BilateralTab> tabs;
   final List<TabbyActivity> activities;
   final List<UpcomingReminder> reminders;
+  final List<FriendRequest> friendRequests;
   final MascotEmotion? emotionOverride;
   final String? emotionCustomMessage;
 
@@ -13,6 +14,7 @@ class TabbyDashboardState {
     required this.tabs,
     required this.activities,
     required this.reminders,
+    this.friendRequests = const [],
     this.emotionOverride,
     this.emotionCustomMessage,
   });
@@ -96,6 +98,7 @@ class TabbyDashboardState {
     List<BilateralTab>? tabs,
     List<TabbyActivity>? activities,
     List<UpcomingReminder>? reminders,
+    List<FriendRequest>? friendRequests,
     MascotEmotion? emotionOverride,
     bool clearOverride = false,
     String? emotionCustomMessage,
@@ -104,6 +107,7 @@ class TabbyDashboardState {
       tabs: tabs ?? this.tabs,
       activities: activities ?? this.activities,
       reminders: reminders ?? this.reminders,
+      friendRequests: friendRequests ?? this.friendRequests,
       emotionOverride: clearOverride ? null : (emotionOverride ?? this.emotionOverride),
       emotionCustomMessage: clearOverride ? null : (emotionCustomMessage ?? this.emotionCustomMessage),
     );

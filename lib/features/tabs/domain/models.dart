@@ -142,6 +142,7 @@ class TabbyUser {
   final String mayaNumber;
 
   final String? qrCodeUrl;
+  final String? friendCode;
 
   const TabbyUser({
     required this.id,
@@ -152,6 +153,7 @@ class TabbyUser {
     this.gcashNumber = '',
     this.mayaNumber = '',
     this.qrCodeUrl,
+    this.friendCode,
   });
 
   TabbyUser copyWith({
@@ -163,6 +165,7 @@ class TabbyUser {
     String? gcashNumber,
     String? mayaNumber,
     String? qrCodeUrl,
+    String? friendCode,
   }) {
     return TabbyUser(
       id: id ?? this.id,
@@ -173,6 +176,7 @@ class TabbyUser {
       gcashNumber: gcashNumber ?? this.gcashNumber,
       mayaNumber: mayaNumber ?? this.mayaNumber,
       qrCodeUrl: qrCodeUrl ?? this.qrCodeUrl,
+      friendCode: friendCode ?? this.friendCode,
     );
   }
 
@@ -185,18 +189,121 @@ class TabbyUser {
     'gcashNumber': gcashNumber,
     'mayaNumber': mayaNumber,
     'qrCodeUrl': qrCodeUrl,
+    'friendCode': friendCode,
   };
 
   factory TabbyUser.fromMap(Map<String, dynamic> map) => TabbyUser(
     id: map['id'] as String? ?? '',
-    displayName: map['displayName'] as String? ?? '',
+    displayName: (map['displayName'] ?? map['display_name']) as String? ?? '',
     email: map['email'] as String? ?? '',
     phone: map['phone'] as String? ?? '',
-    avatarUrl: map['avatarUrl'] as String?,
-    gcashNumber: map['gcashNumber'] as String? ?? '',
-    mayaNumber: map['mayaNumber'] as String? ?? '',
-    qrCodeUrl: map['qrCodeUrl'] as String?,
+    avatarUrl: (map['avatarUrl'] ?? map['avatar_url']) as String?,
+    gcashNumber: (map['gcashNumber'] ?? map['gcash_number']) as String? ?? '',
+    mayaNumber: (map['mayaNumber'] ?? map['maya_number']) as String? ?? '',
+    qrCodeUrl: (map['qrCodeUrl'] ?? map['qr_code_url']) as String?,
+    friendCode: (map['friendCode'] ?? map['friend_code']) as String?,
   );
+}
+
+/// Normalizes a copied or typed Tabby ID without exposing a database UUID.
+///
+/// IDs use the format TAB-XXXXXX. The payload alphabet excludes ambiguous
+/// characters (0, 1, I, and O) so a code can be read aloud or shared in chat.
+String? normalizeFriendCode(String value) {
+  var normalized = value.trim().toUpperCase().replaceAll(RegExp(r'\s+'), '');
+  normalized = normalized.replaceFirst(RegExp(r'^TAB-?'), '');
+
+  if (!RegExp(r'^[A-HJ-NP-Z2-9]{6}$').hasMatch(normalized)) {
+    return null;
+  }
+
+  return 'TAB-$normalized';
+}
+
+enum FriendRequestStatus {
+  pending,
+  accepted,
+  declined,
+  blocked;
+
+  static FriendRequestStatus fromValue(dynamic value) {
+    switch ((value as String? ?? '').toLowerCase()) {
+      case 'accepted':
+        return FriendRequestStatus.accepted;
+      case 'declined':
+        return FriendRequestStatus.declined;
+      case 'blocked':
+        return FriendRequestStatus.blocked;
+      default:
+        return FriendRequestStatus.pending;
+    }
+  }
+}
+
+@immutable
+class FriendRequest {
+  final String id;
+  final String requesterId;
+  final String addresseeId;
+  final TabbyUser requester;
+  final TabbyUser addressee;
+  final FriendRequestStatus status;
+  final DateTime createdAt;
+  final DateTime? respondedAt;
+  final String? currentUserId;
+
+  const FriendRequest({
+    required this.id,
+    required this.requesterId,
+    required this.addresseeId,
+    required this.requester,
+    required this.addressee,
+    required this.status,
+    required this.createdAt,
+    this.respondedAt,
+    this.currentUserId,
+  });
+
+  bool get isIncoming => currentUserId != null && addresseeId == currentUserId;
+
+  TabbyUser get otherUser => isIncoming ? requester : addressee;
+
+  factory FriendRequest.fromMap(
+    Map<String, dynamic> map, {
+    String? currentUserId,
+  }) {
+    final requesterMap = map['requester'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(map['requester'] as Map)
+        : <String, dynamic>{
+            'id': map['requester_id'],
+            'display_name': map['requester_display_name'],
+            'avatar_url': map['requester_avatar_url'],
+            'friend_code': map['requester_friend_code'],
+          };
+    final addresseeMap = map['addressee'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(map['addressee'] as Map)
+        : <String, dynamic>{
+            'id': map['addressee_id'],
+            'display_name': map['addressee_display_name'],
+            'avatar_url': map['addressee_avatar_url'],
+            'friend_code': map['addressee_friend_code'],
+          };
+    final createdAt = DateTime.tryParse(map['created_at'] as String? ?? '');
+
+    return FriendRequest(
+      id: map['id'] as String? ?? '',
+      requesterId: map['requester_id'] as String? ?? requesterMap['id'] as String? ?? '',
+      addresseeId: map['addressee_id'] as String? ?? addresseeMap['id'] as String? ?? '',
+      requester: TabbyUser.fromMap(requesterMap),
+      addressee: TabbyUser.fromMap(addresseeMap),
+      status: FriendRequestStatus.fromValue(map['status']),
+      createdAt: createdAt ?? DateTime.now(),
+      respondedAt: map['responded_at'] is String
+          ? DateTime.tryParse(map['responded_at'] as String)
+          : null,
+      currentUserId: currentUserId,
+    );
+  }
 }
 
 /// Participant in a split transaction

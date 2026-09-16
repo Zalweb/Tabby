@@ -669,7 +669,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Create a group
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -900));
     await tester.pumpAndSettle();
     final createGroupBtn = find.text('Create a Group');
     await tester.tap(createGroupBtn, warnIfMissed: false);

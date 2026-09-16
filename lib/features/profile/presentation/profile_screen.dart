@@ -21,11 +21,17 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  String? _respondingFriendshipId;
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final friends = ref.watch(friendsProvider);
     final groups = ref.watch(groupsProvider);
+    final incomingRequests = ref.watch(tabbyProvider).friendRequests.where(
+          (request) =>
+              request.isIncoming && request.status == FriendRequestStatus.pending,
+        ).toList();
     final settings = ref.watch(userSettingsProvider);
     final settingsNotifier = ref.read(userSettingsProvider.notifier);
 
@@ -173,7 +179,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'ID: ${user.id.replaceAll('user-', '').toUpperCase()}',
+                              user.friendCode == null
+                                  ? 'Tabby ID not available yet'
+                                  : 'Tabby ID: ${user.friendCode}',
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -193,6 +201,201 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+
+                      // Shareable account ID card
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.surfaceWhite,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: TabbyColors.borderMint),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: TabbyColors.iconBgBlue,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.badge_outlined,
+                                    color: TabbyColors.accentLightBlue,
+                                    size: 22,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                const Expanded(
+                                  child: Text(
+                                    'Your Tabby ID',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: TabbyColors.brandDarkTeal,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Copy Tabby ID',
+                                  onPressed: user.friendCode == null
+                                      ? null
+                                      : () {
+                                          Clipboard.setData(
+                                            ClipboardData(text: user.friendCode!),
+                                          );
+                                          ScaffoldMessenger.of(context)
+                                            ..clearSnackBars()
+                                            ..showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Tabby ID copied to clipboard.',
+                                                ),
+                                              ),
+                                            );
+                                        },
+                                  icon: const Icon(Icons.copy_rounded),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              user.friendCode ??
+                                  'Your shareable ID will appear after your account is synced.',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                                color: TabbyColors.brandEmerald,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Share this ID with friends so they can connect with you without using account details.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: TabbyColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            OutlinedButton.icon(
+                              onPressed: () => _showConnectByIdSheet(context),
+                              icon: const Icon(Icons.person_add_alt_1_rounded),
+                              label: const Text('Connect by Tabby ID'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: TabbyColors.brandEmerald,
+                                side: const BorderSide(
+                                  color: TabbyColors.brandEmerald,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (incomingRequests.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Friend Requests',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: TabbyColors.brandDarkTeal,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Material(
+                          color: TabbyColors.surfaceWhite,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: const BorderSide(color: TabbyColors.borderMint),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Column(
+                            children: incomingRequests.map((request) {
+                              final isResponding =
+                                  _respondingFriendshipId == request.id;
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: TabbyColors.iconBgBlue,
+                                  child: Text(
+                                    request.otherUser.displayName.isNotEmpty
+                                        ? request.otherUser.displayName
+                                            .substring(0, 1)
+                                            .toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                      color: TabbyColors.accentLightBlue,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                title: Text(
+                                  request.otherUser.displayName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: TabbyColors.brandDarkTeal,
+                                  ),
+                                ),
+                                subtitle: const Text(
+                                  'Wants to connect a shared tab with you.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: TabbyColors.textSecondary,
+                                  ),
+                                ),
+                                trailing: isResponding
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Wrap(
+                                        spacing: 4,
+                                        children: [
+                                          IconButton(
+                                            tooltip: 'Decline request',
+                                            onPressed: () =>
+                                                _respondToFriendRequest(
+                                              request,
+                                              accept: false,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.close_rounded,
+                                              color: TabbyColors.textSecondary,
+                                            ),
+                                          ),
+                                          IconButton(
+                                            tooltip: 'Accept request',
+                                            onPressed: () =>
+                                                _respondToFriendRequest(
+                                              request,
+                                              accept: true,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.check_rounded,
+                                              color: TabbyColors.brandEmerald,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ],
 
                       // Payment QR Ph Card (Figma / FinWise)
                       Container(
@@ -2014,7 +2217,271 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // 7. Add Friend Modal Sheet
+  Future<void> _respondToFriendRequest(
+    FriendRequest request, {
+    required bool accept,
+  }) async {
+    setState(() => _respondingFriendshipId = request.id);
+    final success = await ref.read(tabbyProvider.notifier).respondToFriendRequest(
+          friendshipId: request.id,
+          accept: accept,
+        );
+    if (!mounted) return;
+
+    setState(() => _respondingFriendshipId = null);
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? (accept
+                    ? 'Friend request accepted. Your shared tab is ready.'
+                    : 'Friend request declined.')
+                : 'We could not update that request. Please try again.',
+          ),
+        ),
+      );
+  }
+
+  // 7. Connect by Tabby ID Modal Sheet
+  void _showConnectByIdSheet(BuildContext context) {
+    final codeController = TextEditingController();
+    TabbyUser? foundUser;
+    String? message;
+    bool isLookingUp = false;
+    bool isSending = false;
+    bool requestSent = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> findFriend() async {
+              final normalized = normalizeFriendCode(codeController.text);
+              if (normalized == null) {
+                setModalState(() {
+                  foundUser = null;
+                  message = 'Enter a valid Tabby ID such as TAB-7K4P2M.';
+                });
+                return;
+              }
+
+              setModalState(() {
+                isLookingUp = true;
+                message = null;
+              });
+              final user = await ref
+                  .read(tabbyProvider.notifier)
+                  .findFriendByCode(normalized);
+              if (!context.mounted) return;
+              setModalState(() {
+                isLookingUp = false;
+                foundUser = user;
+                message = user == null
+                    ? 'No Tabby account was found for that ID.'
+                    : null;
+              });
+            }
+
+            Future<void> sendRequest() async {
+              final normalized = normalizeFriendCode(codeController.text);
+              if (normalized == null || foundUser == null) return;
+
+              setModalState(() => isSending = true);
+              final request = await ref
+                  .read(tabbyProvider.notifier)
+                  .sendFriendRequestByCode(normalized);
+              if (!context.mounted) return;
+              setModalState(() {
+                isSending = false;
+                requestSent = request != null;
+                message = request == null
+                    ? 'We could not send the request. Please try again.'
+                    : 'Request sent. They can accept it from their Profile.';
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Material(
+                color: TabbyColors.surfaceWhite,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(32),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Connect with a Friend',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => Navigator.pop(sheetContext),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Enter the exact Tabby ID your friend shared with you.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: TabbyColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: codeController,
+                          textCapitalization: TextCapitalization.characters,
+                          autocorrect: false,
+                          decoration: InputDecoration(
+                            labelText: 'Tabby ID',
+                            hintText: 'TAB-7K4P2M',
+                            prefixIcon: const Icon(Icons.badge_outlined),
+                            suffixIcon: IconButton(
+                              tooltip: 'Find friend',
+                              onPressed: isLookingUp ? null : findFriend,
+                              icon: isLookingUp
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(Icons.search_rounded),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onSubmitted: (_) => findFriend(),
+                        ),
+                        if (foundUser != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: TabbyColors.brandMintAccent,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: TabbyColors.brandEmerald,
+                                  child: Text(
+                                    foundUser!.displayName.isNotEmpty
+                                        ? foundUser!.displayName
+                                            .substring(0, 1)
+                                            .toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                      color: TabbyColors.surfaceWhite,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    foundUser!.displayName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: TabbyColors.brandDarkTeal,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        if (message != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            message!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: requestSent
+                                  ? TabbyColors.brandEmerald
+                                  : TabbyColors.alertRed,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        if (foundUser != null && !requestSent)
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: isSending ? null : sendRequest,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: TabbyColors.brandEmerald,
+                                foregroundColor: TabbyColors.surfaceWhite,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: isSending
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: TabbyColors.surfaceWhite,
+                                      ),
+                                    )
+                                  : const Text('Send Friend Request'),
+                            ),
+                          )
+                        else if (requestSent)
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(sheetContext),
+                              child: const Text('Done'),
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(sheetContext),
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(codeController.dispose);
+  }
+
+  // 8. Add Friend Modal Sheet
   void _showAddFriendSheet(BuildContext context) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
