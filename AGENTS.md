@@ -76,6 +76,7 @@ Net Balance         +₱700.00 (Juan owes you)
 | **2026-09-17** | Lead DevOps & Web Lead | Publish new Android APK build from GitHub Actions run 35162436882 to GitHub Release and update web home page download button. | Retrieved latest release APK from GitHub Actions run 35162436882 (commit `c12e280` — Tabby ID expense connections, sha256 `35e594f6f8f248c65e99f7649c5a1965394119ab01c2f5c213301d34716bf948`), automated release asset attachment via workflow dispatch, updated local release binaries in `releases/Tabby.apk`, and verified that the web home page download buttons and dynamic release engine immediately serve and download the updated APK. | `.github/workflows/publish-release-apk.yml`, `releases/Tabby.apk`, GitHub Release `v1.0.1`, Vercel (`https://tabby-web-fawn.vercel.app`), `AGENTS.md`. |
 | **2026-09-17** | CEO / Frontend & Web Lead | Restructure web homepage hero section to two-column desktop layout with left-aligned copy and right-side layered phone mockup stage. | Updated `docs/` and `landing/` with responsive 2-column grid (`1fr 1.08fr`, gap: 48px). Left column presents status badge, headline, subtitle, primary/secondary CTAs, and direct APK metadata. Right column presents layered 3D phone mockup showcase (Homepage, Banner Page, Tab Page) with floating balance (+₱700.00) and settlement rail badges, seamlessly collapsing to single column on mobile (<992px) with horizontal swipe. Verified with 100% automated web landing test suite. | `docs/index.html`, `docs/styles.css`, `landing/index.html`, `landing/styles.css`, `test/web_landing_test.js`, `AGENTS.md`. |
 | **2026-09-17** | CEO / Frontend & Web Lead | Remove Settlement Rails and Net Balance overlay cards from hero mockup stage. | Removed `.floating-card` elements (Settlement Rails and Net balance) from `docs/index.html` and `landing/index.html` per user directive, focusing user attention purely on the clean 3-phone native app showcase (Homepage, Banner Page, Tab Page). Verified with automated web test suite. | `docs/index.html`, `landing/index.html`, `AGENTS.md`. |
+| **2026-09-17** | CEO / Product Lead | Restrict Groups to registered accepted friends and keep unregistered people as one-to-one tab-only participants. | Prevents unregistered debt contacts from becoming social members or appearing in Friends, while keeping group membership and settlement identity explicit. | Friends and Groups UI, tab participant model, group membership rules, expense entry flow. |
 
 
 
@@ -384,7 +385,7 @@ Tabby maintains a lean, focused 3-tab bottom navigation with top-level contextua
 #### Screen 4: Quick Expense / Tab Creation Modal (`/tabs/new`)
 - **Speed Objective:** Under 5 seconds to log.
 - **Form Fields:**
-  1. **Participant Selection:** Pick an existing Friend, Group, or type a new Unregistered Contact name/phone.
+  1. **Participant Selection:** For a one-to-one tab, pick an accepted Friend or create a tab-only Unregistered Participant by entering a name and optional phone/email. For a group tab, pick an existing Group; Groups contain only registered users with accepted Friendships. Unregistered Participants cannot be added to Groups.
   2. **Amount Input:** Large keypad input formatted in integer centavos (`₱0.00`).
   3. **Description / Category:** Quick category chips (🍔 Food, 🚗 Fare, 💳 Borrowed Cash, 🛒 Groceries, 💡 Bill, 📦 Other).
   4. **Payer Selection:** "Paid by You" or "Paid by [Counterpart]".
@@ -924,6 +925,8 @@ Immutable append-only audit trail recording every state mutation.
 4. **Payments are Independent from Obligations:** A payment never overwrites a transaction amount. An obligation of `₱1,000` with a confirmed payment of `₱300` remains recorded as an obligation of `₱1,000` and a payment of `₱300`, yielding a remaining obligation of `₱700`.
 5. **Recurring Rules are Factories:** A `RECURRING_RULE` does not act as a permanent transaction. It generates distinct, individual `TRANSACTIONS` on schedule, each possessing its own independent lifecycle and payment history.
 6. **Append-Only Auditing:** Financial history is never permanently deleted. Modifications and voidings write to `ACTIVITY_LOGS` with comprehensive JSON metadata.
+7. **Group Eligibility:** `GROUP_MEMBERS` may reference only authenticated users with an accepted `FRIENDSHIPS` relationship to the group creator. Pending requests, blocked users, and unregistered participants cannot be added to a Group.
+8. **Tab-Only Unregistered Participants:** An unregistered participant may be created only for an individual one-to-one tab. Their minimum identity data is persisted with the tab or its participant records for synchronization and history, but it must not create a `FRIENDSHIPS` row, appear in the Friends list, or become a Group member. Any later conversion to a registered Friend requires an explicit user action and preserves the existing ledger.
 
 ---
 
@@ -1241,6 +1244,16 @@ $$\text{Net Balance}_{\text{Frienzal}} = (50000) - (10000) - (20000) + (5000) = 
 - **Status:** Accepted (2026-09-13)
 - **Decision:** The `FRIENDSHIPS` table is purely a discovery and shortcut mechanism. Removing a friend never deletes or invalidates existing `TABS`, `TRANSACTIONS`, or `PAYMENTS`.
 - **Rationale:** Ending a social relationship does not legally or logically extinguish an outstanding financial obligation.
+
+### ADR-012: Group Eligibility and Tab-Only Unregistered Participants
+- **Status:** Accepted (2026-09-17)
+- **Decision:** Groups are social and financial contexts restricted to registered users with accepted Friendships. An unregistered person may be tracked only as a participant in an individual one-to-one tab and must not be inserted into the Friends relationship domain or added to a Group.
+- **Rationale:** Group membership requires a known, mutually connected identity so invitations, permissions, expense visibility, and settlement confirmation remain clear. One-to-one debt tracking still needs to support real-world situations where the other person has not joined Tabby, without turning every debt contact into a saved Friend.
+- **Rules:**
+  1. Group creation and member selection show accepted Friends only; pending, blocked, and unregistered people are excluded.
+  2. A tab-only unregistered participant is persisted with the individual tab or its participant records so offline sync, history, and payment proofs remain possible.
+  3. Tab-only unregistered participants appear in My Tabs and their tab detail only; they do not appear in Friends, Groups, friend suggestions, or group member selectors.
+  4. If the person later registers, conversion to a Friend is explicit and preserves the existing tab, transactions, payments, receipts, and audit history.
 
 ### ADR-010: Flutter as Cross-Platform Mobile Framework
 - **Status:** Accepted (2026-09-13)
