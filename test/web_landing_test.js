@@ -18,6 +18,7 @@ assert(html.includes('assets/tabby-icon.jpg'), 'Must link to mascot icon');
 assert(html.includes('preview-home.png'), 'Must have Homepage mockup image');
 assert(html.includes('preview-banner.png'), 'Must have Banner Page mockup image');
 assert(html.includes('Homepage') && html.includes('Banner Page') && html.includes('Tab Page'), 'Must display 3 mockup labels');
+assert(html.includes('hero-text-col'), 'Must include hero-text-col column');
 assert(!html.includes('>GitHub<') && !html.includes('>GitHub Repo<'), 'Must not have user-facing GitHub links');
 
 // 2. Verify docs/styles.css
@@ -28,6 +29,8 @@ assert(css.includes('--tabby-charcoal: #1F1F1F'), 'Must have Tabby charcoal colo
 assert(css.includes('--tabby-amber: #FFB74D'), 'Must have Tabby amber color token');
 assert(css.includes('.hero-title'), 'Must have hero title styling');
 assert(css.includes('.btn-amber'), 'Must have amber button styling');
+assert(css.includes('.hero-container') && css.includes('grid-template-columns: 1fr 1.08fr'), 'Must have 2-column hero container grid');
+assert(css.includes('.hero-text-col'), 'Must have hero text column styling');
 
 // 3. Verify docs/app.js
 const jsPath = path.join(__dirname, '..', 'docs', 'app.js');
