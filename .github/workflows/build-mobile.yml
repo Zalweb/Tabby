@@ -1,0 +1,31 @@
+name: Build Android APK + iOS IPA
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mobile-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-android:
+    name: Build Android APK
+    uses: ./.github/workflows/build-android.yml
+    secrets: inherit
+    permissions:
+      contents: write
+
+  build-ios:
+    name: Build iOS IPA
+    uses: ./.github/workflows/build-ios.yml
+    secrets: inherit
+    permissions:
+      contents: write

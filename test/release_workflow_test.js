@@ -11,6 +11,10 @@ const iosWorkflow = fs.readFileSync(
   path.join(repoRoot, '.github', 'workflows', 'build-ios.yml'),
   'utf8'
 );
+const mobileWorkflow = fs.readFileSync(
+  path.join(repoRoot, '.github', 'workflows', 'build-mobile.yml'),
+  'utf8'
+);
 const publisherPath = path.join(
   repoRoot,
   '.github',
@@ -18,18 +22,26 @@ const publisherPath = path.join(
   'publish-latest-build.yml'
 );
 
-assert(androidWorkflow.includes("branches:\n      - main"),
-  'Android builds must run automatically when main changes');
-assert(iosWorkflow.includes("branches:\n      - main"),
-  'iOS builds must run automatically when main changes');
+assert(androidWorkflow.includes('workflow_call:'),
+  'Android workflow must be reusable by the coordinated mobile build');
+assert(iosWorkflow.includes('workflow_call:'),
+  'iOS workflow must be reusable by the coordinated mobile build');
+assert(mobileWorkflow.includes('workflow_dispatch:') &&
+       mobileWorkflow.includes("branches:\n      - main") &&
+       mobileWorkflow.includes("tags:\n      - 'v*'"),
+  'Coordinated mobile build must support manual, main, and release-tag triggers');
+assert(mobileWorkflow.includes('./.github/workflows/build-android.yml') &&
+       mobileWorkflow.includes('./.github/workflows/build-ios.yml') &&
+       mobileWorkflow.includes('secrets: inherit'),
+  'Coordinated mobile build must invoke both platform workflows with secrets');
 assert(fs.existsSync(publisherPath),
   'A coordinated latest-build publisher workflow must exist');
 
 const publisher = fs.readFileSync(publisherPath, 'utf8');
 assert(publisher.includes('workflow_run:'),
   'Latest-build publisher must run after build workflows complete');
-assert(publisher.includes('Build Android APK') && publisher.includes('Build iOS IPA'),
-  'Publisher must wait for both platform build workflows');
+assert(publisher.includes('Build Android APK + iOS IPA'),
+  'Publisher must wait for the coordinated mobile build workflow');
 assert(publisher.includes('actions: read') && publisher.includes('contents: write'),
   'Publisher must read build artifacts and write the public release');
 assert(publisher.includes('head_sha'),
