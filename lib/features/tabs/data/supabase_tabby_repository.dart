@@ -59,7 +59,24 @@ class SupabaseTabbyRepository {
           .select('display_name, phone')
           .eq('id', userId)
           .maybeSingle();
-      return profileNeedsCompletion(profile);
+
+      if (!profileNeedsCompletion(profile)) return false;
+
+      // Email signups store the requested phone in auth metadata until the
+      // profile trigger or the first authenticated sync persists it.
+      final metadata = SupabaseConfig.currentUser?.userMetadata ?? {};
+      final profileName = profile?['display_name'] as String?;
+      final profilePhone = profile?['phone'] as String?;
+      final mergedProfile = <String, dynamic>{
+        ...?profile,
+        'display_name': profileName?.trim().isNotEmpty == true
+            ? profileName
+            : metadata['display_name'] ?? metadata['name'],
+        'phone': profilePhone?.trim().isNotEmpty == true
+            ? profilePhone
+            : metadata['phone'],
+      };
+      return profileNeedsCompletion(mergedProfile);
     } catch (e) {
       debugPrint(
           '[SupabaseTabbyRepository] Profile completion check error: $e');
@@ -625,6 +642,38 @@ class SupabaseTabbyRepository {
       debugPrint('[SupabaseTabbyRepository] updateUserProfile error: $e');
       return false;
     }
+  }
+
+  /// Signs in with a Tabby email/password account.
+  Future<AuthResponse?> signInWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    if (!isConnected) return null;
+    return SupabaseConfig.auth.signInWithPassword(
+      email: email.trim(),
+      password: password,
+    );
+  }
+
+  /// Creates a Tabby email/password account and stores profile metadata on the
+  /// Supabase auth user. The database trigger mirrors this metadata into
+  /// public.users, including the contact number.
+  Future<AuthResponse?> signUpWithEmailPassword({
+    required String email,
+    required String password,
+    required String displayName,
+    required String phone,
+  }) async {
+    if (!isConnected) return null;
+    return SupabaseConfig.auth.signUp(
+      email: email.trim(),
+      password: password,
+      data: {
+        'display_name': displayName.trim(),
+        'phone': phone.trim(),
+      },
+    );
   }
 
   /// Sign in with Google OAuth

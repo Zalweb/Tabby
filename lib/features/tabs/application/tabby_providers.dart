@@ -1043,7 +1043,34 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
     final profile =
         await SupabaseTabbyRepository.instance.fetchUserProfile(authUser.id);
     if (profile != null) {
-      state = profile;
+      final metadata = authUser.userMetadata ?? {};
+      final metadataName =
+          (metadata['display_name'] ?? metadata['name']) as String?;
+      final metadataPhone = (metadata['phone'] ?? authUser.phone) as String?;
+      final displayName = profile.displayName.trim().isEmpty
+          ? (metadataName?.trim().isNotEmpty == true
+              ? metadataName!.trim()
+              : profile.displayName)
+          : profile.displayName;
+      final phone = profile.phone.trim().isEmpty
+          ? (metadataPhone?.trim().isNotEmpty == true
+              ? metadataPhone!.trim()
+              : profile.phone)
+          : profile.phone;
+
+      if (displayName != profile.displayName || phone != profile.phone) {
+        await SupabaseTabbyRepository.instance.updateUserProfile(
+          userId: authUser.id,
+          displayName: displayName,
+          phone: phone,
+        );
+        state = profile.copyWith(
+          displayName: displayName,
+          phone: phone,
+        );
+      } else {
+        state = profile;
+      }
     } else {
       final meta = authUser.userMetadata ?? {};
       final displayName = meta['display_name'] as String? ??

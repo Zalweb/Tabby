@@ -344,7 +344,7 @@ BEGIN
     VALUES (
         NEW.id,
         NEW.email,
-        NEW.phone,
+        COALESCE(NEW.phone, NEW.raw_user_meta_data->>'phone'),
         COALESCE(
             NEW.raw_user_meta_data->>'display_name',
             NEW.raw_user_meta_data->>'name',
@@ -353,8 +353,10 @@ BEGIN
         NEW.raw_user_meta_data->>'avatar_url'
     )
     ON CONFLICT (id) DO UPDATE SET
-        email = EXCLUDED.email,
-        phone = EXCLUDED.phone,
+        email = COALESCE(EXCLUDED.email, public.users.email),
+        phone = COALESCE(EXCLUDED.phone, public.users.phone),
+        display_name = COALESCE(NULLIF(EXCLUDED.display_name, ''), public.users.display_name),
+        avatar_url = COALESCE(EXCLUDED.avatar_url, public.users.avatar_url),
         updated_at = now();
     RETURN NEW;
 END;

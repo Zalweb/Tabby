@@ -15,7 +15,7 @@ void main() {
     AppState.profileCompletionRequired.value = false;
   });
 
-  testWidgets('Login screen: Google OAuth is the only sign-in path',
+  testWidgets('Login screen: Google OAuth and email credentials are available',
       (tester) async {
     AppState.isAuthenticated.value = false;
 
@@ -27,11 +27,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
-    expect(find.text('Forgot password?'), findsNothing);
-    expect(find.text('Sign Up'), findsNothing);
+    expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
+    expect(find.text('Create an account'), findsOneWidget);
 
-    await tester.tap(find.text('Continue with Google'));
+    final googleButton = find.text('Continue with Google');
+    await tester.ensureVisible(googleButton);
+    await tester.tap(googleButton);
     await tester.pumpAndSettle();
 
     // Offline mode must not claim that an OAuth session was created.

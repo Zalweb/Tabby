@@ -104,7 +104,7 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Your Google account is connected. Add your mobile number so friends can find you on Tabby.',
+                'Your account is connected. Add your mobile number so friends can find you on Tabby.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

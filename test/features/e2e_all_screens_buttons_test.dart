@@ -533,12 +533,13 @@ void main() {
       expect(AppState.hasSeenOnboarding.value, isTrue);
       expect(find.text('Continue with Google'), findsOneWidget);
 
-      // Google OAuth is the only authentication entry point.
+      // Google OAuth and email/password are both authentication entry points.
       final googleBtn =
           find.widgetWithText(TabbyButton, 'Continue with Google');
       expect(googleBtn, findsOneWidget);
-      expect(find.byType(TextField), findsNothing);
-      expect(find.text('Sign Up'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
+      expect(find.text('Create an account'), findsOneWidget);
       await tester.tap(googleBtn);
       await tester.pumpAndSettle();
       expect(AppState.isAuthenticated.value, isFalse);

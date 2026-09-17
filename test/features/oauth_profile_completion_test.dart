@@ -10,6 +10,7 @@ void main() {
   setUp(() {
     AppState.isAuthenticated.value = false;
     AppState.hasSeenOnboarding.value = true;
+    AppState.profileCompletionRequired.value = false;
   });
 
   test('profile completion is required when an OAuth profile has no phone', () {
@@ -33,7 +34,7 @@ void main() {
     );
   });
 
-  testWidgets('login exposes Google OAuth without local credentials form',
+  testWidgets('login exposes Google OAuth and email credentials',
       (tester) async {
     appRouter.go('/login');
 
@@ -45,9 +46,69 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
-    expect(find.text('Forgot password?'), findsNothing);
-    expect(find.text('Sign Up'), findsNothing);
+    expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
+    expect(find.text('Create an account'), findsOneWidget);
+  });
+
+  testWidgets('signup collects profile details and password confirmation',
+      (tester) async {
+    appRouter.go('/signup');
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: TabbyApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Create your Tabby account'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Full name'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Mobile number'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Confirm password'), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
+  });
+
+  testWidgets('signup rejects mismatched passwords before contacting Supabase',
+      (tester) async {
+    appRouter.go('/signup');
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: TabbyApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Full name'),
+      'Alex User',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email'),
+      'alex@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Mobile number'),
+      '09171234567',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Password'),
+      'Password123',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Confirm password'),
+      'Password321',
+    );
+    final createAccountButton = find.text('Create account');
+    await tester.ensureVisible(createAccountButton);
+    await tester.tap(createAccountButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Passwords do not match.'), findsOneWidget);
   });
 
   testWidgets('authenticated users can open the profile completion screen',

@@ -72,8 +72,8 @@ void main() {
 
     // Should be on the Google OAuth screen.
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.byType(TextField), findsNothing);
-    expect(find.text('Sign Up'), findsNothing);
+    expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
 
     // Tap Google OAuth while the backend is unavailable. Local/mock auth must
     // not unlock the app.
