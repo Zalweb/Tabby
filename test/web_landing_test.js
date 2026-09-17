@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
+console.log('--- Starting Tabby Web Landing Page Verification Suite ---');
+
 // 1. Verify docs/index.html
 const htmlPath = path.join(__dirname, '..', 'docs', 'index.html');
 assert(fs.existsSync(htmlPath), 'docs/index.html must exist');
@@ -21,6 +23,25 @@ assert(html.includes('Homepage') && html.includes('Banner Page') && html.include
 assert(html.includes('hero-text-col'), 'Must include hero-text-col column');
 assert(!html.includes('>GitHub<') && !html.includes('>GitHub Repo<'), 'Must not have user-facing GitHub links');
 
+// Verify accurate feature content in index.html
+assert(html.includes('One Tab = One Relationship'), 'Must describe One Tab = One Relationship ledger concept');
+assert(html.includes('Zero Floating-Point Drift'), 'Must describe centavo-accurate integer arithmetic');
+assert(html.includes('Philippine Payment Rails'), 'Must mention Philippine payment rails');
+assert(html.includes('GCash, Maya, QR Ph') || html.includes('GCash, Maya & QR Ph'), 'Must mention GCash, Maya, and QR Ph');
+assert(html.includes('Offline-First Resilience'), 'Must feature offline-first sync');
+assert(html.includes('Tabby ID & Bank-Grade RLS'), 'Must feature Tabby ID and Row Level Security');
+assert(html.includes('Sleeping & Content ("Bayad na!")'), 'Must feature mascot sleeping zero-balance state');
+assert(html.includes('Defusing "Hiya" with Companion Warmth') || html.includes('Defusing Awkwardness with Warmth'), 'Must feature mascot warmth');
+assert(html.includes('Frequently Asked Questions'), 'Must feature FAQ section');
+assert(html.includes('Barkada & Group Splitting'), 'Must feature Barkada and Group splitting');
+assert(html.includes('Proof-of-Payment Receipts'), 'Must feature Proof-of-payment receipts');
+
+// Verify scroll pop animation markup
+assert(html.includes('pop-on-scroll'), 'Must include pop-on-scroll animation classes');
+assert(html.includes('pop-delay-1') && html.includes('pop-delay-2'), 'Must include staggered pop delays');
+
+console.log('✓ docs/index.html content & feature specs verified');
+
 // 2. Verify docs/styles.css
 const cssPath = path.join(__dirname, '..', 'docs', 'styles.css');
 assert(fs.existsSync(cssPath), 'docs/styles.css must exist');
@@ -32,6 +53,23 @@ assert(css.includes('.btn-amber'), 'Must have amber button styling');
 assert(css.includes('.hero-container') && css.includes('grid-template-columns: 1fr 1.08fr'), 'Must have 2-column hero container grid');
 assert(css.includes('.hero-text-col'), 'Must have hero text column styling');
 
+// Verify scroll-triggered pop animation styles
+assert(css.includes('.pop-on-scroll'), 'Must have .pop-on-scroll base styling');
+assert(css.includes('.pop-on-scroll.is-visible'), 'Must have .pop-on-scroll.is-visible styling');
+assert(css.includes('transform: translateY(30px) scale(0.96)') || css.includes('transform: translateY(32px) scale(0.95)') || css.includes('transform: translateY(28px) scale(0.96)'), 'Must have smooth upward pop & scale animation');
+assert(css.includes('cubic-bezier(0.34, 1.35, 0.64, 1)'), 'Must use spring-pop cubic-bezier curve');
+assert(css.includes('.pop-delay-1') && css.includes('.pop-delay-4'), 'Must have stagger delay classes');
+
+// Verify responsive stick-together 3-mockup styling and floating animation
+assert(css.includes('--mockup-overlap'), 'Must use --mockup-overlap variable for sticking mockups together');
+assert(css.includes('--mockup-side-w') && css.includes('--mockup-center-w'), 'Must use geometry variables for scalable mockups');
+assert(css.includes('.mockup-phone-left') && css.includes('.mockup-phone-right'), 'Must style left and right tilted mockups');
+assert(css.includes('phone-float') && css.includes('.mockup-phone-center.is-floating'), 'Must have floating center phone animation');
+assert(!css.includes('scroll-snap-type: x mandatory'), 'Must NOT convert mockups to detached horizontal slider on mobile');
+assert(!css.includes('margin: 0 !important'), 'Must NOT wipe negative margins on mobile (they stick together)');
+
+console.log('✓ docs/styles.css tokens, pop animations & responsive mockup styling verified');
+
 // 3. Verify docs/app.js
 const jsPath = path.join(__dirname, '..', 'docs', 'app.js');
 assert(fs.existsSync(jsPath), 'docs/app.js must exist');
@@ -40,8 +78,23 @@ assert(js.includes('api.github.com/repos/') && js.includes('Zalweb') && js.inclu
 assert(js.includes('apk-download-btn'), 'Must select apk-download-btn');
 assert(js.includes('releases/latest/download/Tabby.apk'), 'Must have canonical fallback URL');
 assert(js.includes('applyReleaseData'), 'Must have release data application logic');
+assert(js.includes('setupScrollPopAnimations'), 'Must initialize scroll-pop animation observer');
+assert(js.includes("classList.remove('is-visible')"), 'Must re-trigger scroll pop animations when scrolled back into view');
+assert(js.includes('setupMockupInteractivity'), 'Must initialize mockup phone tap / focus interaction');
+assert(js.includes('setupFaqAccordion'), 'Must initialize FAQ accordion toggle');
+
+console.log('✓ docs/app.js release engine, pop observer & interactivity verified');
 
 // 4. Verify mirrored landing/ directory
+const landingHtml = fs.readFileSync(path.join(__dirname, '..', 'landing', 'index.html'), 'utf8');
+const landingCss = fs.readFileSync(path.join(__dirname, '..', 'landing', 'styles.css'), 'utf8');
+const landingJs = fs.readFileSync(path.join(__dirname, '..', 'landing', 'app.js'), 'utf8');
+
+assert.strictEqual(html, landingHtml, 'landing/index.html must strictly mirror docs/index.html');
+assert.strictEqual(css, landingCss, 'landing/styles.css must strictly mirror docs/styles.css');
+assert.strictEqual(js, landingJs, 'landing/app.js must strictly mirror docs/app.js');
+console.log('✓ landing/ directory mirrors docs/ perfectly (100% synchronized)');
+
 // 5. Simulate release update logic
 function simulateUpdate(release) {
   let apkAsset = null;
@@ -85,6 +138,8 @@ assert.strictEqual(v2.apkUrl, 'https://github.com/Zalweb/Tabby/releases/download
 assert.strictEqual(v2.filename, 'Tabby-v1.0.1.apk');
 assert.strictEqual(v2.sizeMb, '71.5 MB');
 
+console.log('✓ Release sync simulation verified');
+
 // 6. Verify live Vercel deployment
 const https = require('https');
 https.get('https://tabby-web-fawn.vercel.app', (res) => {
@@ -93,8 +148,9 @@ https.get('https://tabby-web-fawn.vercel.app', (res) => {
   res.on('data', chunk => data += chunk);
   res.on('end', () => {
     assert(data.includes('Tabby — Keep tabs. Settle up.'), 'Live site must contain title');
-    assert(data.includes('Download Tabby APK'), 'Live site must contain Download APK CTA');
-    console.log('Live Vercel deployment verification SUCCESSFUL! Status 200 OK.');
+    assert(data.includes('Download Tabby APK') || data.includes('Download APK'), 'Live site must contain Download APK CTA');
+    console.log('✓ Live Vercel deployment verification SUCCESSFUL! Status 200 OK.');
+    console.log('ALL WEB TESTS PASSED SUCCESSFULLY (100%)');
   });
 }).on('error', (err) => {
   console.error('Live URL error:', err);

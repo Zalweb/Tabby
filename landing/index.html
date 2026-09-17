@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tabby — Keep tabs. Settle up.</title>
-  <meta name="description" content="A warm, socially frictionless shared-expense tracker built specifically for Filipino peer spending habits. Instant settlement with GCash, Maya, and Cash.">
+  <meta name="description" content="A warm, socially frictionless shared-expense tracker built specifically for Filipino peer spending habits. Centavo-accurate tabs, companion mascot, and instant settlement with GCash, Maya, QR Ph, and Cash.">
   <meta name="theme-color" content="#1F1F1F">
 
   <!-- Open Graph / Social Sharing -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Tabby — Keep tabs. Settle up.">
-  <meta property="og:description" content="Friendship first, accounting second. Centavo-accurate shared expense tracking with instant GCash and Maya settlement shortcuts.">
+  <meta property="og:description" content="Friendship first, accounting second. Centavo-accurate shared expense tracking with instant GCash and Maya settlement shortcuts for Filipino barkadas.">
   <meta property="og:image" content="assets/tabby-icon.jpg">
 
   <!-- Favicon -->
@@ -19,6 +19,9 @@
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Progressive Enhancement: Flag JS availability immediately -->
+  <script>document.documentElement.classList.add('js-ready');</script>
 </head>
 <body>
 
@@ -34,8 +37,11 @@
       <nav>
         <ul class="nav-links">
           <li><a href="#features" class="nav-link">Features</a></li>
+          <li><a href="#mascot" class="nav-link">Mascot</a></li>
+          <li><a href="#why-tabby" class="nav-link">Why Tabby</a></li>
           <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
           <li><a href="#download" class="nav-link">Downloads</a></li>
+          <li><a href="#faq" class="nav-link">FAQ</a></li>
         </ul>
       </nav>
 
@@ -59,22 +65,30 @@
   <!-- Hero Section -->
   <section class="hero-section">
     <div class="container hero-container">
-      <div class="hero-text-col hero-header-center">
-        <div class="status-badge">
+      <div class="hero-text-col hero-header-center pop-on-scroll">
+        <div class="status-badge pop-on-scroll pop-delay-1">
           <span class="status-dot"></span>
           <span data-role="live-status">Checking for latest build...</span>
         </div>
 
-        <h1 class="hero-title">
+        <h1 class="hero-title pop-on-scroll pop-delay-2">
           Keep tabs.<br>
           <span class="highlight">Settle up.</span>
         </h1>
 
-        <p class="hero-subtitle">
-          A warm, socially frictionless shared-expense tracker built specifically for Filipino peer spending habits. No awkward calculations, no floating-point drift, just crystal-clear tabs.
+        <p class="hero-subtitle pop-on-scroll pop-delay-3">
+          The warm, socially frictionless shared-expense tracker built specifically for Filipino barkadas, roommates, and couples. Track shared meals and trips in Philippine Pesos with zero floating-point drift, defuse awkwardness with our companion mascot, and settle instantly via GCash, Maya, or Cash.
         </p>
 
-        <div class="hero-cta-group">
+        <!-- Feature Pill Highlights -->
+        <div class="hero-feature-pills pop-on-scroll pop-delay-4">
+          <span class="pill-badge">🪙 Centavo-Accurate (₱)</span>
+          <span class="pill-badge">⚡ GCash, Maya & QR Ph</span>
+          <span class="pill-badge">🐱 Mascot Companion</span>
+          <span class="pill-badge">☁️ Offline-First Sync</span>
+        </div>
+
+        <div class="hero-cta-group pop-on-scroll pop-delay-5">
           <a href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk"
              class="btn btn-amber btn-lg"
              data-role="apk-download-btn"
@@ -88,12 +102,12 @@
             <span class="btn-pill-version" data-role="version-tag">v1.0.1</span>
           </a>
 
-          <a href="#download" class="btn btn-secondary btn-lg">
-            <span>Install Instructions</span>
+          <a href="#how-it-works" class="btn btn-secondary btn-lg">
+            <span>Explore Features</span>
           </a>
         </div>
 
-        <div class="hero-meta">
+        <div class="hero-meta pop-on-scroll pop-delay-6">
           <div class="meta-item">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
@@ -117,10 +131,10 @@
         </div>
       </div>
 
-      <!-- 3-Phone Mockup Showcase Stage -->
-      <div class="hero-mockup-stage">
+      <!-- 3-Phone Mockup Showcase Stage (Stuck Together in Desktop & Mobile Format) -->
+      <div class="hero-mockup-stage pop-on-scroll pop-delay-2" title="Tap any phone to focus">
         <!-- Phone 1: Homepage of App -->
-        <div class="mockup-item mockup-phone-left">
+        <div class="mockup-item mockup-phone-left" tabindex="0" role="button" aria-label="Tabby App Homepage Screen">
           <div class="mockup-frame">
             <div class="mockup-notch"></div>
             <div class="mockup-screen">
@@ -134,7 +148,7 @@
         </div>
 
         <!-- Phone 2: Banner Page of App (Hero Center) -->
-        <div class="mockup-item mockup-phone-center">
+        <div class="mockup-item mockup-phone-center is-floating" tabindex="0" role="button" aria-label="Tabby App Mascot Onboarding Screen">
           <div class="mockup-frame mockup-frame-primary">
             <div class="mockup-notch"></div>
             <div class="mockup-screen">
@@ -148,7 +162,7 @@
         </div>
 
         <!-- Phone 3: Tab Page -->
-        <div class="mockup-item mockup-phone-right">
+        <div class="mockup-item mockup-phone-right" tabindex="0" role="button" aria-label="Tabby App Juan's Tab Detail Screen">
           <div class="mockup-frame">
             <div class="mockup-notch"></div>
             <div class="mockup-screen">
@@ -168,29 +182,16 @@
   <section class="section" id="features">
     <div class="container">
       <div class="section-header">
-        <span class="section-tag">Engineered for Barkadas</span>
-        <h2 class="section-title">Friendship First, Accounting Second</h2>
-        <p class="section-description">
-          Traditional expense trackers feel cold, confrontational, or corporate. Tabby absorbs social tension with warmth, transparency, and lightning-fast entry.
+        <span class="section-tag pop-on-scroll pop-delay-1">Engineered for Barkadas</span>
+        <h2 class="section-title pop-on-scroll pop-delay-2">Friendship First, Accounting Second</h2>
+        <p class="section-description pop-on-scroll pop-delay-3">
+          Traditional expense trackers feel cold, confrontational, or corporate. Tabby absorbs interpersonal awkwardness ("hiya") with companion warmth, transparent ledgers, and lightning-fast entry.
         </p>
       </div>
 
       <div class="features-grid">
-        <!-- Feature 1 -->
-        <div class="feature-card">
-          <div class="feature-icon-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-            </svg>
-          </div>
-          <h3 class="feature-card-title">Speed is King (<5s Entry)</h3>
-          <p class="feature-card-desc">
-            Logging who paid for lunch takes under 5 seconds before the conversation moves on. Quick amount keypad, member chips, and instant split modes.
-          </p>
-        </div>
-
-        <!-- Feature 2 -->
-        <div class="feature-card">
+        <!-- Feature 1: One Tab = One Relationship -->
+        <div class="feature-card pop-on-scroll pop-delay-1">
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -201,12 +202,25 @@
           </div>
           <h3 class="feature-card-title">One Tab = One Relationship</h3>
           <p class="feature-card-desc">
-            No messy dozens of side-conversations. Fifty shared meals, coffee runs, and road trips are automatically consolidated into one running bilateral ledger.
+            No messy dozens of side-conversations. Fifty shared meals, coffee runs, and road trips are automatically consolidated into one running bilateral ledger between two friends.
           </p>
         </div>
 
-        <!-- Feature 3 -->
-        <div class="feature-card">
+        <!-- Feature 2: Speed is King -->
+        <div class="feature-card pop-on-scroll pop-delay-2">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Speed is King (&lt;5s Entry)</h3>
+          <p class="feature-card-desc">
+            Built for the dining table before the conversation moves on. Quick numeric keypad, participant chips, equal splits with penny-rounding, custom centavo amounts, and receipt photos.
+          </p>
+        </div>
+
+        <!-- Feature 3: Philippine Payment Rails -->
+        <div class="feature-card pop-on-scroll pop-delay-3">
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -217,21 +231,278 @@
           </div>
           <h3 class="feature-card-title">Philippine Payment Rails</h3>
           <p class="feature-card-desc">
-            Direct settlement shortcuts for GCash, Maya, Bank Transfer, and Cash. Upload QR codes, attach proof of payment, and settle without awkward friction.
+            Native settlement shortcuts for GCash, Maya, QR Ph, and Cash. Upload and view personal QR codes, attach proof-of-payment transfer screenshots, and settle without social tension.
+          </p>
+        </div>
+
+        <!-- Feature 4: Zero Floating-Point Drift -->
+        <div class="feature-card pop-on-scroll pop-delay-4">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="6" x2="12" y2="18"></line>
+              <line x1="8" y1="10" x2="16" y2="10"></line>
+              <line x1="8" y1="14" x2="16" y2="14"></line>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Zero Floating-Point Drift</h3>
+          <p class="feature-card-desc">
+            Centavo-accurate integer arithmetic (1 PHP = 100 centavos). When splitting odd amounts (e.g. ₱500 among 3 friends), odd centavos are distributed deterministically so no penny is lost.
+          </p>
+        </div>
+
+        <!-- Feature 5: Offline-First Local Sync -->
+        <div class="feature-card pop-on-scroll pop-delay-5">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Offline-First Resilience</h3>
+          <p class="feature-card-desc">
+            Log expenses at restaurants or basements with zero mobile data. SQLite and encrypted local storage cache all entries, seamlessly merging with Supabase PostgreSQL once reconnected.
+          </p>
+        </div>
+
+        <!-- Feature 6: Tabby ID & Privacy -->
+        <div class="feature-card pop-on-scroll pop-delay-6">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Tabby ID & Bank-Grade RLS</h3>
+          <p class="feature-card-desc">
+            Connect via unique Tabby IDs without sharing phone numbers. PostgreSQL Row Level Security (RLS) ensures strict privacy, with append-only audit trails and zero debt-collector shaming.
+          </p>
+        </div>
+
+        <!-- Feature 7: Barkada & Group Splitting -->
+        <div class="feature-card pop-on-scroll pop-delay-1">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Barkada & Group Splitting</h3>
+          <p class="feature-card-desc">
+            Organize trips, roommate expenses, or dinner barkadas with accepted friends. Group bills automatically decompose into bilateral tabs, keeping everyone's personal net balance clear.
+          </p>
+        </div>
+
+        <!-- Feature 8: Proof of Payment & QR Ph -->
+        <div class="feature-card pop-on-scroll pop-delay-2">
+          <div class="feature-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <polyline points="9 15 12 18 15 15"></polyline>
+              <line x1="12" y1="9" x2="12" y2="18"></line>
+            </svg>
+          </div>
+          <h3 class="feature-card-title">Proof-of-Payment Receipts</h3>
+          <p class="feature-card-desc">
+            Attach transfer screenshots when paying via GCash or Maya. The receiver verifies the proof in-app and confirms with 1 tap, instantly settling the ledger without ambiguity.
           </p>
         </div>
       </div>
+    </div>
+  </section>
 
-      <!-- Mascot Companion Banner -->
-      <div class="mascot-banner">
-        <div>
-          <h3>Defusing Awkwardness with Warmth</h3>
-          <p>
-            Asking friends for money shouldn't feel confrontational. Tabby's companion cat mascot humanizes every balance with soft reminders, celebration confetti when all is clear, and zero debt-collector language.
+  <!-- Mascot Companion Emotion States Section -->
+  <section class="section mascot-section" id="mascot">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag pop-on-scroll pop-delay-1">Defuse Social Tension</span>
+        <h2 class="section-title pop-on-scroll pop-delay-2">Defusing "Hiya" with Companion Warmth</h2>
+        <p class="section-description pop-on-scroll pop-delay-3">
+          Asking friends for money can feel socially uncomfortable in Filipino culture ("nakakahiya maningil"). Tabby absorbs that friction through companion mascot animations and positive milestones.
+        </p>
+      </div>
+
+      <!-- Mascot Banner -->
+      <div class="mascot-banner pop-on-scroll">
+        <div class="mascot-banner-text pop-on-scroll pop-delay-1">
+          <h3 class="pop-on-scroll pop-delay-2">Friendship First, Accounting Second</h3>
+          <p class="pop-on-scroll pop-delay-3">
+            No aggressive red warning banners, no legalistic notices, and no cold debt-collector language. Tabby's friendly cat companion reflects the state of your financial ledger with empathy, disarming reminders, and celebration confetti.
+          </p>
+          <div class="mascot-quote pop-on-scroll pop-delay-4">
+            <em>"Para klaro ang usapan — without any of the awkwardness."</em>
+          </div>
+        </div>
+        <div class="mascot-img-wrap pop-on-scroll pop-delay-2">
+          <img src="assets/tabby-icon.jpg" alt="Tabby Mascot Companion" class="mascot-circle-img">
+        </div>
+      </div>
+
+      <!-- 3 Mascot Emotion States Cards -->
+      <div class="mascot-states-grid">
+        <!-- State 1: Sleeping (Zero Balance) -->
+        <div class="mascot-state-card pop-on-scroll pop-delay-1">
+          <div class="state-icon-badge">💤</div>
+          <div class="state-status-pill status-pill-settled">Net Balance: ₱0.00</div>
+          <h4 class="state-title">Sleeping & Content ("Bayad na!")</h4>
+          <p class="state-desc">
+            When all tabs are settled and your net balance reaches zero, Tabby curls up for a peaceful nap. No lingering debts, no social friction.
           </p>
         </div>
-        <div class="mascot-img-wrap">
-          <img src="assets/tabby-icon.jpg" alt="Tabby Mascot Companion" class="mascot-circle-img">
+
+        <!-- State 2: Curious & Alert (Active Balance) -->
+        <div class="mascot-state-card pop-on-scroll pop-delay-2">
+          <div class="state-icon-badge">👀</div>
+          <div class="state-status-pill status-pill-active">Running Ledger</div>
+          <h4 class="state-title">Curious & Alert</h4>
+          <p class="state-desc">
+            When you have an active shared tab, Tabby keeps a gentle watch over running expenses, providing clear bilateral totals without pushy alerts.
+          </p>
+        </div>
+
+        <!-- State 3: Celebrating (Payment Confirmed) -->
+        <div class="mascot-state-card pop-on-scroll pop-delay-3">
+          <div class="state-icon-badge">🎉</div>
+          <div class="state-status-pill status-pill-settled">Payment Confirmed</div>
+          <h4 class="state-title">Settled Celebration</h4>
+          <p class="state-desc">
+            When payment proof is uploaded and confirmed via GCash, Maya, or Cash, Tabby bursts with confetti to celebrate a clean ledger with your friend.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Tabby vs Traditional Methods Section -->
+  <section class="section comparison-section" id="why-tabby">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag pop-on-scroll pop-delay-1">The Tabby Advantage</span>
+        <h2 class="section-title pop-on-scroll pop-delay-2">Why Filipino Barkadas Choose Tabby</h2>
+        <p class="section-description pop-on-scroll pop-delay-3">
+          See how Tabby is purposefully engineered for Philippine social spending habits compared to generic expense apps and messy chat spreadsheets.
+        </p>
+      </div>
+
+      <div class="comparison-grid">
+        <!-- Item 1 -->
+        <div class="comparison-card pop-on-scroll pop-delay-1">
+          <div class="comparison-header">
+            <span class="comp-label">Relationship Ledger</span>
+          </div>
+          <div class="comp-body">
+            <div class="comp-row comp-bad">
+              <span class="comp-tag">Generic Apps:</span>
+              <p>Dozens of disjointed transaction feeds and group-only splits that bury who owes whom.</p>
+            </div>
+            <div class="comp-row comp-good">
+              <span class="comp-tag">Tabby:</span>
+              <p><strong>One Tab = One Relationship.</strong> 50 dinners or rides automatically collapse into a single transparent net number.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 2 -->
+        <div class="comparison-card pop-on-scroll pop-delay-2">
+          <div class="comparison-header">
+            <span class="comp-label">Settlement Rails</span>
+          </div>
+          <div class="comp-body">
+            <div class="comp-row comp-bad">
+              <span class="comp-tag">Generic Apps:</span>
+              <p>US-centric rails (Venmo, PayPal, Zelle) with no integration for Philippine mobile wallets.</p>
+            </div>
+            <div class="comp-row comp-good">
+              <span class="comp-tag">Tabby:</span>
+              <p><strong>GCash, Maya, QR Ph & Cash.</strong> Direct QR preview, payment proof attachment, and 1-tap confirmation.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 3 -->
+        <div class="comparison-card pop-on-scroll pop-delay-3">
+          <div class="comparison-header">
+            <span class="comp-label">Calculation Math</span>
+          </div>
+          <div class="comp-body">
+            <div class="comp-row comp-bad">
+              <span class="comp-tag">Generic Apps:</span>
+              <p>Standard floating-point numbers that lead to fractional cents drift over long periods.</p>
+            </div>
+            <div class="comp-row comp-good">
+              <span class="comp-tag">Tabby:</span>
+              <p><strong>Centavo-Accurate Integer Math.</strong> ADR-001 integer engine distributes every single centavo deterministically.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 4 -->
+        <div class="comparison-card pop-on-scroll pop-delay-4">
+          <div class="comparison-header">
+            <span class="comp-label">Interpersonal Tone</span>
+          </div>
+          <div class="comp-body">
+            <div class="comp-row comp-bad">
+              <span class="comp-tag">Generic Apps:</span>
+              <p>Aggressive red debt badges and formal collection notices that ruin friendships.</p>
+            </div>
+            <div class="comp-row comp-good">
+              <span class="comp-tag">Tabby:</span>
+              <p><strong>Warm Mascot Companion.</strong> Empathetic Taglish/conversational English reminders and zero debt shaming.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="section" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag pop-on-scroll pop-delay-1">Simple 4-Step Flow</span>
+        <h2 class="section-title pop-on-scroll pop-delay-2">How Tabby Works</h2>
+        <p class="section-description pop-on-scroll pop-delay-3">
+          Keep shared spending simple, accurate, and completely transparent in four intuitive steps.
+        </p>
+      </div>
+
+      <div class="how-it-works-grid">
+        <!-- Step 1 -->
+        <div class="step-card pop-on-scroll pop-delay-1">
+          <div class="step-number">1</div>
+          <h3 class="step-title">Connect via Tabby ID</h3>
+          <p class="step-desc">
+            Search friends by unique Tabby ID (e.g. <code>@juan.tabby</code>) or phone number. One ongoing tab covers all shared spending forever.
+          </p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card pop-on-scroll pop-delay-2">
+          <div class="step-number">2</div>
+          <h3 class="step-title">Log in Under 5 Seconds</h3>
+          <p class="step-desc">
+            Enter the bill in Philippine Pesos (₱), pick equal or custom split, select the payer, and attach the receipt photo before leaving the table.
+          </p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-card pop-on-scroll pop-delay-3">
+          <div class="step-number">3</div>
+          <h3 class="step-title">Single Transparent Net</h3>
+          <p class="step-desc">
+            Tabby nets all debits and credits automatically into one transparent number. No mental gymnastics, no awkward negotiations.
+          </p>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step-card pop-on-scroll pop-delay-4">
+          <div class="step-number">4</div>
+          <h3 class="step-title">Settle with GCash or Maya</h3>
+          <p class="step-desc">
+            Scan your friend's saved QR, tap "I Paid", attach the transfer screenshot, and let your friend confirm with one tap. Celebrate zero balance!
+          </p>
         </div>
       </div>
     </div>
@@ -241,16 +512,16 @@
   <section class="download-section" id="download">
     <div class="container">
       <div class="section-header">
-        <span class="section-tag">Direct Downloads</span>
-        <h2 class="section-title">Get the Latest Tabby Build</h2>
-        <p class="section-description">
-          This download hub automatically provides the latest release. Whenever a new build is deployed, this page immediately serves the newest APK without delay.
+        <span class="section-tag pop-on-scroll pop-delay-1">Direct Downloads</span>
+        <h2 class="section-title pop-on-scroll pop-delay-2">Get the Latest Tabby Build</h2>
+        <p class="section-description pop-on-scroll pop-delay-3">
+          This download hub automatically provides the newest release. Whenever a new build is deployed, this page immediately serves the newest APK without delay.
         </p>
       </div>
 
       <div class="download-hub-grid">
         <!-- Main Android Download Card -->
-        <div class="download-main-card">
+        <div class="download-main-card pop-on-scroll">
           <div class="release-live-indicator">
             <span class="status-dot"></span>
             <span data-role="live-status">Auto-Update Engine Active</span>
@@ -258,7 +529,7 @@
 
           <h3 class="download-main-title">Android Standalone Package</h3>
           <p class="download-main-desc">
-            Direct Android APK release package. Compatible with Android 8.0 (Oreo) and above.
+            Direct Android APK release package. Compatible with Android 8.0 (Oreo) and above. Centavo-accurate ledger with offline sync.
           </p>
 
           <div class="download-actions-row">
@@ -308,7 +579,7 @@
         <!-- Platform Instructions & iOS Stack -->
         <div class="platform-cards-stack">
           <!-- Android Steps -->
-          <div class="platform-card">
+          <div class="platform-card pop-on-scroll pop-delay-1">
             <div class="platform-card-header">
               <div class="platform-title">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -328,7 +599,7 @@
           </div>
 
           <!-- iOS Sideload Option -->
-          <div class="platform-card">
+          <div class="platform-card pop-on-scroll pop-delay-2">
             <div class="platform-card-header">
               <div class="platform-title">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -339,7 +610,7 @@
               <span class="platform-badge">Sideload</span>
             </div>
             <p class="platform-desc">
-              Download the unsigned iOS package and install via Sideloadly or AltStore on your Mac/PC.
+              Download the unsigned iOS package and install via Sideloadly, AltStore, or Scarlet on your device.
             </p>
             <a href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.ipa"
                class="btn btn-secondary btn-sm"
@@ -351,7 +622,7 @@
       </div>
 
       <!-- Release Notes Accordion -->
-      <div class="changelog-box">
+      <div class="changelog-box pop-on-scroll">
         <div class="changelog-header" id="changelogToggle">
           <h3>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -375,52 +646,121 @@
     </div>
   </section>
 
-  <!-- How It Works Section -->
-  <section class="section" id="how-it-works">
+  <!-- FAQ Section -->
+  <section class="section faq-section" id="faq">
     <div class="container">
       <div class="section-header">
-        <span class="section-tag">Simple 4-Step Flow</span>
-        <h2 class="section-title">How Tabby Works</h2>
-        <p class="section-description">
-          Keep shared spending simple and crystal clear in four intuitive steps.
+        <span class="section-tag pop-on-scroll pop-delay-1">Clear Usapan</span>
+        <h2 class="section-title pop-on-scroll pop-delay-2">Frequently Asked Questions</h2>
+        <p class="section-description pop-on-scroll pop-delay-3">
+          Everything you need to know about how Tabby tracks financial relationships, protects your privacy, and calculates shared expenses.
         </p>
       </div>
 
-      <div class="how-it-works-grid">
-        <!-- Step 1 -->
-        <div class="step-card">
-          <div class="step-number">1</div>
-          <h3 class="step-title">Create a Tab</h3>
-          <p class="step-desc">
-            Open a shared ledger with a friend or group. One ongoing tab covers all past, present, and future expenses.
-          </p>
+      <div class="faq-list">
+        <!-- FAQ 1 -->
+        <div class="faq-item pop-on-scroll pop-delay-1">
+          <button class="faq-header" type="button">
+            <span>Does Tabby hold or transfer actual money?</span>
+            <svg class="faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="faq-body">
+            <p>
+              No. Tabby is a financial relationship ledger and settlement coordinator, not an e-wallet or bank. Your actual money never enters or leaves Tabby. Settle directly through your preferred payment rails (GCash, Maya, Bank Transfer, or Cash) and use Tabby to track balances and confirm payments with screenshots.
+            </p>
+          </div>
         </div>
 
-        <!-- Step 2 -->
-        <div class="step-card">
-          <div class="step-number">2</div>
-          <h3 class="step-title">Log in Seconds</h3>
-          <p class="step-desc">
-            Enter the bill amount, select participants, and let Tabby split with exact centavo integer precision.
-          </p>
+        <!-- FAQ 2 -->
+        <div class="faq-item pop-on-scroll pop-delay-2">
+          <button class="faq-header" type="button">
+            <span>How does Tabby prevent floating-point rounding errors on odd bills?</span>
+            <svg class="faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="faq-body">
+            <p>
+              Under ADR-001, Tabby stores and calculates all balances using integer centavos (1 PHP = 100 centavos). When dividing an odd bill among friends (such as ₱100.00 among 3 people), odd centavos are deterministically assigned (e.g. ₱33.34, ₱33.33, ₱33.33) so the sum is mathematically exact down to the last centavo.
+            </p>
+          </div>
         </div>
 
-        <!-- Step 3 -->
-        <div class="step-card">
-          <div class="step-number">3</div>
-          <h3 class="step-title">Single Transparent Net</h3>
-          <p class="step-desc">
-            Tabby nets all debits and credits automatically into one transparent number. No mental gymnastics.
-          </p>
+        <!-- FAQ 3 -->
+        <div class="faq-item pop-on-scroll pop-delay-3">
+          <button class="faq-header" type="button">
+            <span>Can I use Tabby without internet or mobile data?</span>
+            <svg class="faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="faq-body">
+            <p>
+              Yes! Tabby is architected local-first with SQLite and FlutterSecureStorage caching. You can create tabs, log expenses, and view running balances in remote locations or basement restaurants without cell service. Once your phone reconnects, Tabby automatically synchronizes and merges changes with the cloud ledger.
+            </p>
+          </div>
         </div>
 
-        <!-- Step 4 -->
-        <div class="step-card">
-          <div class="step-number">4</div>
-          <h3 class="step-title">Instant Settlement</h3>
-          <p class="step-desc">
-            Pay via GCash QR, Maya, or Cash. Attach your payment screenshot and celebrate zero balance together.
-          </p>
+        <!-- FAQ 4 -->
+        <div class="faq-item pop-on-scroll pop-delay-4">
+          <button class="faq-header" type="button">
+            <span>What is a Tabby ID and how does it protect my privacy?</span>
+            <svg class="faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="faq-body">
+            <p>
+              Your Tabby ID (e.g. <code>@maria.tabby</code>) is your unique social identifier. You can share your Tabby ID with classmates, barkada members, or colleagues to connect and start tabs without exposing your private phone number. Our PostgreSQL backend enforces strict Row Level Security (RLS) so only confirmed friends see your payment details.
+            </p>
+          </div>
+        </div>
+
+        <!-- FAQ 5 -->
+        <div class="faq-item pop-on-scroll pop-delay-5">
+          <button class="faq-header" type="button">
+            <span>How do payment confirmations and proofs of payment work?</span>
+            <svg class="faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="faq-body">
+            <p>
+              When settling up, the debtor scans the friend's saved GCash or Maya QR code, taps "I Paid", and attaches a screenshot of the transfer receipt. The creditor receives an immediate in-app notice to review the proof and confirm with one tap. Once confirmed, the running tab updates in real-time, and Tabby celebrates zero balance!
+            </p>
+          </div>
+        </div>
+
+        <!-- FAQ 6: Barkada & Group Splitting -->
+        <div class="faq-item pop-on-scroll pop-delay-1">
+          <button class="faq-header" type="button">
+            <span>Can I split expenses across a whole group or barkada?</span>
+            <svg class="faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="faq-body">
+            <p>
+              Yes! You can create Groups (such as <em>"Siargao Barkada Trip"</em>, <em>"Apartment Roommates"</em>, or <em>"Office Lunch Squad"</em>) with your accepted friends. When you log a group expense, you can split it equally or customize individual centavo amounts. Tabby automatically breaks down each member's share into their bilateral running tab with you, so everyone's personal net balance is always crystal clear.
+            </p>
+          </div>
+        </div>
+
+        <!-- FAQ 7: Payment Details & QR Code Management -->
+        <div class="faq-item pop-on-scroll pop-delay-2">
+          <button class="faq-header" type="button">
+            <span>How do I share my GCash, Maya, or QR Ph payment details?</span>
+            <svg class="faq-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="faq-body">
+            <p>
+              In your Profile, you can save your GCash phone number, Maya account, and upload your personal QR Ph image. Whenever your friends view your running Tab, they can preview your QR code or copy your numbers directly in the app. There's no need to paste bank details into group chats ever again!
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -438,19 +778,22 @@
 
         <ul class="footer-links">
           <li><a href="#features" class="footer-link">Features</a></li>
+          <li><a href="#mascot" class="footer-link">Mascot</a></li>
+          <li><a href="#why-tabby" class="footer-link">Why Tabby</a></li>
           <li><a href="#how-it-works" class="footer-link">How It Works</a></li>
           <li><a href="#download" class="footer-link">Downloads</a></li>
+          <li><a href="#faq" class="footer-link">FAQ</a></li>
         </ul>
       </div>
 
       <div class="footer-bottom">
         <p>&copy; 2026 Tabby. Made with care for Filipino barkadas.</p>
-        <p>Zero floating-point drift. Centavo-accurate ledger.</p>
+        <p>Zero floating-point drift. Centavo-accurate ledger. Powered by Flutter &amp; Supabase.</p>
       </div>
     </div>
   </footer>
 
-  <!-- Release Synchronization Engine -->
+  <!-- Release Synchronization & Animation Engine -->
   <script src="app.js"></script>
 </body>
 </html>

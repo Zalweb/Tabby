@@ -1,7 +1,7 @@
 /**
- * Tabby — Automated Release & Dynamic Download Engine
- * Fetches the latest published release from Zalweb/Tabby via GitHub API
- * and dynamically updates APK/IPA download links, version pills, sizes, and changelogs.
+ * Tabby — Automated Release & Dynamic Download Engine + Interactive UX Animations
+ * Fetches the latest published release from Zalweb/Tabby via GitHub API,
+ * dynamically updates download links, and controls scroll-triggered pop animations.
  */
 
 (function () {
@@ -14,7 +14,7 @@
   const CANONICAL_APK_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/Tabby.apk`;
   const CANONICAL_IPA_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/Tabby.ipa`;
 
-  // DOM Elements
+  // DOM Elements for Release Engine
   const apkDownloadBtns = document.querySelectorAll('[data-role="apk-download-btn"]');
   const ipaDownloadBtns = document.querySelectorAll('[data-role="ipa-download-btn"]');
   const versionTags = document.querySelectorAll('[data-role="version-tag"]');
@@ -39,16 +39,16 @@
    * Format ISO date string into readable English date
    */
   function formatDate(isoString) {
-    if (!isoString) return 'September 2026';
+    if (!isoString) return 'September 17, 2026';
     try {
       const date = new Date(isoString);
       return date.toLocaleDateString('en-US', {
-        month: 'short',
+        month: 'long',
         day: 'numeric',
         year: 'numeric'
       });
     } catch (e) {
-      return 'September 2026';
+      return 'September 17, 2026';
     }
   }
 
@@ -211,9 +211,113 @@
     });
   }
 
+  /**
+   * Setup Scroll-Triggered "Slowly Pop" Animation
+   * Observes all .pop-on-scroll elements and triggers a smooth upward pop
+   * and gentle scale expansion as elements enter the viewport on scroll.
+   * Re-triggers when elements scroll back into view ("every scroll").
+   */
+  function setupScrollPopAnimations() {
+    const popElements = document.querySelectorAll('.pop-on-scroll');
+    if (!popElements.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+      popElements.forEach(el => el.classList.add('is-visible'));
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+        } else {
+          // Reset when scrolled out of view so it slowly pops again on every scroll
+          const rect = entry.boundingClientRect;
+          if (rect.top > window.innerHeight || rect.bottom < 0) {
+            entry.target.classList.remove('is-visible');
+          }
+        }
+      });
+    }, {
+      root: null,
+      threshold: 0.12,
+      rootMargin: '0px 0px -25px 0px'
+    });
+
+    popElements.forEach(el => observer.observe(el));
+
+    // For elements initially in viewport on page load, pop them smoothly
+    requestAnimationFrame(() => {
+      popElements.forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight - 20 && rect.bottom > 0) {
+          el.classList.add('is-visible');
+        }
+      });
+    });
+  }
+
+  /**
+   * Interactive Mockup Phone Focus / Elevate
+   * Enables tapping or clicking any of the 3 phones in the mockup stage
+   * to focus and bring that phone to the foreground.
+   */
+  function setupMockupInteractivity() {
+    const mockups = document.querySelectorAll('.mockup-item');
+    if (!mockups.length) return;
+
+    mockups.forEach(phone => {
+      phone.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasFocused = phone.classList.contains('is-focused');
+        mockups.forEach(p => p.classList.remove('is-focused'));
+        if (!wasFocused) {
+          phone.classList.add('is-focused');
+        }
+      });
+
+      // Keyboard accessibility (Enter or Space key)
+      phone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          phone.click();
+        }
+      });
+    });
+
+    // Dismiss focus when clicking outside the mockup stage
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.hero-mockup-stage')) {
+        mockups.forEach(p => p.classList.remove('is-focused'));
+      }
+    });
+  }
+
+  /**
+   * Setup FAQ accordion toggle
+   */
+  function setupFaqAccordion() {
+    const faqItems = document.querySelectorAll('.faq-item');
+    faqItems.forEach(item => {
+      const header = item.querySelector('.faq-header');
+      if (!header) return;
+
+      header.addEventListener('click', () => {
+        const isActive = item.classList.contains('active');
+        faqItems.forEach(other => {
+          if (other !== item) other.classList.remove('active');
+        });
+        item.classList.toggle('active', !isActive);
+      });
+    });
+  }
+
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', () => {
     fetchLatestRelease();
     setupAccordion();
+    setupScrollPopAnimations();
+    setupMockupInteractivity();
+    setupFaqAccordion();
   });
 })();
