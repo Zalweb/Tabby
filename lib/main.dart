@@ -8,6 +8,21 @@ import 'core/router/app_router.dart';
 import 'core/theme/tabby_theme.dart';
 import 'features/app_update/domain/app_update_models.dart';
 import 'features/app_update/presentation/app_update_prompt.dart';
+import 'features/tabs/data/supabase_tabby_repository.dart';
+
+Future<void> _refreshProfileCompletionState() async {
+  final userId = SupabaseConfig.currentUserId;
+  if (userId == null) {
+    AppState.profileCompletionRequired.value = false;
+    return;
+  }
+
+  final requiresProfile =
+      await SupabaseTabbyRepository.instance.requiresProfileCompletion(userId);
+  if (requiresProfile != null) {
+    AppState.profileCompletionRequired.value = requiresProfile;
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,13 +32,16 @@ void main() async {
     if (SupabaseConfig.isInitialized) {
       if (SupabaseConfig.auth.currentUser != null) {
         AppState.isAuthenticated.value = true;
+        await _refreshProfileCompletionState();
       }
       SupabaseConfig.auth.onAuthStateChange.listen((data) {
         final session = data.session;
         if (session != null) {
           AppState.isAuthenticated.value = true;
+          _refreshProfileCompletionState();
         } else {
           AppState.isAuthenticated.value = false;
+          AppState.profileCompletionRequired.value = false;
         }
       });
     }

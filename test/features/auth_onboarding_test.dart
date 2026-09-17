@@ -3,11 +3,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tabby/main.dart';
 import 'package:tabby/core/config/app_state.dart';
+import 'package:tabby/core/router/app_router.dart';
 
 void main() {
   setUp(() {
     AppState.isAuthenticated.value = false;
     AppState.hasSeenOnboarding.value = false;
+    AppState.profileCompletionRequired.value = false;
   });
 
   testWidgets('App opens Onboarding by default on first launch',
@@ -48,10 +50,11 @@ void main() {
     expect(AppState.hasSeenOnboarding.value, isTrue);
     expect(find.text('Tabby'), findsOneWidget);
     expect(find.text('Keep tabs. Settle up.'), findsOneWidget);
-    expect(find.text('Log In'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
   });
 
-  testWidgets('Login refuses to authenticate when Supabase is unavailable',
+  testWidgets(
+      'Google OAuth refuses to authenticate when Supabase is unavailable',
       (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
@@ -67,24 +70,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Should be on Login screen
-    expect(find.text('Log In'), findsOneWidget);
+    // Should be on the Google OAuth screen.
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Sign Up'), findsNothing);
 
-    // Tap Log In without typing anything
-    await tester.tap(find.text('Log In'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Please enter email and password'), findsOneWidget);
-    expect(AppState.isAuthenticated.value, isFalse);
-
-    // Enter email and password
-    final textFields = find.byType(TextField);
-    await tester.enterText(textFields.at(0), 'frienzal@tabby.ph');
-    await tester.enterText(textFields.at(1), 'password123');
-    await tester.pumpAndSettle();
-
-    // Tap Log In while the backend is unavailable. Local/mock auth must not unlock the app.
-    await tester.tap(find.text('Log In'));
+    // Tap Google OAuth while the backend is unavailable. Local/mock auth must
+    // not unlock the app.
+    await tester.tap(find.text('Continue with Google'));
     await tester.pumpAndSettle();
 
     expect(AppState.isAuthenticated.value, isFalse);
@@ -94,7 +87,7 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('SignUp refuses to authenticate when Supabase is unavailable',
+  testWidgets('Profile completion is gated behind an authenticated session',
       (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
@@ -110,37 +103,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap Sign Up link
-    await tester.ensureVisible(find.text('Sign Up'));
-    await tester.tap(find.text('Sign Up'));
+    AppState.isAuthenticated.value = true;
+    AppState.profileCompletionRequired.value = true;
+    appRouter.go('/complete-profile');
     await tester.pumpAndSettle();
 
-    expect(find.text('Create your account'), findsOneWidget);
-
-    // Try submitting empty form
-    await tester.ensureVisible(find.text('Create Account'));
-    await tester.tap(find.text('Create Account'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Please fill in all fields'), findsOneWidget);
-
-    // Fill form fields
-    final textFields = find.byType(TextField);
-    await tester.enterText(textFields.at(0), 'Frienzal User');
-    await tester.enterText(textFields.at(1), 'frienzal@test.com');
-    await tester.enterText(textFields.at(2), '+63 917 123 4567');
-    await tester.enterText(textFields.at(3), 'pass123');
-    await tester.enterText(textFields.at(4), 'pass123');
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Create Account'));
-    await tester.tap(find.text('Create Account'));
-    await tester.pumpAndSettle();
-
-    expect(AppState.isAuthenticated.value, isFalse);
-    expect(
-        find.text(
-            'Authentication service is unavailable. Please try again when online.'),
-        findsOneWidget);
+    expect(find.text('Complete your profile'), findsOneWidget);
+    expect(find.text('Mobile number'), findsOneWidget);
   });
 }

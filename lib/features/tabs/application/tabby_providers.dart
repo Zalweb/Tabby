@@ -1096,6 +1096,32 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
     }
   }
 
+  /// Saves the required details collected after Google OAuth.
+  ///
+  /// This path waits for the Supabase write so the router never unlocks an
+  /// account before its profile details are actually persisted.
+  Future<bool> completeProfile({
+    required String displayName,
+    required String phone,
+  }) async {
+    if (!SupabaseConfig.isInitialized || SupabaseConfig.currentUserId == null) {
+      return false;
+    }
+
+    final saved = await SupabaseTabbyRepository.instance.updateUserProfile(
+      userId: state.id,
+      displayName: displayName,
+      phone: phone,
+    );
+    if (!saved) return false;
+
+    state = state.copyWith(
+      displayName: displayName,
+      phone: phone,
+    );
+    return true;
+  }
+
   void reset() {
     state = MockTabbyRepository.currentUser;
   }

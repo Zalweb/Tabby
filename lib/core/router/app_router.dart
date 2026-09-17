@@ -8,8 +8,8 @@ import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/tabs/presentation/my_tabs_screen.dart';
 import '../../features/tabs/presentation/tab_detail_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../features/auth/presentation/complete_profile_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
-import '../../features/auth/presentation/signup_screen.dart';
 
 import '../theme/tabby_colors.dart';
 import '../../features/tabs/domain/models.dart';
@@ -95,6 +95,7 @@ final GoRouter appRouter = GoRouter(
   refreshListenable: Listenable.merge([
     AppState.isAuthenticated,
     AppState.hasSeenOnboarding,
+    AppState.profileCompletionRequired,
   ]),
   redirect: (context, state) {
     final bool auth = _hasAuthenticatedSession();
@@ -106,11 +107,18 @@ final GoRouter appRouter = GoRouter(
         if (path == '/onboarding') return null;
         return '/onboarding';
       } else {
-        if (path == '/login' || path == '/signup') return null;
+        if (path == '/login') return null;
         return '/login';
       }
     } else {
-      if (path == '/login' || path == '/signup' || path == '/onboarding') {
+      if (AppState.profileCompletionRequired.value) {
+        if (path == '/complete-profile') return null;
+        return '/complete-profile';
+      }
+
+      if (path == '/login' ||
+          path == '/onboarding' ||
+          path == '/complete-profile') {
         return '/home';
       }
     }
@@ -126,8 +134,8 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const LoginScreen(),
     ),
     GoRoute(
-      path: '/signup',
-      builder: (context, state) => const SignUpScreen(),
+      path: '/complete-profile',
+      builder: (context, state) => const CompleteProfileScreen(),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {

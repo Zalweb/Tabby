@@ -12,10 +12,10 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
     AppState.isAuthenticated.value = true;
     AppState.hasSeenOnboarding.value = true;
+    AppState.profileCompletionRequired.value = false;
   });
 
-  testWidgets(
-      'Login screen: Forgot password sheet works with validation and submit',
+  testWidgets('Login screen: Google OAuth is the only sign-in path',
       (tester) async {
     AppState.isAuthenticated.value = false;
 
@@ -26,38 +26,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Forgot password?'), findsOneWidget);
-    await tester.tap(find.text('Forgot password?'));
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Forgot password?'), findsNothing);
+    expect(find.text('Sign Up'), findsNothing);
+
+    await tester.tap(find.text('Continue with Google'));
     await tester.pumpAndSettle();
 
-    // Verify forgot password sheet opened
-    expect(find.text('Reset Password'), findsOneWidget);
-    expect(find.text('Send Reset Link'), findsOneWidget);
-
-    // Tap Send Reset Link with empty email
-    await tester.tap(find.text('Send Reset Link'));
-    await tester.pumpAndSettle();
-    expect(find.text('Please enter a valid email address.'), findsOneWidget);
-
-    // Enter valid email
-    final emailField = find.descendant(
-      of: find.byType(BottomSheet),
-      matching: find.byType(TextField),
-    );
-    await tester.enterText(emailField, 'test@tabby.ph');
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Send Reset Link'));
-    await tester.pumpAndSettle();
-
-    // Offline mode must not claim that a reset email was sent.
-    expect(find.text('Reset Password'), findsOneWidget);
+    // Offline mode must not claim that an OAuth session was created.
     expect(
         find.text(
             'Authentication service is unavailable. Please try again when online.'),
         findsOneWidget);
-    await tester.pump(const Duration(seconds: 4));
-    await tester.pumpAndSettle();
   });
 
   testWidgets('Notification Center sheet opens and functions from dashboard',
@@ -247,7 +228,7 @@ void main() {
     await tester.tap(find.text('Log Out').last);
     await tester.pumpAndSettle();
     expect(AppState.isAuthenticated.value, isFalse);
-    expect(find.text('Log In'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
   });
 
   testWidgets(

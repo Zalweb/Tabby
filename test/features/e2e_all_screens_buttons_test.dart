@@ -14,6 +14,7 @@ void main() {
   setUp(() {
     AppState.isAuthenticated.value = true;
     AppState.hasSeenOnboarding.value = true;
+    AppState.profileCompletionRequired.value = false;
   });
 
   group('E2E All Screens & Buttons Comprehensive Test Suite', () {
@@ -530,82 +531,14 @@ void main() {
       await tester.tap(find.text('Skip'));
       await tester.pumpAndSettle();
       expect(AppState.hasSeenOnboarding.value, isTrue);
-      expect(find.text('Log In'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
 
-      // 1. Login form validation: tap Log In with empty fields
-      await tester.tap(find.widgetWithText(TabbyButton, 'Log In'));
-      await tester.pumpAndSettle();
-      expect(find.text('Please enter email and password'), findsOneWidget);
-
-      // 2. Test password obscure toggle
-      final obscureToggle = find.byIcon(Icons.visibility_off_outlined);
-      expect(obscureToggle, findsOneWidget);
-      await tester.tap(obscureToggle);
-      await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.visibility_outlined), findsOneWidget);
-
-      // 3. Navigate to Sign Up: "Don't have an account? Sign Up"
-      final toSignUpBtn = find.text('Sign Up');
-      expect(toSignUpBtn, findsOneWidget);
-      await tester.tap(toSignUpBtn);
-      await tester.pumpAndSettle();
-
-      // Verify Sign Up Screen is active
-      expect(find.text('Create your account'), findsOneWidget);
-
-      // 4. SignUp validation: tap Create Account with empty fields
-      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
-      await tester.pumpAndSettle();
-      expect(find.text('Please fill in all fields'), findsOneWidget);
-
-      // 5. SignUp password mismatch validation
-      final nameField = find.widgetWithText(TextField, 'Full Name');
-      final emailField = find.widgetWithText(TextField, 'Email');
-      final phoneField = find.widgetWithText(TextField, '+63 9XX XXX XXXX');
-      final passField = find.widgetWithText(TextField, 'Password');
-      final confirmPassField =
-          find.widgetWithText(TextField, 'Confirm Password');
-
-      await tester.enterText(nameField, 'Juan Dela Cruz');
-      await tester.enterText(emailField, 'juan@tabby.ph');
-      await tester.enterText(phoneField, '+63 917 123 4567');
-      await tester.enterText(passField, 'Secret123');
-      await tester.enterText(confirmPassField, 'DifferentPass456');
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
-      await tester.pumpAndSettle();
-      expect(find.text('Passwords do not match'), findsOneWidget);
-
-      // 6. SignUp password obscure toggles
-      final signUpToggles = find.byIcon(Icons.visibility_off_outlined);
-      expect(signUpToggles, findsNWidgets(2));
-      await tester.tap(signUpToggles.first);
-      await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.visibility_outlined), findsOneWidget);
-
-      // 7. Test "Already have an account? Log In" navigation
-      final toLoginLink = find.text('Log In');
-      expect(toLoginLink, findsOneWidget);
-      await tester.tap(toLoginLink);
-      await tester.pumpAndSettle();
-      expect(find.text('Keep tabs. Settle up.'), findsOneWidget);
-
-      // 8. Go back to Sign Up and test AppBar back button
-      await tester.tap(find.text('Sign Up'));
-      await tester.pumpAndSettle();
-      expect(find.text('Create your account'), findsOneWidget);
-
-      final backBtn = find.byIcon(Icons.arrow_back_rounded);
-      expect(backBtn, findsOneWidget);
-      await tester.tap(backBtn);
-      await tester.pumpAndSettle();
-      expect(find.text('Keep tabs. Settle up.'), findsOneWidget);
-
-      // 9. Test Continue with Google button on Login screen
+      // Google OAuth is the only authentication entry point.
       final googleBtn =
           find.widgetWithText(TabbyButton, 'Continue with Google');
       expect(googleBtn, findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Sign Up'), findsNothing);
       await tester.tap(googleBtn);
       await tester.pumpAndSettle();
       expect(AppState.isAuthenticated.value, isFalse);
@@ -614,66 +547,12 @@ void main() {
               'Authentication service is unavailable. Please try again when online.'),
           findsOneWidget);
 
-      // 10. Test Sign Up account creation flow
-      AppState.isAuthenticated.value = false;
-      appRouter.go('/signup');
+      AppState.isAuthenticated.value = true;
+      AppState.profileCompletionRequired.value = true;
+      appRouter.go('/complete-profile');
       await tester.pumpAndSettle();
-      expect(find.text('Create your account'), findsOneWidget);
-
-      // Verify empty fields validation
-      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
-      await tester.pumpAndSettle();
-      expect(find.text('Please fill in all fields'), findsOneWidget);
-
-      // Verify invalid email validation
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Full Name'), 'Juan Dela Cruz');
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Email'), 'not-an-email');
-      await tester.enterText(find.widgetWithText(TextField, '+63 9XX XXX XXXX'),
-          '+63 917 123 4567');
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Password'), 'Password123!');
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Confirm Password'), 'Password123!');
-      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
-      await tester.pumpAndSettle();
-      expect(find.text('Please enter a valid email address'), findsOneWidget);
-
-      // Verify short password validation
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Email'), 'juan@tabby.ph');
-      await tester.enterText(find.widgetWithText(TextField, 'Password'), '123');
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Confirm Password'), '123');
-      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
-      await tester.pumpAndSettle();
-      expect(
-          find.text('Password must be at least 6 characters'), findsOneWidget);
-
-      // Verify password mismatch validation
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Password'), 'Password123!');
-      await tester.enterText(find.widgetWithText(TextField, 'Confirm Password'),
-          'DifferentPassword!');
-      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
-      await tester.pumpAndSettle();
-      expect(find.text('Passwords do not match'), findsOneWidget);
-
-      // Verify successful account creation with valid credentials
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Confirm Password'), 'Password123!');
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TabbyButton, 'Create Account'));
-      await tester.pumpAndSettle();
-
-      // A configured Supabase session is required; valid form data alone must
-      // not create a local authenticated session.
-      expect(AppState.isAuthenticated.value, isFalse);
-      expect(
-          find.text(
-              'Authentication service is unavailable. Please try again when online.'),
-          findsOneWidget);
+      expect(find.text('Complete your profile'), findsOneWidget);
+      expect(find.text('Mobile number'), findsOneWidget);
     });
 
     testWidgets(

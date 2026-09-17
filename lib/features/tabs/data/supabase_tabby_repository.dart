@@ -36,6 +36,37 @@ class SupabaseTabbyRepository {
 
   bool get isConnected => SupabaseConfig.isInitialized;
 
+  /// Returns true when an OAuth-created account still needs profile details.
+  ///
+  /// Google provides the account identity and usually a display name, but it
+  /// does not provide the user's Philippine mobile number to Tabby. The
+  /// mobile number is required for friend matching and account recovery.
+  static bool profileNeedsCompletion(Map<String, dynamic>? profile) {
+    if (profile == null) return true;
+
+    final displayName = (profile['display_name'] as String? ?? '').trim();
+    final phone = (profile['phone'] as String? ?? '').trim();
+    return displayName.isEmpty || phone.isEmpty;
+  }
+
+  /// Checks whether [userId] must complete the OAuth profile setup step.
+  Future<bool?> requiresProfileCompletion(String userId) async {
+    if (!isConnected || !_isValidUuid(userId)) return null;
+
+    try {
+      final profile = await SupabaseConfig.client
+          .from(SupabaseConfig.tableUsers)
+          .select('display_name, phone')
+          .eq('id', userId)
+          .maybeSingle();
+      return profileNeedsCompletion(profile);
+    } catch (e) {
+      debugPrint(
+          '[SupabaseTabbyRepository] Profile completion check error: $e');
+      return null;
+    }
+  }
+
   /// Maps the sanitized flat row returned by friend-request RPCs.
   ///
   /// This is intentionally public so the PostgREST boundary can be tested
@@ -518,72 +549,6 @@ class SupabaseTabbyRepository {
     return id;
   }
 
-  // ---------------------------------------------------------------------------
-  // Authentication
-  // ---------------------------------------------------------------------------
-
-  /// Sign up with Email and Password
-  Future<AuthResponse?> signUp({
-    required String email,
-    required String password,
-    required String displayName,
-    required String phone,
-  }) async {
-    if (!isConnected) return null;
-
-    try {
-      final response = await SupabaseConfig.auth.signUp(
-        email: email,
-        password: password,
-        data: {
-          'display_name': displayName,
-          'phone': phone,
-        },
-      );
-
-      if (response.user != null) {
-        try {
-          await SupabaseConfig.client.from(SupabaseConfig.tableUsers).upsert({
-            'id': response.user!.id,
-            'display_name': displayName,
-            'phone': phone,
-            'email': email,
-            'updated_at': DateTime.now().toIso8601String(),
-          }, onConflict: 'id');
-        } catch (e) {
-          debugPrint('[SupabaseTabbyRepository] Profile table sync note: $e');
-        }
-      }
-
-      return response;
-    } catch (e) {
-      debugPrint('[SupabaseTabbyRepository] Sign up error: $e');
-      rethrow;
-    }
-  }
-
-  /// Sign in with Email or Phone and Password
-  Future<AuthResponse?> signIn({
-    required String email,
-    required String password,
-  }) async {
-    if (!isConnected) return null;
-
-    try {
-      final isPhone =
-          !email.contains('@') && RegExp(r'^\+?[0-9\s\-]+$').hasMatch(email);
-      final response = await SupabaseConfig.auth.signInWithPassword(
-        email: isPhone ? null : email,
-        phone: isPhone ? email.replaceAll(RegExp(r'[\s\-]'), '') : null,
-        password: password,
-      );
-      return response;
-    } catch (e) {
-      debugPrint('[SupabaseTabbyRepository] Sign in error: $e');
-      rethrow;
-    }
-  }
-
   /// Fetches profile of [userId] from Supabase public.users
   Future<TabbyUser?> fetchUserProfile(String userId) async {
     if (!isConnected || !_isValidUuid(userId)) return null;
@@ -626,7 +591,7 @@ class SupabaseTabbyRepository {
   }
 
   /// Updates profile in Supabase public.users
-  Future<void> updateUserProfile({
+  Future<bool> updateUserProfile({
     required String userId,
     String? displayName,
     String? phone,
@@ -635,7 +600,7 @@ class SupabaseTabbyRepository {
     String? mayaNumber,
     String? qrCodeUrl,
   }) async {
-    if (!isConnected || !_isValidUuid(userId)) return;
+    if (!isConnected || !_isValidUuid(userId)) return false;
 
     try {
       final updates = <String, dynamic>{
@@ -655,8 +620,10 @@ class SupabaseTabbyRepository {
 
       debugPrint(
           '[SupabaseTabbyRepository] updateUserProfile saved to Supabase');
+      return true;
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] updateUserProfile error: $e');
+      return false;
     }
   }
 
