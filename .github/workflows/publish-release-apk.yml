@@ -1,0 +1,44 @@
+name: Publish Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run ID of the build to publish'
+        required: true
+        default: '35162436882'
+      tag_name:
+        description: 'Release tag to attach APK to'
+        required: true
+        default: 'v1.0.1'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download APK artifact from run
+        uses: actions/download-artifact@v4
+        with:
+          name: Tabby-main-apk
+          run-id: ${{ github.event.inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: apk-assets
+
+      - name: Prepare APKs
+        run: |
+          ls -la apk-assets/
+          cp apk-assets/Tabby.apk apk-assets/Tabby-${{ github.event.inputs.tag_name }}.apk
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name }}
+          files: |
+            apk-assets/Tabby.apk
+            apk-assets/Tabby-${{ github.event.inputs.tag_name }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
