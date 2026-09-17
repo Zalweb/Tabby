@@ -1,4 +1,4 @@
-name: Publish Latest Build
+name: Publish Versioned Latest Build
 
 on:
   workflow_run:
@@ -24,6 +24,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout built commit metadata
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          sparse-checkout: |
+            pubspec.yaml
+
       - name: Resolve matching successful platform builds
         id: resolve
         env:
@@ -31,6 +38,16 @@ jobs:
           COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
+
+          APP_VERSION="$(sed -nE 's/^version:[[:space:]]*([^[:space:]]+).*$/\1/p' pubspec.yaml | head -n 1)"
+          if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\+[0-9]+)?$ ]]; then
+            echo "Invalid app version in pubspec.yaml: $APP_VERSION"
+            exit 1
+          fi
+          RELEASE_TAG="v${APP_VERSION}"
+
+          echo "app_version=$APP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
           find_run() {
             local workflow_file="$1"
@@ -75,27 +92,36 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: ios-artifact
 
-      - name: Prepare stable public asset names
+      - name: Prepare versioned public asset names
         if: steps.resolve.outputs.ready == 'true'
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          cp "$(find android-artifact -type f -name 'Tabby.apk' | head -n 1)" release-assets/Tabby.apk
-          cp "$(find ios-artifact -type f -name 'Tabby.ipa' | head -n 1)" release-assets/Tabby.ipa
+          APP_VERSION="${{ steps.resolve.outputs.app_version }}"
+          APK_SOURCE="$(find android-artifact -type f -name 'Tabby.apk' | head -n 1)"
+          IPA_SOURCE="$(find ios-artifact -type f -name 'Tabby.ipa' | head -n 1)"
+
+          cp "$APK_SOURCE" "release-assets/Tabby-v${APP_VERSION}.apk"
+          cp "release-assets/Tabby-v${APP_VERSION}.apk" release-assets/Tabby.apk
+          cp "$IPA_SOURCE" "release-assets/Tabby-v${APP_VERSION}.ipa"
+          cp "release-assets/Tabby-v${APP_VERSION}.ipa" release-assets/Tabby.ipa
           ls -lh release-assets
 
-      - name: Publish rolling latest release
+      - name: Publish versioned latest release
         if: steps.resolve.outputs.ready == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Tabby Latest Build
+          tag_name: ${{ steps.resolve.outputs.release_tag }}
+          target_commitish: ${{ github.event.workflow_run.head_sha }}
+          name: Tabby ${{ steps.resolve.outputs.release_tag }}
           body: |
-            Automatically published from the successful Android and iOS builds for commit ${{ github.event.workflow_run.head_sha }}.
+            Automatically published from the successful Android and iOS builds for ${{ steps.resolve.outputs.release_tag }}.
 
-            The website reads this rolling release automatically and always serves the newest successful APK.
+            The website reads the newest published release automatically and serves the versioned APK.
           files: |
+            release-assets/Tabby-v${{ steps.resolve.outputs.app_version }}.apk
+            release-assets/Tabby-v${{ steps.resolve.outputs.app_version }}.ipa
             release-assets/Tabby.apk
             release-assets/Tabby.ipa
           overwrite_files: true

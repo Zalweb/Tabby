@@ -36,10 +36,19 @@ assert(publisher.includes('head_sha'),
   'Publisher must pair APK and IPA runs by commit SHA');
 assert(publisher.includes('actions/download-artifact@v4'),
   'Publisher must download artifacts from the successful build runs');
+assert(publisher.includes('actions/checkout@v4') && publisher.includes('pubspec.yaml'),
+  'Publisher must read the app version from the built commit');
+assert(publisher.includes('APP_VERSION') && publisher.includes('RELEASE_TAG'),
+  'Publisher must derive a release version and tag from pubspec.yaml');
+assert(publisher.includes('Tabby-v${APP_VERSION}.apk') &&
+       publisher.includes('Tabby-v${APP_VERSION}.ipa'),
+  'Publisher must expose versioned APK and IPA asset names');
 assert(publisher.includes('Tabby.apk') && publisher.includes('Tabby.ipa'),
-  'Publisher must expose stable public APK and IPA asset names');
-assert(publisher.includes('tag_name: latest') && publisher.includes('overwrite_files: true'),
-  'Publisher must replace the rolling latest release assets');
+  'Publisher must retain compatibility aliases for older website links');
+assert(publisher.includes('tag_name: ${{ steps.resolve.outputs.release_tag }}'),
+  'Publisher must publish under the semantic version release tag');
+assert(publisher.includes('overwrite_files: true') && publisher.includes('make_latest: true'),
+  'Publisher must replace the newest public release assets');
 
 for (const relativePath of ['docs/app.js', 'landing/app.js']) {
   const appJs = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
