@@ -62,11 +62,31 @@ class TabbyLocalCache {
     }
   }
 
+  static List<TabbyActivity> _dedupActivities(List<TabbyActivity> list) {
+    final seenIds = <String>{};
+    final seenKeys = <String>{};
+    final result = <TabbyActivity>[];
+    for (final a in list) {
+      if (a.id.isNotEmpty && !seenIds.add(a.id)) {
+        continue;
+      }
+      final timeKey = a.timestamp.millisecondsSinceEpoch ~/ 3000;
+      final key =
+          '${a.actorName}_${a.description}_${a.amountCentavos}_$timeKey';
+      if (!seenKeys.add(key)) {
+        continue;
+      }
+      result.add(a);
+    }
+    return result;
+  }
+
   /// Saves activities to local secure cache
   static Future<void> saveActivities(List<TabbyActivity> activities,
       {String? userId}) async {
     try {
-      final jsonList = activities.map((a) => a.toMap()).toList();
+      final deduped = _dedupActivities(activities);
+      final jsonList = deduped.map((a) => a.toMap()).toList();
       final jsonStr = jsonEncode(jsonList);
       await _storage.write(key: _key('activities', userId), value: jsonStr);
     } catch (e) {
@@ -80,9 +100,10 @@ class TabbyLocalCache {
       final raw = await _storage.read(key: _key('activities', userId));
       if (raw == null || raw.isEmpty) return null;
       final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded
+      final list = decoded
           .map((item) => TabbyActivity.fromMap(item as Map<String, dynamic>))
           .toList();
+      return _dedupActivities(list);
     } catch (e) {
       debugPrint('[TabbyLocalCache] loadActivities warning: $e');
       return null;

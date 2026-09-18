@@ -790,7 +790,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${dashboardState.activities.length} logs',
+                            '${dashboardState.activities.map((a) => a.id.isNotEmpty ? a.id : "${a.actorName}_${a.description}_${a.amountCentavos}_${a.timestamp.millisecondsSinceEpoch ~/ 3000}").toSet().length} logs',
                             style: const TextStyle(
                               fontSize: 12,
                               color: TabbyColors.textSecondary,
@@ -802,7 +802,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                       // FinWise 3-Column Transaction / Activity List (home_7033_352)
                       Builder(
                         builder: (context) {
-                          final filteredActivities =
+                          final rawFiltered =
                               dashboardState.activities.where((act) {
                             if (_selectedFilter == 'Daily') {
                               return DateTime.now()
@@ -817,6 +817,19 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                             }
                             return true;
                           }).toList();
+
+                          final seenKeys = <String>{};
+                          final filteredActivities = <TabbyActivity>[];
+                          for (final act in rawFiltered) {
+                            final timeKey =
+                                act.timestamp.millisecondsSinceEpoch ~/ 3000;
+                            final key = act.id.isNotEmpty
+                                ? act.id
+                                : '${act.actorName}_${act.description}_${act.amountCentavos}_$timeKey';
+                            if (seenKeys.add(key)) {
+                              filteredActivities.add(act);
+                            }
+                          }
 
                           if (filteredActivities.isEmpty) {
                             return Container(

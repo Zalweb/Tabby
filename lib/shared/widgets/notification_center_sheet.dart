@@ -25,7 +25,18 @@ class NotificationCenterSheet extends ConsumerWidget {
     final dashboardState = ref.watch(tabbyProvider);
     final notifier = ref.read(tabbyProvider.notifier);
     final reminders = dashboardState.reminders;
-    final activities = dashboardState.activities.take(6).toList();
+    final seenActivityKeys = <String>{};
+    final uniqueActivities = <TabbyActivity>[];
+    for (final act in dashboardState.activities) {
+      final timeKey = act.timestamp.millisecondsSinceEpoch ~/ 3000;
+      final key = act.id.isNotEmpty
+          ? act.id
+          : '${act.actorName}_${act.description}_${act.amountCentavos}_$timeKey';
+      if (seenActivityKeys.add(key)) {
+        uniqueActivities.add(act);
+      }
+    }
+    final activities = uniqueActivities.take(6).toList();
 
     final hasNotifications = reminders.isNotEmpty || activities.isNotEmpty;
 

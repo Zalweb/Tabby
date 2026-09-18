@@ -46,6 +46,25 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     _startConnectivityWatch();
   }
 
+  static List<TabbyActivity> _deduplicateActivities(List<TabbyActivity> list) {
+    final seenIds = <String>{};
+    final seenKeys = <String>{};
+    final result = <TabbyActivity>[];
+    for (final a in list) {
+      if (a.id.isNotEmpty && !seenIds.add(a.id)) {
+        continue;
+      }
+      final timeKey = a.timestamp.millisecondsSinceEpoch ~/ 3000;
+      final key =
+          '${a.actorName}_${a.description}_${a.amountCentavos}_$timeKey';
+      if (!seenKeys.add(key)) {
+        continue;
+      }
+      result.add(a);
+    }
+    return result;
+  }
+
   Future<bool> _loadTabs() async {
     final hasLiveSession =
         SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
@@ -85,7 +104,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
               cachedReminders != null)) {
         state = state.copyWith(
           tabs: cachedTabs ?? state.tabs,
-          activities: cachedActivities ?? state.activities,
+          activities: _deduplicateActivities(
+              cachedActivities ?? state.activities),
           reminders: cachedReminders ?? state.reminders,
         );
       }
@@ -393,9 +413,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       );
     }
 
+    final updatedActivities =
+        _deduplicateActivities([newActivity, ...state.activities]);
+
     state = state.copyWith(
       tabs: updatedTabs,
-      activities: [newActivity, ...state.activities],
+      activities: updatedActivities,
       reminders: updatedReminders,
       emotionOverride: MascotEmotion.calculating,
       emotionCustomMessage: 'Tab logged successfully! Calculating balances...',
@@ -404,7 +427,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     final cacheUserId =
         SupabaseConfig.isInitialized ? SupabaseConfig.currentUserId : null;
     await TabbyLocalCache.saveTabs(updatedTabs, userId: cacheUserId);
-    await TabbyLocalCache.saveActivities([newActivity, ...state.activities],
+    await TabbyLocalCache.saveActivities(updatedActivities,
         userId: cacheUserId);
     await TabbyLocalCache.saveReminders(updatedReminders, userId: cacheUserId);
 
@@ -599,9 +622,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       iconData: method.iconData,
     );
 
+    final updatedActivities =
+        _deduplicateActivities([newActivity, ...state.activities]);
+
     state = state.copyWith(
       tabs: updatedTabs,
-      activities: [newActivity, ...state.activities],
+      activities: updatedActivities,
       reminders: updatedReminders,
       emotionOverride: MascotEmotion.celebrating,
       emotionCustomMessage: newNetBalance == 0
@@ -612,7 +638,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     final cacheUserId =
         SupabaseConfig.isInitialized ? SupabaseConfig.currentUserId : null;
     await TabbyLocalCache.saveTabs(updatedTabs, userId: cacheUserId);
-    await TabbyLocalCache.saveActivities([newActivity, ...state.activities],
+    await TabbyLocalCache.saveActivities(updatedActivities,
         userId: cacheUserId);
     await TabbyLocalCache.saveReminders(updatedReminders, userId: cacheUserId);
 
