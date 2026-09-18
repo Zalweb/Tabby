@@ -11,6 +11,7 @@ import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/auth/presentation/complete_profile_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
+import '../../features/classroom/presentation/classroom_tasks_screen.dart';
 
 import '../theme/tabby_colors.dart';
 import '../../features/tabs/domain/models.dart';
@@ -25,6 +26,8 @@ final GlobalKey<NavigatorState> _tabsNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'tabs');
 final GlobalKey<NavigatorState> _profileNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'profile');
+final GlobalKey<NavigatorState> _classroomNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'classroom');
 
 bool _hasAuthenticatedSession() {
   if (SupabaseConfig.isInitialized) {
@@ -176,6 +179,17 @@ final GoRouter appRouter = GoRouter(
                   },
                 ),
               ],
+            ),
+          ],
+        ),
+
+        // 3. Classroom Tasks Branch
+        StatefulShellBranch(
+          navigatorKey: _classroomNavigatorKey,
+          routes: [
+            GoRoute(
+              path: '/tasks',
+              builder: (context, state) => const ClassroomTasksScreen(),
             ),
           ],
         ),

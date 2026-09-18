@@ -12,6 +12,8 @@ import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
 import '../../tabs/domain/models.dart';
 import '../../tabs/presentation/add_expense_modal.dart';
+import '../../classroom/application/classroom_providers.dart';
+import '../../classroom/presentation/classroom_connect_sheet.dart';
 
 typedef FriendLookup = Future<TabbyUser?> Function(String friendCode);
 typedef FriendRequestSubmitter = Future<FriendRequest?> Function(String friendCode);
@@ -31,6 +33,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = ref.watch(currentUserProvider);
     final friends = ref.watch(friendsProvider);
     final groups = ref.watch(groupsProvider);
+    final classroomConnection = ref.watch(classroomConnectionProvider);
+    final classroomCourses = ref.watch(classroomCoursesProvider);
     final incomingRequests = ref.watch(tabbyProvider).friendRequests.where(
           (request) =>
               request.isIncoming && request.status == FriendRequestStatus.pending,
@@ -723,6 +727,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               onTap: () => _showLogoutConfirmation(context),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      _buildProfileMenuItem(
+                        icon: Icons.school_outlined,
+                        iconBg: classroomConnection?.isActive == true
+                            ? TabbyColors.iconBgMint
+                            : TabbyColors.iconBgBlue,
+                        iconColor: classroomConnection?.isActive == true
+                            ? TabbyColors.brandEmerald
+                            : TabbyColors.textSecondary,
+                        title: 'Google Classroom',
+                        subtitle: classroomConnection?.isActive == true
+                            ? 'Connected · ${classroomCourses.length} courses'
+                            : 'Connect to sync assignments',
+                        trailing: classroomConnection?.isActive == true
+                            ? const Text(
+                                'Active',
+                                style: TextStyle(
+                                  color: TabbyColors.brandEmerald,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              )
+                            : null,
+                        onTap: () => showModalBottomSheet<void>(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: TabbyColors.surfaceWhite,
+                          builder: (_) => const ClassroomConnectSheet(),
                         ),
                       ),
                       const SizedBox(height: 24),
