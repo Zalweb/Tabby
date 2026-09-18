@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthState;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthState, PostgresChangeEvent, PostgresChangePayload, RealtimeChannel;
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/device_auth_service.dart';
 import '../../../core/services/pin_protection_service.dart';
@@ -31,14 +32,20 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         ) {
     if (loadInitialData) {
       _loadTabs();
+      if (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null) {
+        _startRealtimeSubscription();
+        unawaited(_syncPendingOps());
+      }
     }
     // Re-load data whenever the user signs in (e.g. Google Sign-In).
     if (SupabaseConfig.isInitialized) {
       _authSub = SupabaseConfig.auth.onAuthStateChange.listen((data) {
         if (data.session != null && mounted) {
+          _startRealtimeSubscription();
           _loadTabs();
           _syncPendingOps();
         } else if (data.session == null && mounted) {
+          _stopRealtimeSubscription();
           reset();
         }
       });
@@ -46,7 +53,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     _startConnectivityWatch();
   }
 
-  static List<TabbyActivity> _deduplicateActivities(List<TabbyActivity> list) {
+  static List<TabbyActivity> deduplicateActivities(List<TabbyActivity> list) {
     final seenIds = <String>{};
     final seenKeys = <String>{};
     final result = <TabbyActivity>[];
@@ -65,6 +72,9 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     return result;
   }
 
+  static List<TabbyActivity> _deduplicateActivities(List<TabbyActivity> list) =>
+      deduplicateActivities(list);
+
   Future<bool> _loadTabs() async {
     final hasLiveSession =
         SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
@@ -79,6 +89,10 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         : MockTabbyRepository.currentUser.id;
 
     if (hasLiveSession) {
+      if (_realtimeChannel == null) {
+        _startRealtimeSubscription();
+      }
+      unawaited(_syncPendingOps());
       final requests = await SupabaseTabbyRepository.instance
           .fetchFriendRequests(currentUserId);
       if (mounted) {
@@ -199,9 +213,78 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           }
         }
 
-        state = state.copyWith(tabs: mergedTabs);
+        // Synthesize activities from all entries across merged tabs
+        final serverActivities = <TabbyActivity>[];
+        for (final tab in mergedTabs) {
+          for (final entry in tab.entries) {
+            serverActivities.add(TabbyActivity(
+              id: entry.id,
+              actorName: entry.paidByName.isNotEmpty
+                  ? entry.paidByName
+                  : (entry.paidByUserId == currentUserId
+                      ? 'You'
+                      : tab.counterpart.displayName),
+              description: entry.isPayment
+                  ? 'Settled ${entry.title.isNotEmpty ? entry.title : "balance"}'
+                  : entry.title,
+              amountCentavos: entry.totalAmountCentavos,
+              timestamp: entry.date,
+              icon: entry.isPayment ? 'payment' : entry.category.name,
+              iconData: entry.isPayment
+                  ? Icons.payments_outlined
+                  : entry.category.icon,
+            ));
+          }
+        }
+        final allActivities = _deduplicateActivities([
+          ...serverActivities,
+          ...state.activities,
+        ]);
+        allActivities.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+        // Synthesize upcoming reminders for entries with due dates
+        final serverReminders = <UpcomingReminder>[];
+        for (final tab in mergedTabs) {
+          for (final entry in tab.entries) {
+            if (entry.dueDate != null) {
+              final isIWhoOwe = entry.paidByUserId != currentUserId;
+              serverReminders.add(UpcomingReminder(
+                id: 'rem-${entry.id}',
+                tabId: tab.id,
+                friendName: tab.counterpart.displayName,
+                description: entry.title,
+                amountCentavos: isIWhoOwe
+                    ? entry.myShareCentavos
+                    : entry.counterpartShareCentavos,
+                dueDate: entry.dueDate!,
+                isIWhoOwe: isIWhoOwe,
+              ));
+            }
+          }
+        }
+        final seenReminderIds = <String>{};
+        final allReminders = <UpcomingReminder>[];
+        for (final r in [...serverReminders, ...state.reminders]) {
+          if (r.id.isNotEmpty && seenReminderIds.add(r.id)) {
+            allReminders.add(r);
+          }
+        }
+
+        state = state.copyWith(
+          tabs: mergedTabs,
+          activities: allActivities,
+          reminders: allReminders,
+        );
         await TabbyLocalCache.saveTabs(
           mergedTabs,
+          userId: hasLiveSession ? currentUserId : null,
+        );
+        await TabbyLocalCache.saveActivities(
+          allActivities,
+          userId: hasLiveSession ? currentUserId : null,
+        );
+        await TabbyLocalCache.saveReminders(
+          allReminders,
           userId: hasLiveSession ? currentUserId : null,
         );
         return true;
@@ -261,6 +344,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   }
 
   void reset() {
+    _stopRealtimeSubscription();
     state = SupabaseConfig.isInitialized
         ? const TabbyDashboardState(tabs: [], activities: [], reminders: [])
         : TabbyDashboardState(
@@ -273,6 +357,78 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   Timer? _emotionTimer;
   StreamSubscription<AuthState>? _authSub;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  RealtimeChannel? _realtimeChannel;
+  Timer? _realtimeDebounceTimer;
+
+  void _startRealtimeSubscription() {
+    if (!SupabaseConfig.isInitialized) return;
+    final userId = SupabaseConfig.currentUserId;
+    if (userId == null) return;
+    if (_realtimeChannel != null) return;
+
+    try {
+      final channel =
+          SupabaseConfig.client.channel('public:tabby_realtime_$userId');
+
+      void onPostgresChange(PostgresChangePayload payload) {
+        debugPrint(
+            '[TabbyNotifier] Realtime Postgres change on ${payload.table} (${payload.eventType})');
+        _realtimeDebounceTimer?.cancel();
+        _realtimeDebounceTimer = Timer(const Duration(milliseconds: 350), () {
+          if (mounted) {
+            _loadTabs();
+          }
+        });
+      }
+
+      final tables = [
+        SupabaseConfig.tableTabs,
+        SupabaseConfig.tableTabMembers,
+        SupabaseConfig.tableTransactions,
+        SupabaseConfig.tableTransactionParticipants,
+        SupabaseConfig.tablePayments,
+        SupabaseConfig.tablePaymentProofs,
+        SupabaseConfig.tableFriendships,
+        SupabaseConfig.tableActivityLogs,
+        SupabaseConfig.tableGroups,
+        SupabaseConfig.tableGroupMembers,
+      ];
+
+      for (final table in tables) {
+        channel.onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: table,
+          callback: onPostgresChange,
+        );
+      }
+
+      channel.subscribe((status, [error]) {
+        if (error != null) {
+          debugPrint('[TabbyNotifier] Realtime subscription error: $error');
+        } else {
+          debugPrint('[TabbyNotifier] Realtime subscription status: $status');
+        }
+      });
+
+      _realtimeChannel = channel;
+    } catch (e) {
+      debugPrint('[TabbyNotifier] Failed to start Realtime subscription: $e');
+    }
+  }
+
+  void _stopRealtimeSubscription() {
+    _realtimeDebounceTimer?.cancel();
+    _realtimeDebounceTimer = null;
+    if (_realtimeChannel != null && SupabaseConfig.isInitialized) {
+      try {
+        SupabaseConfig.client.removeChannel(_realtimeChannel!);
+      } catch (e) {
+        debugPrint('[TabbyNotifier] Error removing Realtime channel: $e');
+      }
+      _realtimeChannel = null;
+    }
+  }
 
   Future<void> addExpense({
     required String counterpartId,
@@ -458,19 +614,21 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           );
         }
 
-        // Connected accounts must stay on the bilateral-tab path. Do not
-        // silently create a private contact tab if that path is unavailable.
+        // Connected accounts stay on the bilateral-tab path. If counterpart is
+        // not a registered UUID or not connected, create or reuse a contact tab.
         if (realTabId == null &&
             !isGroupTab &&
-            !isConnectedFriend &&
             SupabaseTabbyRepository.isValidUuid(currentUserId)) {
-          final contactResult =
-              await SupabaseTabbyRepository.instance.getOrCreateContactTab(
-            ownerId: currentUserId,
-            contactName: counterpartName,
-          );
-          if (contactResult != null && contactResult['tab_id'] != null) {
-            realTabId = contactResult['tab_id'];
+          if (!isConnectedFriend ||
+              !SupabaseTabbyRepository.isValidUuid(resolvedCounterpartId)) {
+            final contactResult =
+                await SupabaseTabbyRepository.instance.getOrCreateContactTab(
+              ownerId: currentUserId,
+              contactName: counterpartName,
+            );
+            if (contactResult != null && contactResult['tab_id'] != null) {
+              realTabId = contactResult['tab_id'];
+            }
           }
         }
 
@@ -1362,6 +1520,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     _emotionTimer?.cancel();
     _authSub?.cancel();
     _connectivitySub?.cancel();
+    _stopRealtimeSubscription();
     super.dispose();
   }
 }
@@ -1370,11 +1529,16 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 class CurrentUserNotifier extends StateNotifier<TabbyUser> {
   CurrentUserNotifier() : super(_resolveInitialUser()) {
     loadFromSupabase();
+    if (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null) {
+      _startRealtimeSubscription();
+    }
     if (SupabaseConfig.isInitialized) {
       _authSub = SupabaseConfig.auth.onAuthStateChange.listen((data) {
         if (data.session != null && mounted) {
+          _startRealtimeSubscription();
           loadFromSupabase();
         } else if (data.session == null && mounted) {
+          _stopRealtimeSubscription();
           reset();
         }
       });
@@ -1382,6 +1546,44 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
   }
 
   StreamSubscription<AuthState>? _authSub;
+  RealtimeChannel? _userRealtimeChannel;
+
+  void _startRealtimeSubscription() {
+    if (!SupabaseConfig.isInitialized) return;
+    final userId = SupabaseConfig.currentUserId;
+    if (userId == null) return;
+    if (_userRealtimeChannel != null) return;
+
+    try {
+      final channel =
+          SupabaseConfig.client.channel('public:user_realtime_$userId');
+      channel.onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: SupabaseConfig.tableUsers,
+        callback: (payload) {
+          debugPrint('[CurrentUserNotifier] Realtime user update received');
+          if (mounted) {
+            loadFromSupabase();
+          }
+        },
+      );
+      channel.subscribe();
+      _userRealtimeChannel = channel;
+    } catch (e) {
+      debugPrint(
+          '[CurrentUserNotifier] Failed to start user Realtime subscription: $e');
+    }
+  }
+
+  void _stopRealtimeSubscription() {
+    if (_userRealtimeChannel != null && SupabaseConfig.isInitialized) {
+      try {
+        SupabaseConfig.client.removeChannel(_userRealtimeChannel!);
+      } catch (_) {}
+      _userRealtimeChannel = null;
+    }
+  }
 
   static const TabbyUser unauthenticatedUser = TabbyUser(
     id: '',
@@ -1525,6 +1727,7 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
   }
 
   void reset() {
+    _stopRealtimeSubscription();
     state = SupabaseConfig.isInitialized
         ? unauthenticatedUser
         : MockTabbyRepository.currentUser;
@@ -1533,6 +1736,7 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
   @override
   void dispose() {
     _authSub?.cancel();
+    _stopRealtimeSubscription();
     super.dispose();
   }
 }

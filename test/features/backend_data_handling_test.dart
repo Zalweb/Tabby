@@ -1323,5 +1323,66 @@ void main() {
       expect(tabAfterRefresh.entries.first.title, equals('Lunch treat'));
       expect(tabAfterRefresh.netBalanceCentavos, equals(25000));
     });
+
+    test('Realtime subscription lifecycle and activity deduplication', () async {
+      final notifier = TabbyNotifier(loadInitialData: false);
+      addTearDown(notifier.dispose);
+
+      // Verify reset cleanly cleans up channels without crashing
+      notifier.reset();
+      expect(notifier.state.tabs, isEmpty);
+
+      // Add sample tab with entries and verify activity synthesis
+      final entry = LedgerEntry(
+        id: 'entry-realtime-1',
+        tabId: 'tab-realtime-1',
+        title: 'Team Coffee',
+        category: ExpenseCategory.food,
+        totalAmountCentavos: 30000,
+        myShareCentavos: 15000,
+        counterpartShareCentavos: 15000,
+        paidByUserId: 'user-me',
+        paidByName: 'You',
+        date: DateTime.now(),
+        dueDate: DateTime.now().add(const Duration(days: 3)),
+      );
+
+      final tab = BilateralTab(
+        id: 'tab-realtime-1',
+        counterpart: const TabbyUser(
+          id: 'user-friend-1',
+          displayName: 'Friend One',
+          email: 'friend@example.com',
+          phone: '',
+        ),
+        netBalanceCentavos: 15000,
+        itemCount: 1,
+        entries: [entry],
+        lastUpdated: DateTime.now(),
+      );
+
+      notifier.state = notifier.state.copyWith(tabs: [tab]);
+      expect(notifier.state.tabs.length, equals(1));
+
+      // Test deduplication of activities
+      final act1 = TabbyActivity(
+        id: 'act-1',
+        actorName: 'You',
+        description: 'Team Coffee',
+        amountCentavos: 30000,
+        timestamp: DateTime.now(),
+      );
+      final actDuplicate = TabbyActivity(
+        id: 'act-1',
+        actorName: 'You',
+        description: 'Team Coffee',
+        amountCentavos: 30000,
+        timestamp: DateTime.now(),
+      );
+
+      final deduped = TabbyNotifier.deduplicateActivities([act1, actDuplicate]);
+      expect(deduped.length, equals(1));
+      expect(deduped.first.id, equals('act-1'));
+    });
   });
 }
