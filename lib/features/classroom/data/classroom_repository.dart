@@ -173,7 +173,7 @@ class ClassroomRepository {
             in response.courseWork ?? const <classroom.CourseWork>[]) {
           final googleTaskId = work.id?.trim() ?? '';
           final dueAt = _dueAt(work);
-          if (googleTaskId.isEmpty || dueAt == null) continue;
+          if (googleTaskId.isEmpty) continue;
 
           final state =
               await _fetchTaskState(course.googleCourseId, googleTaskId);

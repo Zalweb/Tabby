@@ -132,18 +132,27 @@ class _ClassroomTasksScreenState extends ConsumerState<ClassroomTasksScreen> {
     List<ClassroomCourse> courses,
     List<ClassroomAnnouncement> announcements,
   ) {
+    final overdue = tasks.where(_isOverdue).toList();
     final dueToday = tasks.where(_isDueToday).toList();
     final dueThisWeek = tasks.where((task) {
-      if (!_isAssignedWithDueDate(task) || _isDueToday(task)) return false;
+      if (!_isAssignedWithDueDate(task) ||
+          _isDueToday(task) ||
+          _isOverdue(task)) {
+        return false;
+      }
       final dueAt = task.dueAt!;
       final now = DateTime.now();
       return dueAt.isAfter(now) &&
           dueAt.isBefore(now.add(const Duration(days: 7)));
     }).toList();
     final upcoming = tasks.where((task) {
-      if (!_isAssignedWithDueDate(task)) return false;
+      if (!_isAssignedWithDueDate(task) || _isOverdue(task)) return false;
       return task.dueAt!.isAfter(DateTime.now().add(const Duration(days: 7)));
     }).toList();
+    final noDueDate = tasks
+        .where((task) =>
+            task.state == ClassroomTaskState.assigned && task.dueAt == null)
+        .toList();
     final submitted = tasks
         .where((task) => task.state != ClassroomTaskState.assigned)
         .toList();
@@ -151,20 +160,25 @@ class _ClassroomTasksScreenState extends ConsumerState<ClassroomTasksScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _CourseFilterRow(
-          courses: courses,
-          selectedCourseId: _selectedCourseId,
-          onSelected: (courseId) =>
-              setState(() => _selectedCourseId = courseId),
-        ),
+        if (courses.isNotEmpty)
+          _CourseFilterRow(
+            courses: courses,
+            selectedCourseId: _selectedCourseId,
+            onSelected: (courseId) =>
+                setState(() => _selectedCourseId = courseId),
+          ),
+        _buildTaskSection('Overdue', overdue),
         _buildTaskSection('Due Today', dueToday),
         _buildTaskSection('Due This Week', dueThisWeek),
         _buildTaskSection('Upcoming', upcoming),
+        _buildTaskSection('No Due Date', noDueDate),
         _buildAnnouncementsSection(announcements),
         if (submitted.isNotEmpty) _buildSubmittedSection(submitted),
-        if (dueToday.isEmpty &&
+        if (overdue.isEmpty &&
+            dueToday.isEmpty &&
             dueThisWeek.isEmpty &&
             upcoming.isEmpty &&
+            noDueDate.isEmpty &&
             announcements.isEmpty &&
             submitted.isEmpty)
           _buildNoTasksState(),
@@ -222,28 +236,37 @@ class _ClassroomTasksScreenState extends ConsumerState<ClassroomTasksScreen> {
   }
 
   Widget _buildNoTasksState() {
-    return const Padding(
-      padding: EdgeInsets.only(top: 46),
-      child: Column(
-        children: [
-          Icon(Icons.task_alt_rounded,
-              size: 50, color: TabbyColors.brandEmerald),
-          SizedBox(height: 12),
-          Text(
-            'All clear for now',
-            style: TextStyle(
-              color: TabbyColors.brandDarkTeal,
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-            ),
+    return const Center(
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 56, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(Icons.task_alt_rounded,
+                  size: 52, color: TabbyColors.brandEmerald),
+              SizedBox(height: 14),
+              Text(
+                'All clear for now',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: TabbyColors.brandDarkTeal,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'New assignments will appear here after your next sync.',
+                textAlign: TextAlign.center,
+                style:
+                    TextStyle(color: TabbyColors.textSecondary, fontSize: 13),
+              ),
+            ],
           ),
-          SizedBox(height: 5),
-          Text(
-            'New assignments will appear here after your next sync.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: TabbyColors.textSecondary, fontSize: 13),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -258,6 +281,14 @@ class _ClassroomTasksScreenState extends ConsumerState<ClassroomTasksScreen> {
     return dueAt.year == now.year &&
         dueAt.month == now.month &&
         dueAt.day == now.day;
+  }
+
+  bool _isOverdue(ClassroomTask task) {
+    if (task.state != ClassroomTaskState.assigned || task.dueAt == null) {
+      return false;
+    }
+    final now = DateTime.now();
+    return task.dueAt!.isBefore(now) && !_isDueToday(task);
   }
 }
 

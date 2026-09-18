@@ -173,4 +173,42 @@ void main() {
 
     expect(container.read(tasksDueTodayCountProvider), 1);
   });
+
+  test('ClassroomTask handles null dueAt correctly', () {
+    final taskNoDue = _task(id: 'no-due', dueAt: null);
+    expect(taskNoDue.hasDueDate, isFalse);
+    expect(taskNoDue.dueAt, isNull);
+    expect(taskNoDue.isOverdue, isFalse);
+    expect(taskNoDue.timeUntilDue, isNull);
+    expect(taskNoDue.urgency, TaskUrgency.upcoming);
+
+    final restored = ClassroomLocalCache.decodeTasks(
+      ClassroomLocalCache.encodeTasks([taskNoDue]),
+    ).single;
+    expect(restored, taskNoDue);
+    expect(restored.dueAt, isNull);
+  });
+
+  test('upcomingTasksPreviewProvider includes tasks without due date', () {
+    final now = DateTime.now();
+    final container = ProviderContainer(
+      overrides: [
+        classroomTasksProvider.overrideWith(
+          (ref) => ClassroomTasksNotifier(
+            initialTasks: [
+              _task(id: 'dated', dueAt: now.add(const Duration(days: 1))),
+              _task(id: 'no-due', dueAt: null),
+            ],
+            loadInitialData: false,
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(
+      container.read(upcomingTasksPreviewProvider).map((t) => t.id),
+      ['dated', 'no-due'],
+    );
+  });
 }

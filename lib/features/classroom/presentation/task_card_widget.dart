@@ -82,7 +82,7 @@ class TaskCardWidget extends ConsumerWidget {
                         _buildTaskMenu(context),
                       ],
                     ),
-                    if (isAssigned && task.hasDueDate) ...[
+                    if (isAssigned) ...[
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -148,7 +148,9 @@ class TaskCardWidget extends ConsumerWidget {
   Widget _buildTaskSummary() {
     final courseColor = classroomColorFromHex(task.courseColorHex);
     final stateLabel = switch (task.state) {
-      ClassroomTaskState.assigned => classroomTimeRemainingLabel(task),
+      ClassroomTaskState.assigned => task.hasDueDate
+          ? classroomTimeRemainingLabel(task)
+          : 'To-do',
       ClassroomTaskState.turnedIn => 'Submitted',
       ClassroomTaskState.returned => 'Returned',
     };
@@ -183,7 +185,9 @@ class TaskCardWidget extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: classroomUrgencyColor(task.urgency),
+                  color: task.urgency == TaskUrgency.upcoming
+                      ? TabbyColors.textSecondary
+                      : classroomUrgencyColor(task.urgency),
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
@@ -317,9 +321,11 @@ class CompactTaskCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Text(
-              classroomTimeRemainingLabel(task),
+              task.hasDueDate ? classroomTimeRemainingLabel(task) : 'To-do',
               style: TextStyle(
-                color: classroomUrgencyColor(task.urgency),
+                color: task.urgency == TaskUrgency.upcoming
+                    ? TabbyColors.textSecondary
+                    : classroomUrgencyColor(task.urgency),
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
               ),

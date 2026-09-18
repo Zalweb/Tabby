@@ -309,10 +309,16 @@ final upcomingTasksPreviewProvider = Provider<List<ClassroomTask>>((ref) {
       .watch(classroomTasksProvider)
       .where((task) =>
           task.state == ClassroomTaskState.assigned &&
-          task.dueAt != null &&
-          task.dueAt!.isBefore(latest))
+          (task.dueAt == null || task.dueAt!.isBefore(latest)))
       .toList()
-    ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
+    ..sort((a, b) {
+      if (a.dueAt != null && b.dueAt != null) {
+        return a.dueAt!.compareTo(b.dueAt!);
+      }
+      if (a.dueAt != null && b.dueAt == null) return -1;
+      if (a.dueAt == null && b.dueAt != null) return 1;
+      return b.syncedAt.compareTo(a.syncedAt);
+    });
   return tasks.take(2).toList();
 });
 
