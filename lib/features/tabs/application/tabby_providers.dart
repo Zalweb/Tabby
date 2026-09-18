@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthState;
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/device_auth_service.dart';
 import '../../../core/services/pin_protection_service.dart';
@@ -30,11 +32,29 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     if (loadInitialData) {
       _loadTabs();
     }
+    // Re-load data whenever the user signs in (e.g. Google Sign-In).
+    if (SupabaseConfig.isInitialized) {
+      _authSub = SupabaseConfig.auth.onAuthStateChange.listen((data) {
+        if (data.session != null && mounted) {
+          _loadTabs();
+          _syncPendingOps();
+        } else if (data.session == null && mounted) {
+          reset();
+        }
+      });
+    }
+    _startConnectivityWatch();
   }
 
   Future<bool> _loadTabs() async {
     final hasLiveSession =
         SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
+    if (SupabaseConfig.isInitialized && !hasLiveSession) {
+      if (mounted) {
+        state = const TabbyDashboardState(tabs: [], activities: [], reminders: []);
+      }
+      return false;
+    }
     final currentUserId = hasLiveSession
         ? SupabaseConfig.currentUserId!
         : MockTabbyRepository.currentUser.id;
@@ -231,6 +251,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   }
 
   Timer? _emotionTimer;
+  StreamSubscription<AuthState>? _authSub;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
 
   Future<void> addExpense({
     required String counterpartId,
@@ -467,6 +489,31 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         }
       } catch (e) {
         debugPrint('[TabbyNotifier] Supabase sync error: $e');
+        // Queue the operation so it is retried when connectivity returns.
+        final pendingTabId = existingTabIndex >= 0
+            ? state.tabs[existingTabIndex].id
+            : counterpartId;
+        await TabbyLocalCache.enqueuePendingOp(
+          {
+            'type': 'add_expense',
+            'tab_id': pendingTabId,
+            'title':
+                title.trim().isEmpty ? category.displayName : title.trim(),
+            'total_amount_centavos': totalAmountCentavos,
+            'category': category.name,
+            'paid_by_user_id': paidByMe
+                ? currentUserId
+                : (payerId ?? counterpartId),
+            'my_share_centavos': myShare,
+            'counterpart_share_centavos': counterpartShare,
+            'counterpart_id': counterpartId,
+            'counterpart_name': counterpartName,
+            'paid_by_me': paidByMe,
+            'due_date': dueDate?.toIso8601String(),
+            'receipt_url': receiptUrl,
+          },
+          userId: SupabaseConfig.currentUserId,
+        );
       }
     }
 
@@ -616,6 +663,19 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         }
       } catch (e) {
         debugPrint('[TabbyNotifier] Supabase sync error: $e');
+        await TabbyLocalCache.enqueuePendingOp(
+          {
+            'type': 'settle_payment',
+            'tab_id': tab.id,
+            'amount_centavos': amountCentavos,
+            'method': method.name,
+            'is_paying_me': isPayingMe,
+            'counterpart_id': tab.counterpart.id,
+            'counterpart_name': tab.counterpart.displayName,
+            'note': note,
+          },
+          userId: SupabaseConfig.currentUserId,
+        );
       }
     }
 
@@ -1110,9 +1170,172 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     }
   }
 
+  /// Starts watching connectivity changes. When the device comes back online
+  /// and a Supabase session exists, drains the pending-ops queue and syncs
+  /// any tabs that were logged offline.
+  void _startConnectivityWatch() {
+    _connectivitySub =
+        Connectivity().onConnectivityChanged.listen((results) {
+      final isOnline = results.any((r) => r != ConnectivityResult.none);
+      if (isOnline &&
+          SupabaseConfig.isInitialized &&
+          SupabaseConfig.currentUserId != null) {
+        _syncPendingOps();
+      }
+    });
+  }
+
+  /// Drains all queued offline expense and settlement operations and replays them against
+  /// the Supabase backend, then refreshes local state from the server.
+  Future<void> _syncPendingOps() async {
+    final userId = SupabaseConfig.currentUserId;
+    if (userId == null) return;
+    final ops = await TabbyLocalCache.drainPendingOps(userId: userId);
+    if (ops.isEmpty) return;
+    debugPrint(
+        '[TabbyNotifier] Syncing ${ops.length} pending offline operation(s)...');
+    for (final op in ops) {
+      try {
+        final type = op['type'] as String?;
+        if (type == 'add_expense') {
+          final tabId = op['tab_id'] as String?;
+          final counterpartId = op['counterpart_id'] as String? ?? '';
+          final counterpartName = op['counterpart_name'] as String? ?? '';
+          final totalAmountCentavos =
+              (op['total_amount_centavos'] as num).toInt();
+          final myShare = (op['my_share_centavos'] as num).toInt();
+          final counterpartShare =
+              (op['counterpart_share_centavos'] as num).toInt();
+          final paidByMe = op['paid_by_me'] as bool? ?? true;
+          final dueDateStr = op['due_date'] as String?;
+          final dueDate =
+              dueDateStr != null ? DateTime.tryParse(dueDateStr) : null;
+          final receiptUrl = op['receipt_url'] as String?;
+          final category = ExpenseCategory.values.firstWhere(
+            (c) => c.name == op['category'],
+            orElse: () => ExpenseCategory.other,
+          );
+
+          String? realTabId = tabId;
+          String resolvedCounterpartId = counterpartId;
+
+          if (realTabId == null ||
+              !SupabaseTabbyRepository.isValidUuid(realTabId)) {
+            if (counterpartName.isNotEmpty) {
+              resolvedCounterpartId = await SupabaseTabbyRepository.instance
+                  .ensureUserExists(counterpartId, counterpartName);
+            }
+
+            if (SupabaseTabbyRepository.isValidUuid(userId) &&
+                SupabaseTabbyRepository.isValidUuid(resolvedCounterpartId) &&
+                userId != resolvedCounterpartId) {
+              realTabId = await SupabaseConfig.getOrCreateBilateralTab(
+                userA: userId,
+                userB: resolvedCounterpartId,
+              );
+            } else if (SupabaseTabbyRepository.isValidUuid(userId) &&
+                counterpartName.isNotEmpty) {
+              final contactResult =
+                  await SupabaseTabbyRepository.instance.getOrCreateContactTab(
+                ownerId: userId,
+                contactName: counterpartName,
+              );
+              if (contactResult != null) {
+                realTabId = contactResult['tab_id'];
+              }
+            }
+          }
+
+          if (realTabId != null &&
+              SupabaseTabbyRepository.isValidUuid(realTabId)) {
+            await SupabaseTabbyRepository.instance.logExpense(
+              tabId: realTabId,
+              title: op['title'] as String? ?? '',
+              totalAmountCentavos: totalAmountCentavos,
+              category: category,
+              paidByUserId: paidByMe ? userId : resolvedCounterpartId,
+              myShareCentavos: myShare,
+              counterpartShareCentavos: counterpartShare,
+              currentUserId: userId,
+              counterpartId: resolvedCounterpartId,
+              dueDate: dueDate,
+              receiptUrl: receiptUrl,
+            );
+          }
+        } else if (type == 'settle_payment') {
+          final tabId = op['tab_id'] as String?;
+          final amountCentavos = (op['amount_centavos'] as num).toInt();
+          final methodName = op['method'] as String?;
+          final isPayingMe = op['is_paying_me'] as bool? ?? false;
+          final counterpartId = op['counterpart_id'] as String? ?? '';
+          final counterpartName =
+              op['counterpart_name'] as String? ?? 'Friend';
+          final note = op['note'] as String?;
+
+          final method = PaymentMethod.values.firstWhere(
+            (m) => m.name == methodName,
+            orElse: () => PaymentMethod.cash,
+          );
+
+          String? realTabId = tabId;
+          if (realTabId == null ||
+              !SupabaseTabbyRepository.isValidUuid(realTabId)) {
+            if (SupabaseTabbyRepository.isValidUuid(userId) &&
+                SupabaseTabbyRepository.isValidUuid(counterpartId) &&
+                userId != counterpartId) {
+              realTabId = await SupabaseConfig.getOrCreateBilateralTab(
+                userA: userId,
+                userB: counterpartId,
+              );
+            } else if (SupabaseTabbyRepository.isValidUuid(userId)) {
+              final contactResult =
+                  await SupabaseTabbyRepository.instance.getOrCreateContactTab(
+                ownerId: userId,
+                contactName: counterpartName,
+              );
+              if (contactResult != null) {
+                realTabId = contactResult['tab_id'];
+              }
+            }
+          }
+
+          if (realTabId != null &&
+              SupabaseTabbyRepository.isValidUuid(realTabId)) {
+            final effectivePaidBy =
+                SupabaseTabbyRepository.isValidUuid(counterpartId)
+                    ? (isPayingMe ? counterpartId : userId)
+                    : userId;
+            final effectiveReceivedBy =
+                SupabaseTabbyRepository.isValidUuid(counterpartId)
+                    ? (isPayingMe ? userId : counterpartId)
+                    : userId;
+
+            await SupabaseTabbyRepository.instance.recordPayment(
+              tabId: realTabId,
+              amountCentavos: amountCentavos,
+              method: method,
+              paidByUserId: effectivePaidBy,
+              receivedByUserId: effectiveReceivedBy,
+              note: note,
+              confirmedByUserId: userId,
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('[TabbyNotifier] Failed to sync pending op: $e');
+        // Re-enqueue so we retry on the next connectivity event.
+        await TabbyLocalCache.enqueuePendingOp(op, userId: userId);
+      }
+    }
+    // Refresh from server once all pending ops have been attempted.
+    await _loadTabs();
+  }
+
   @override
   void dispose() {
     _emotionTimer?.cancel();
+    _authSub?.cancel();
+    _connectivitySub?.cancel();
     super.dispose();
   }
 }
@@ -1121,21 +1344,42 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 class CurrentUserNotifier extends StateNotifier<TabbyUser> {
   CurrentUserNotifier() : super(_resolveInitialUser()) {
     loadFromSupabase();
+    if (SupabaseConfig.isInitialized) {
+      _authSub = SupabaseConfig.auth.onAuthStateChange.listen((data) {
+        if (data.session != null && mounted) {
+          loadFromSupabase();
+        } else if (data.session == null && mounted) {
+          reset();
+        }
+      });
+    }
   }
 
+  StreamSubscription<AuthState>? _authSub;
+
+  static const TabbyUser unauthenticatedUser = TabbyUser(
+    id: '',
+    displayName: '',
+    email: '',
+    phone: '',
+  );
+
   static TabbyUser _resolveInitialUser() {
-    if (SupabaseConfig.isInitialized && SupabaseConfig.currentUser != null) {
-      final user = SupabaseConfig.currentUser!;
-      final meta = user.userMetadata ?? {};
-      return TabbyUser(
-        id: user.id,
-        displayName: meta['display_name'] as String? ??
-            (user.email?.split('@').first ?? 'User'),
-        email: user.email ?? '',
-        phone: (meta['phone'] ?? user.phone) as String? ?? '',
-        avatarUrl: meta['avatar_url'] as String?,
-        friendCode: meta['friend_code'] as String?,
-      );
+    if (SupabaseConfig.isInitialized) {
+      if (SupabaseConfig.currentUser != null) {
+        final user = SupabaseConfig.currentUser!;
+        final meta = user.userMetadata ?? {};
+        return TabbyUser(
+          id: user.id,
+          displayName: meta['display_name'] as String? ??
+              (user.email?.split('@').first ?? 'User'),
+          email: user.email ?? '',
+          phone: (meta['phone'] ?? user.phone) as String? ?? '',
+          avatarUrl: meta['avatar_url'] as String?,
+          friendCode: meta['friend_code'] as String?,
+        );
+      }
+      return unauthenticatedUser;
     }
     return MockTabbyRepository.currentUser;
   }
@@ -1255,7 +1499,15 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
   }
 
   void reset() {
-    state = MockTabbyRepository.currentUser;
+    state = SupabaseConfig.isInitialized
+        ? unauthenticatedUser
+        : MockTabbyRepository.currentUser;
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 }
 

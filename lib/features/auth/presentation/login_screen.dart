@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/config/app_state.dart';
 import '../../../core/config/supabase_config.dart';
@@ -135,6 +136,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _finishAuthenticatedLogin() async {
+    AppState.hasSeenOnboarding.value = true;
+    try {
+      const FlutterSecureStorage().write(
+        key: 'tabby_has_seen_onboarding',
+        value: 'true',
+      );
+    } catch (_) {}
     await ref.read(currentUserProvider.notifier).loadFromSupabase();
     await ref.read(tabbyProvider.notifier).refreshTabs();
 

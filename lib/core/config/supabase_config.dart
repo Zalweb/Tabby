@@ -146,10 +146,11 @@ class SupabaseConfig {
       storage.from(paymentMethodsBucketName);
 
   /// Current authenticated user (or null if unauthenticated).
-  static User? get currentUser => auth.currentUser;
+  static User? get currentUser => isInitialized ? auth.currentUser : null;
 
   /// Current authenticated user ID (or null if unauthenticated).
-  static String? get currentUserId => auth.currentUser?.id;
+  static String? get currentUserId =>
+      isInitialized ? auth.currentUser?.id : null;
 
   // --------------------------------------------------------------------------
   // Balance & Ledger RPC Helpers (Integer Centavos Standard)

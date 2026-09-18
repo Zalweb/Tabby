@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/config/app_state.dart';
@@ -35,9 +36,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
-  void _finishOnboarding() {
+  Future<void> _finishOnboarding() async {
     AppState.hasSeenOnboarding.value = true;
-    context.go('/login');
+    try {
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'tabby_has_seen_onboarding', value: 'true');
+    } catch (_) {}
+    if (mounted) context.go('/login');
   }
 
   @override

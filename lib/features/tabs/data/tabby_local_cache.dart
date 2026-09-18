@@ -122,6 +122,7 @@ class TabbyLocalCache {
       await _storage.delete(key: _key('tabs', userId));
       await _storage.delete(key: _key('activities', userId));
       await _storage.delete(key: _key('reminders', userId));
+      await _storage.delete(key: 'tabby_pending_ops_${_scope(userId)}');
 
       // Remove cache written by versions before account scoping was added.
       await _storage.delete(key: _legacyKeyTabs);
@@ -130,5 +131,54 @@ class TabbyLocalCache {
     } catch (e) {
       debugPrint('[TabbyLocalCache] clearCache warning: $e');
     }
+  }
+
+  /// Enqueues an offline operation to be synced when connectivity returns.
+  static Future<void> enqueuePendingOp(
+    Map<String, dynamic> op, {
+    String? userId,
+  }) async {
+    try {
+      final existing = await _loadPendingOps(userId: userId);
+      existing.add(op);
+      await _storage.write(
+        key: 'tabby_pending_ops_${_scope(userId)}',
+        value: jsonEncode(existing),
+      );
+    } catch (e) {
+      debugPrint('[TabbyLocalCache] enqueuePendingOp warning: $e');
+    }
+  }
+
+  /// Returns all pending offline operations in FIFO order.
+  static Future<List<Map<String, dynamic>>> _loadPendingOps({
+    String? userId,
+  }) async {
+    try {
+      final raw =
+          await _storage.read(key: 'tabby_pending_ops_${_scope(userId)}');
+      if (raw == null || raw.isEmpty) return [];
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Drains and returns all pending offline operations, clearing the queue.
+  static Future<List<Map<String, dynamic>>> drainPendingOps({
+    String? userId,
+  }) async {
+    final ops = await _loadPendingOps(userId: userId);
+    if (ops.isNotEmpty) {
+      await _storage.delete(key: 'tabby_pending_ops_${_scope(userId)}');
+    }
+    return ops;
+  }
+
+  /// Returns true if there are pending offline operations waiting to sync.
+  static Future<bool> hasPendingOps({String? userId}) async {
+    final ops = await _loadPendingOps(userId: userId);
+    return ops.isNotEmpty;
   }
 }

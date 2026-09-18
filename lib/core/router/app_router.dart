@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../config/app_state.dart';
-import '../config/supabase_config.dart';
 import '../../features/home/presentation/home_dashboard_screen.dart';
 import '../../features/navigation/presentation/main_scaffold.dart';
 import '../../features/profile/presentation/profile_screen.dart';
@@ -31,9 +30,10 @@ final GlobalKey<NavigatorState> _classroomNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'classroom');
 
 bool _hasAuthenticatedSession() {
-  if (SupabaseConfig.isInitialized) {
-    return SupabaseConfig.currentUser != null;
-  }
+  // Always trust the in-memory AppState flag as the single source of truth.
+  // AppState.isAuthenticated is set synchronously before signOut() fires,
+  // so the router redirects to /login immediately without waiting for the
+  // async Supabase token revocation to complete.
   return AppState.isAuthenticated.value;
 }
 

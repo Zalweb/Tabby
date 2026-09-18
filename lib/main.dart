@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'core/config/app_state.dart';
 import 'core/config/supabase_config.dart';
 import 'core/localization/app_localizations.dart';
@@ -31,8 +32,16 @@ Future<void> _refreshProfileCompletionState() async {
   }
 }
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Restore onboarding-seen flag persisted from a previous session.
+  const onboardingStorage = FlutterSecureStorage();
+  final seenOnboarding =
+      await onboardingStorage.read(key: 'tabby_has_seen_onboarding');
+  if (seenOnboarding == 'true') {
+    AppState.hasSeenOnboarding.value = true;
+  }
 
   try {
     await TabbyNotificationService.instance.initialize();
@@ -40,12 +49,22 @@ void main() async {
     if (SupabaseConfig.isInitialized) {
       if (SupabaseConfig.auth.currentUser != null) {
         AppState.isAuthenticated.value = true;
+        AppState.hasSeenOnboarding.value = true;
+        onboardingStorage.write(
+          key: 'tabby_has_seen_onboarding',
+          value: 'true',
+        );
         await _refreshProfileCompletionState();
       }
       SupabaseConfig.auth.onAuthStateChange.listen((data) {
         final session = data.session;
         if (session != null) {
           AppState.isAuthenticated.value = true;
+          AppState.hasSeenOnboarding.value = true;
+          onboardingStorage.write(
+            key: 'tabby_has_seen_onboarding',
+            value: 'true',
+          );
           _refreshProfileCompletionState();
         } else {
           AppState.isAuthenticated.value = false;

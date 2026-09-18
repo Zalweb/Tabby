@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/config/app_state.dart';
+import '../../../core/config/supabase_config.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/widgets/app_version_footer.dart';
 import '../../../shared/widgets/notification_center_sheet.dart';
@@ -11,6 +12,7 @@ import '../../../shared/widgets/tabby_button.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
 import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
+import '../../tabs/data/tabby_local_cache.dart';
 import '../../tabs/domain/models.dart';
 import '../../tabs/presentation/add_expense_modal.dart';
 import '../../payment_methods/application/payment_methods_provider.dart';
@@ -3070,13 +3072,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   style: TextStyle(color: TabbyColors.textSecondary)),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(dialogContext);
+                // 1. Immediately invalidate auth flag — router redirects to /login
+                final userId = SupabaseConfig.currentUserId;
                 AppState.isAuthenticated.value = false;
+                // 2. Clear in-memory providers
                 ref.read(currentUserProvider.notifier).reset();
                 ref.read(tabbyProvider.notifier).reset();
+                // 3. Navigate immediately (no waiting for Supabase)
                 if (context.mounted) context.go('/login');
-                unawaited(SupabaseTabbyRepository.instance.signOut());
+                // 4. Clear local cache and sign out in background
+                try {
+                  if (userId != null) {
+                    await TabbyLocalCache.clearCache(userId: userId);
+                  }
+                  await SupabaseTabbyRepository.instance.signOut();
+                } catch (_) {}
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: TabbyColors.alertRed,
