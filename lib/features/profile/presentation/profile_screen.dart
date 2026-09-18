@@ -23,6 +23,8 @@ import '../../classroom/domain/classroom_models.dart';
 import '../../classroom/presentation/classroom_connect_sheet.dart';
 import '../application/sync_diagnostics_provider.dart';
 import 'sync_diagnostics_sheet.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 typedef FriendLookup = Future<TabbyUser?> Function(String friendCode);
 typedef FriendRequestSubmitter = Future<FriendRequest?> Function(
@@ -821,8 +823,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        const Text('Version 1.0.1+2',
-                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        FutureBuilder<PackageInfo>(
+                          future: PackageInfo.fromPlatform(),
+                          builder: (context, pkgSnapshot) {
+                            final pkg = pkgSnapshot.data;
+                            final displayVer = pkg != null
+                                ? (pkg.buildNumber.isEmpty
+                                    ? pkg.version
+                                    : '${pkg.version}+${pkg.buildNumber}')
+                                : '1.0.2+3';
+                            return Text(
+                              'Version $displayVer',
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            );
+                          },
+                        ),
                         const SizedBox(height: 8),
                         Text(statusText,
                             style: const TextStyle(
@@ -838,17 +853,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           Text(result.update!.release.releaseNotes),
                         ],
                         const SizedBox(height: 20),
-                        TabbyButton(
-                          label: snapshot.connectionState ==
-                                  ConnectionState.waiting
-                              ? 'Checking...'
-                              : 'Check for Updates',
-                          onPressed: snapshot.connectionState ==
-                                  ConnectionState.waiting
-                              ? null
-                              : () => setState(() {}),
+                        if (result?.status == AppUpdateStatus.updateAvailable) ...[
+                          TabbyButton(
+                            label: 'Update on Website',
+                            onPressed: () async {
+                              final url = Uri.parse(
+                                  'https://tabby-web-fawn.vercel.app/#download');
+                              try {
+                                await launchUrl(url,
+                                    mode: LaunchMode.externalApplication);
+                              } catch (_) {}
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                        ] else ...[
+                          TabbyButton(
+                            label: snapshot.connectionState ==
+                                    ConnectionState.waiting
+                                ? 'Checking...'
+                                : 'Check for Updates',
+                            onPressed: snapshot.connectionState ==
+                                    ConnectionState.waiting
+                                ? null
+                                : () => setState(() {}),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              final url = Uri.parse(
+                                  'https://tabby-web-fawn.vercel.app');
+                              try {
+                                await launchUrl(url,
+                                    mode: LaunchMode.externalApplication);
+                              } catch (_) {}
+                            },
+                            icon: const Icon(Icons.language_rounded,
+                                size: 16, color: TabbyColors.brandDarkTeal),
+                            label: const Text(
+                              'Visit Tabby Website',
+                              style: TextStyle(
+                                  color: TabbyColors.brandDarkTeal,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 10),
                         Center(
                           child: TextButton(
                             onPressed: () => Navigator.pop(sheetContext),

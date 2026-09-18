@@ -59,6 +59,8 @@ void main() {
       expect(release.releaseNotes, 'Fresh fixes');
       expect(release.androidDownloadUrl.toString(), endsWith('.apk'));
       expect(release.iosDownloadUrl.toString(), endsWith('.ipa'));
+      expect(release.webDownloadUrl.toString(),
+          'https://tabby-web-fawn.vercel.app/#download');
     });
 
     test('ignores malformed release payloads', () {
@@ -155,6 +157,7 @@ void main() {
 
     expect(find.text('A new version of Tabby is available'), findsOneWidget);
     expect(find.text('Version 1.1.0+2 is ready.'), findsOneWidget);
+    expect(find.text('Update on Web'), findsOneWidget);
 
     await tester.tap(find.text('Later'));
     await tester.pumpAndSettle();

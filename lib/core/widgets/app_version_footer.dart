@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/tabby_colors.dart';
 
 typedef PackageInfoLoader = Future<PackageInfo> Function();
@@ -37,11 +38,23 @@ class _AppVersionFooterState extends State<AppVersionFooter> {
         final version = snapshot.hasData
             ? _formatVersion(snapshot.data!)
             : 'Version unavailable';
-        return Text(
-          'Version $version',
-          style: const TextStyle(
-            fontSize: 11,
-            color: TabbyColors.textSecondary,
+        return InkWell(
+          onTap: () async {
+            final uri = Uri.parse('https://tabby-web-fawn.vercel.app');
+            try {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } catch (_) {}
+          },
+          borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Text(
+              'Version $version',
+              style: const TextStyle(
+                fontSize: 11,
+                color: TabbyColors.textSecondary,
+              ),
+            ),
           ),
         );
       },

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -97,11 +96,15 @@ class _UpdateDialog extends StatelessWidget {
         ),
         FilledButton(
           onPressed: () => _openUpdate(context, release),
-          child: const Text('View update'),
+          child: const Text('Update on Web'),
         ),
       ],
     );
   }
+
+  static final Uri _officialWebDownloadUrl = Uri.parse(
+    'https://tabby-web-fawn.vercel.app/#download',
+  );
 
   Future<void> _openUpdate(
     BuildContext context,
@@ -117,10 +120,6 @@ class _UpdateDialog extends StatelessWidget {
   }
 
   Uri _updateUrlForPlatform(AppUpdateRelease release) {
-    if (defaultTargetPlatform == TargetPlatform.android &&
-        release.androidDownloadUrl != null) {
-      return release.androidDownloadUrl!;
-    }
-    return release.releaseUrl;
+    return release.webDownloadUrl ?? _officialWebDownloadUrl;
   }
 }

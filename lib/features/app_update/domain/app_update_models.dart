@@ -75,6 +75,7 @@ class AppUpdateRelease {
     required this.releaseUrl,
     this.androidDownloadUrl,
     this.iosDownloadUrl,
+    this.webDownloadUrl,
   });
 
   final AppVersion version;
@@ -82,6 +83,7 @@ class AppUpdateRelease {
   final Uri releaseUrl;
   final Uri? androidDownloadUrl;
   final Uri? iosDownloadUrl;
+  final Uri? webDownloadUrl;
 
   static AppUpdateRelease? fromJson(Map<String, dynamic> json) {
     final rawTag = json['tag_name'];
@@ -121,6 +123,7 @@ class AppUpdateRelease {
       releaseUrl: releaseUrl,
       androidDownloadUrl: androidDownloadUrl,
       iosDownloadUrl: iosDownloadUrl,
+      webDownloadUrl: Uri.parse('https://tabby-web-fawn.vercel.app/#download'),
     );
   }
 
