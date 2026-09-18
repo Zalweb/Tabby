@@ -5,9 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/app_state.dart';
 import 'core/config/supabase_config.dart';
 import 'core/router/app_router.dart';
+import 'core/services/tabby_notification_service.dart';
 import 'core/theme/tabby_theme.dart';
 import 'features/app_update/domain/app_update_models.dart';
 import 'features/app_update/presentation/app_update_prompt.dart';
+import 'features/classroom/application/classroom_providers.dart';
+import 'features/classroom/data/classroom_local_cache.dart';
 import 'features/tabs/data/supabase_tabby_repository.dart';
 
 Future<void> _refreshProfileCompletionState() async {
@@ -28,6 +31,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    await TabbyNotificationService.instance.initialize();
     await SupabaseConfig.initialize();
     if (SupabaseConfig.isInitialized) {
       if (SupabaseConfig.auth.currentUser != null) {
@@ -42,6 +46,27 @@ void main() async {
         } else {
           AppState.isAuthenticated.value = false;
           AppState.profileCompletionRequired.value = false;
+        }
+      });
+
+      Future<void>.microtask(() async {
+        final userId = SupabaseConfig.currentUserId;
+        if (userId == null) return;
+        final container = ProviderContainer();
+        try {
+          await container.read(classroomConnectionProvider.notifier).load();
+          final connection = container.read(classroomConnectionProvider);
+          final tasks = await ClassroomLocalCache.loadTasks(userId) ?? [];
+          if (connection != null) {
+            await TabbyNotificationService.instance.reregisterAllTaskAlarms(
+              tasks: tasks,
+              connection: connection,
+            );
+          }
+        } catch (e) {
+          debugPrint('[Main] Classroom alarm restore notice: $e');
+        } finally {
+          container.dispose();
         }
       });
     }

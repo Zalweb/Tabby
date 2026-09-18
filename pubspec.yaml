@@ -17,6 +17,10 @@ dependencies:
   # Google Sign-In (native iOS & Android OAuth)
   google_sign_in: ^6.2.1
 
+  # Google Classroom API (read-only assignment + announcement sync)
+  googleapis: ^13.0.0
+  googleapis_auth: ^1.6.0
+
   # State Management & Dependency Injection
   flutter_riverpod: ^2.6.1
   riverpod_annotation: ^2.6.1

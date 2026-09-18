@@ -6,6 +6,8 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/currency_card.dart';
 import '../../../shared/widgets/notification_center_sheet.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
+import '../../classroom/application/classroom_providers.dart';
+import '../../classroom/presentation/task_card_widget.dart';
 import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/domain/models.dart';
 import '../../tabs/presentation/add_expense_modal.dart';
@@ -522,6 +524,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                           );
                         },
                       ),
+                      _buildUpcomingTasksPreview(context, ref),
                       const SizedBox(height: 24),
 
                       // Upcoming & Reminders Header
@@ -935,6 +938,37 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     } else {
       return '${diff.inDays}d ago';
     }
+  }
+
+  Widget _buildUpcomingTasksPreview(BuildContext context, WidgetRef ref) {
+    final isConnected = ref.watch(classroomConnectionProvider) != null;
+    final preview = ref.watch(upcomingTasksPreviewProvider);
+    if (!isConnected || preview.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Upcoming Tasks',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: TabbyColors.brandDarkTeal,
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.go('/tasks'),
+              child: const Text('See All'),
+            ),
+          ],
+        ),
+        ...preview.map((task) => CompactTaskCard(task: task)),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   void _showActivityDetailSheet(BuildContext context, TabbyActivity act) {
