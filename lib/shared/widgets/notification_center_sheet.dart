@@ -27,17 +27,8 @@ class NotificationCenterSheet extends ConsumerWidget {
     final notifications = dashboardState.notifications;
     final unreadCount = dashboardState.unreadNotificationCount;
     final reminders = dashboardState.reminders;
-    final seenActivityKeys = <String>{};
-    final uniqueActivities = <TabbyActivity>[];
-    for (final act in dashboardState.activities) {
-      final timeKey = act.timestamp.millisecondsSinceEpoch ~/ 3000;
-      final key = act.id.isNotEmpty
-          ? act.id
-          : '${act.actorName}_${act.description}_${act.amountCentavos}_$timeKey';
-      if (seenActivityKeys.add(key)) {
-        uniqueActivities.add(act);
-      }
-    }
+    final uniqueActivities =
+        TabbyNotifier.deduplicateActivities(dashboardState.activities);
     final activities = uniqueActivities.take(6).toList();
 
     final hasNotifications = notifications.isNotEmpty ||

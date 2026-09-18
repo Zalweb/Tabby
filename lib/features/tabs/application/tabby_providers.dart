@@ -56,22 +56,102 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     _startConnectivityWatch();
   }
 
-  static List<TabbyActivity> deduplicateActivities(List<TabbyActivity> list) {
-    final seenIds = <String>{};
-    final seenKeys = <String>{};
-    final result = <TabbyActivity>[];
-    for (final a in list) {
-      if (a.id.isNotEmpty && !seenIds.add(a.id)) {
-        continue;
-      }
-      final timeKey = a.timestamp.millisecondsSinceEpoch ~/ 3000;
-      final key =
-          '${a.actorName}_${a.description}_${a.amountCentavos}_$timeKey';
-      if (!seenKeys.add(key)) {
-        continue;
-      }
-      result.add(a);
+  static String _normalizeActivityTitle(String desc) {
+    var s = desc.trim().toLowerCase();
+    if (s.startsWith('logged ')) {
+      s = s.substring(7);
     }
+    final withIdx = s.lastIndexOf(' with ');
+    if (withIdx != -1) {
+      s = s.substring(0, withIdx);
+    }
+    return s.trim();
+  }
+
+  static bool _isPaymentActivity(TabbyActivity a) {
+    if (a.icon == 'payment' || a.iconData == Icons.payments_outlined) {
+      return true;
+    }
+    final desc = a.description.toLowerCase();
+    return desc.contains('settled') || desc.contains('paid');
+  }
+
+  static List<TabbyActivity> deduplicateActivities(List<TabbyActivity> list) {
+    final result = <TabbyActivity>[];
+
+    for (final candidate in list) {
+      final isCandidatePayment = _isPaymentActivity(candidate);
+      final normCandidateTitle =
+          _normalizeActivityTitle(candidate.description);
+
+      final duplicateIndex = result.indexWhere((existing) {
+        // 1. Exact ID match
+        if (candidate.id.isNotEmpty &&
+            existing.id.isNotEmpty &&
+            candidate.id == existing.id) {
+          return true;
+        }
+
+        // 2. Financial transaction match
+        if (candidate.amountCentavos > 0 && existing.amountCentavos > 0) {
+          if (candidate.amountCentavos == existing.amountCentavos) {
+            final isExistingPayment = _isPaymentActivity(existing);
+            if (isCandidatePayment == isExistingPayment) {
+              final secondsDiff = candidate.timestamp
+                  .difference(existing.timestamp)
+                  .abs()
+                  .inSeconds;
+              if (secondsDiff < 300) {
+                if (isCandidatePayment) {
+                  return true;
+                }
+                final normExistingTitle =
+                    _normalizeActivityTitle(existing.description);
+                if (normCandidateTitle == normExistingTitle ||
+                    normCandidateTitle.contains(normExistingTitle) ||
+                    normExistingTitle.contains(normCandidateTitle)) {
+                  return true;
+                }
+              }
+            }
+          }
+        }
+
+        // 3. Non-financial activity match (amounts are 0)
+        if (candidate.amountCentavos == 0 && existing.amountCentavos == 0) {
+          final secondsDiff = candidate.timestamp
+              .difference(existing.timestamp)
+              .abs()
+              .inSeconds;
+          if (secondsDiff < 30 &&
+              candidate.description.trim().toLowerCase() ==
+                  existing.description.trim().toLowerCase()) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      if (duplicateIndex == -1) {
+        result.add(candidate);
+      } else {
+        // Prefer server-confirmed UUID over temporary local IDs
+        final existing = result[duplicateIndex];
+        final isCandidateServer = candidate.id.isNotEmpty &&
+            !candidate.id.startsWith('act-') &&
+            !candidate.id.startsWith('entry-') &&
+            !candidate.id.startsWith('payment-');
+        final isExistingLocal = existing.id.startsWith('act-') ||
+            existing.id.startsWith('entry-') ||
+            existing.id.startsWith('payment-');
+
+        if (isCandidateServer && isExistingLocal) {
+          result[duplicateIndex] = candidate;
+        }
+      }
+    }
+
     return result;
   }
 
@@ -178,10 +258,35 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           if (localMatch != null) {
             processedLocalIds.add(localMatch.id);
             // Merge entries: combine server entries and any local entries that haven't synced yet
-            final serverEntryIds = st.entries.map((e) => e.id).toSet();
+            final unconsumedServerEntries = List<LedgerEntry>.from(st.entries);
             final combinedEntries = <LedgerEntry>[...st.entries];
+
             for (final le in localMatch.entries) {
-              if (!serverEntryIds.contains(le.id)) {
+              final matchIndex = unconsumedServerEntries.indexWhere((se) {
+                if (se.id == le.id) return true;
+                final sameAmount =
+                    se.totalAmountCentavos == le.totalAmountCentavos;
+                final sameType = se.isPayment == le.isPayment;
+                if (sameAmount && sameType) {
+                  final timeDiffSeconds =
+                      se.date.difference(le.date).abs().inSeconds;
+                  if (timeDiffSeconds < 600) {
+                    if (se.isPayment) return true;
+                    final normSeTitle = se.title.trim().toLowerCase();
+                    final normLeTitle = le.title.trim().toLowerCase();
+                    if (normSeTitle == normLeTitle ||
+                        normSeTitle.contains(normLeTitle) ||
+                        normLeTitle.contains(normSeTitle)) {
+                      return true;
+                    }
+                  }
+                }
+                return false;
+              });
+
+              if (matchIndex != -1) {
+                unconsumedServerEntries.removeAt(matchIndex);
+              } else {
                 combinedEntries.add(le);
               }
             }
@@ -233,7 +338,11 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
                       ? 'You'
                       : tab.counterpart.displayName),
               description: entry.isPayment
-                  ? 'Settled ${entry.title.isNotEmpty ? entry.title : "balance"}'
+                  ? (entry.title.startsWith('You paid') ||
+                          entry.title.endsWith('paid') ||
+                          entry.title.toLowerCase().contains('settled')
+                      ? entry.title
+                      : 'Settled ${entry.title.isNotEmpty ? entry.title : "balance"}')
                   : entry.title,
               amountCentavos: entry.totalAmountCentavos,
               timestamp: entry.date,
@@ -845,12 +954,15 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     }
 
     // Add activity log
+    final expenseTitle =
+        title.trim().isEmpty ? category.displayName : title.trim();
     final newActivity = TabbyActivity(
-      id: 'act-${now.millisecondsSinceEpoch}',
-      actorName: currentUserDisplayName,
-      description: 'logged $title with $counterpartName',
+      id: newEntry.id,
+      actorName: paidByMe ? 'You' : counterpartName,
+      description: expenseTitle,
       amountCentavos: totalAmountCentavos,
       timestamp: now,
+      icon: category.name,
       iconData: category.icon,
     );
 
@@ -1072,13 +1184,13 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         .toList();
 
     final newActivity = TabbyActivity(
-      id: 'act-${now.millisecondsSinceEpoch}',
+      id: paymentEntry.id,
       actorName:
-          isPayingMe ? tab.counterpart.displayName : currentUserDisplayName,
-      description:
-          'settled ₱${(amountCentavos / 100).toStringAsFixed(2)} via ${method.label}',
+          isPayingMe ? tab.counterpart.displayName : 'You',
+      description: paymentEntry.title,
       amountCentavos: amountCentavos,
       timestamp: now,
+      icon: 'payment',
       iconData: method.iconData,
     );
 
@@ -1184,8 +1296,11 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       iconData: Icons.send_rounded,
     );
 
+    final updatedActivities =
+        _deduplicateActivities([newActivity, ...state.activities]);
+
     state = state.copyWith(
-      activities: [newActivity, ...state.activities],
+      activities: updatedActivities,
       emotionOverride: MascotEmotion.gentleNudge,
       emotionCustomMessage:
           'Friendly reminder sent to $friendName for our shared tab.',
@@ -1293,7 +1408,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     );
 
     final updatedTabs = [newTab, ...state.tabs];
-    final updatedActivities = [newActivity, ...state.activities];
+    final updatedActivities =
+        _deduplicateActivities([newActivity, ...state.activities]);
 
     state = state.copyWith(
       tabs: updatedTabs,
@@ -1407,7 +1523,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     );
 
     final updatedTabs = [groupTab, ...state.tabs];
-    final updatedActivities = [newActivity, ...state.activities];
+    final updatedActivities =
+        _deduplicateActivities([newActivity, ...state.activities]);
 
     state = state.copyWith(
       tabs: updatedTabs,
@@ -1533,7 +1650,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       iconData: Icons.person_remove_rounded,
     );
 
-    final updatedActivities = [newActivity, ...state.activities];
+    final updatedActivities =
+        _deduplicateActivities([newActivity, ...state.activities]);
 
     state = state.copyWith(
       tabs: updatedTabs,
@@ -1588,7 +1706,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       iconData: Icons.delete_outline_rounded,
     );
 
-    final updatedActivities = [newActivity, ...state.activities];
+    final updatedActivities =
+        _deduplicateActivities([newActivity, ...state.activities]);
 
     state = state.copyWith(
       tabs: updatedTabs,

@@ -669,35 +669,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                         }),
                       const SizedBox(height: 24),
 
-                      // Recent Activity Feed Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Recent Activity',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: TabbyColors.brandDarkTeal,
-                                letterSpacing: -0.3,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${dashboardState.activities.map((a) => a.id.isNotEmpty ? a.id : "${a.actorName}_${a.description}_${a.amountCentavos}_${a.timestamp.millisecondsSinceEpoch ~/ 3000}").toSet().length} logs',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: TabbyColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      // FinWise 3-Column Transaction / Activity List (home_7033_352)
+                      // Recent Activity Feed Header & List (home_7033_352)
                       Builder(
                         builder: (context) {
                           final rawFiltered =
@@ -716,45 +688,66 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                             return true;
                           }).toList();
 
-                          final seenKeys = <String>{};
-                          final filteredActivities = <TabbyActivity>[];
-                          for (final act in rawFiltered) {
-                            final timeKey =
-                                act.timestamp.millisecondsSinceEpoch ~/ 3000;
-                            final key = act.id.isNotEmpty
-                                ? act.id
-                                : '${act.actorName}_${act.description}_${act.amountCentavos}_$timeKey';
-                            if (seenKeys.add(key)) {
-                              filteredActivities.add(act);
-                            }
-                          }
-
-                          if (filteredActivities.isEmpty) {
-                            return Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: TabbyColors.surfaceWhite,
-                                borderRadius: BorderRadius.circular(16),
-                                border:
-                                    Border.all(color: TabbyColors.borderMint),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  _selectedFilter == 'Monthly'
-                                      ? 'No recent activity yet. Log an expense to get started!'
-                                      : 'No activity found for $_selectedFilter filter.',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: TabbyColors.textSecondary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
+                          final filteredActivities =
+                              TabbyNotifier.deduplicateActivities(rawFiltered);
 
                           return Column(
-                            children: filteredActivities.map((act) {
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Recent Activity',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: TabbyColors.brandDarkTeal,
+                                        letterSpacing: -0.3,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${filteredActivities.length} logs',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: TabbyColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              if (filteredActivities.isEmpty)
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: TabbyColors.surfaceWhite,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                        color: TabbyColors.borderMint),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      _selectedFilter == 'Monthly'
+                                          ? 'No recent activity yet. Log an expense to get started!'
+                                          : 'No activity found for $_selectedFilter filter.',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: TabbyColors.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Column(
+                                  children: filteredActivities.map((act) {
                               final displayName = (act.actorName == 'You' ||
                                       act.actorName == currentUser.displayName)
                                   ? 'You'
@@ -879,6 +872,8 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                                 ),
                               );
                             }).toList(),
+                                ),
+                            ],
                           );
                         },
                       ),

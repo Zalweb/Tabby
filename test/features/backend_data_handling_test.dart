@@ -1383,6 +1383,101 @@ void main() {
       final deduped = TabbyNotifier.deduplicateActivities([act1, actDuplicate]);
       expect(deduped.length, equals(1));
       expect(deduped.first.id, equals('act-1'));
+
+      // Test cross-source deduplication: local optimistic activity vs server synthesized activity
+      final now = DateTime.now();
+      final localAct = TabbyActivity(
+        id: 'act-1726650000000',
+        actorName: 'You',
+        description: 'logged Dinner with Maria',
+        amountCentavos: 50000,
+        timestamp: now,
+      );
+      final serverAct = TabbyActivity(
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        actorName: 'You',
+        description: 'Dinner',
+        amountCentavos: 50000,
+        timestamp: now.add(const Duration(seconds: 2)),
+      );
+
+      final crossSourceDeduped =
+          TabbyNotifier.deduplicateActivities([serverAct, localAct]);
+      expect(crossSourceDeduped.length, equals(1));
+      expect(crossSourceDeduped.first.id,
+          equals('550e8400-e29b-41d4-a716-446655440000'));
+      expect(crossSourceDeduped.first.description, equals('Dinner'));
+
+      // Also when local appears before server candidate
+      final crossSourceDedupedReversed =
+          TabbyNotifier.deduplicateActivities([localAct, serverAct]);
+      expect(crossSourceDedupedReversed.length, equals(1));
+      expect(crossSourceDedupedReversed.first.id,
+          equals('550e8400-e29b-41d4-a716-446655440000'));
+
+      // Test payment activity deduplication
+      final localPay = TabbyActivity(
+        id: 'payment-1726650000000',
+        actorName: 'You',
+        description: 'You paid Maria via GCash',
+        amountCentavos: 25000,
+        timestamp: now,
+        icon: 'payment',
+      );
+      final serverPay = TabbyActivity(
+        id: '770e8400-e29b-41d4-a716-446655440000',
+        actorName: 'You',
+        description: 'You paid',
+        amountCentavos: 25000,
+        timestamp: now.add(const Duration(seconds: 1)),
+        icon: 'payment',
+      );
+
+      final payDeduped =
+          TabbyNotifier.deduplicateActivities([serverPay, localPay]);
+      expect(payDeduped.length, equals(1));
+      expect(payDeduped.first.id,
+          equals('770e8400-e29b-41d4-a716-446655440000'));
+
+      // Test distinct transactions at different times are preserved
+      final morningCoffee = TabbyActivity(
+        id: 'coffee-morning',
+        actorName: 'You',
+        description: 'Coffee',
+        amountCentavos: 15000,
+        timestamp: now.subtract(const Duration(hours: 4)),
+      );
+      final afternoonCoffee = TabbyActivity(
+        id: 'coffee-afternoon',
+        actorName: 'You',
+        description: 'Coffee',
+        amountCentavos: 15000,
+        timestamp: now,
+      );
+
+      final separateDeduped = TabbyNotifier.deduplicateActivities(
+          [morningCoffee, afternoonCoffee]);
+      expect(separateDeduped.length, equals(2));
+
+      // Test non-financial activity deduplication (zero amounts within 30s)
+      final nudge1 = TabbyActivity(
+        id: 'act-nudge-1',
+        actorName: 'You',
+        description: 'sent friendly reminder to Juan',
+        amountCentavos: 0,
+        timestamp: now,
+      );
+      final nudge2 = TabbyActivity(
+        id: 'act-nudge-2',
+        actorName: 'You',
+        description: 'sent friendly reminder to Juan',
+        amountCentavos: 0,
+        timestamp: now.add(const Duration(seconds: 3)),
+      );
+
+      final nudgeDeduped =
+          TabbyNotifier.deduplicateActivities([nudge1, nudge2]);
+      expect(nudgeDeduped.length, equals(1));
     });
   });
 }
