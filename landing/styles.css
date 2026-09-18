@@ -98,14 +98,15 @@ button {
 }
 
 /* ==========================================================================
-   Scroll-Triggered "Slowly Pop" Animation Engine
-   - Elements start scaled down and smoothly pop with a playful spring curve
+   Scroll-Triggered Pop Animation Engine
+   - Elements start scaled down and smoothly pop with a spring curve on scroll
+   - Re-triggers cleanly on every scroll when entering the viewport
    ========================================================================== */
 .pop-on-scroll {
   opacity: 0;
-  transform: translateY(28px) scale(0.96);
-  transition: opacity 0.72s cubic-bezier(0.34, 1.35, 0.64, 1),
-              transform 0.72s cubic-bezier(0.34, 1.35, 0.64, 1),
+  transform: translateY(24px) scale(0.96);
+  transition: opacity 0.68s cubic-bezier(0.34, 1.35, 0.64, 1),
+              transform 0.68s cubic-bezier(0.34, 1.35, 0.64, 1),
               box-shadow 0.35s ease,
               border-color 0.35s ease;
   will-change: opacity, transform;
@@ -114,6 +115,13 @@ button {
 .pop-on-scroll.is-visible {
   opacity: 1;
   transform: translateY(0) scale(1);
+}
+
+.pop-on-scroll:not(.is-visible) {
+  opacity: 0;
+  transform: translateY(24px) scale(0.96);
+  transition-delay: 0s !important;
+  transition-duration: 0.18s;
 }
 
 /* Stagger Delays for Grouped Elements */
@@ -131,7 +139,7 @@ button {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(248, 248, 248, 0.88);
+  background: rgba(248, 248, 248, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(229, 231, 235, 0.85);
@@ -143,16 +151,17 @@ button {
   align-items: center;
   justify-content: space-between;
   height: 72px;
+  gap: 16px;
 }
 
 .nav-brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   font-weight: 700;
-  font-size: 1.25rem;
   letter-spacing: -0.02em;
   color: var(--tabby-charcoal);
+  flex-shrink: 0;
 }
 
 .brand-icon {
@@ -161,6 +170,15 @@ button {
   border-radius: var(--radius-sm);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
   object-fit: cover;
+  flex-shrink: 0;
+}
+
+.brand-name {
+  font-weight: 700;
+  font-size: clamp(1.1rem, 2.5vw, 1.25rem);
+  letter-spacing: -0.02em;
+  color: var(--tabby-charcoal);
+  white-space: nowrap;
 }
 
 .nav-tagline {
@@ -171,12 +189,13 @@ button {
   padding: 3px 8px;
   border-radius: 999px;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: clamp(14px, 2vw, 28px);
   list-style: none;
 }
 
@@ -187,6 +206,7 @@ button {
   position: relative;
   padding: 4px 0;
   transition: color 0.2s ease;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
@@ -196,6 +216,7 @@ button {
 .nav-cta {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 
 /* ==========================================================================
@@ -318,6 +339,9 @@ button {
   margin-bottom: 20px;
   box-shadow: var(--shadow-sm);
   align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .status-dot {
@@ -328,6 +352,7 @@ button {
   display: inline-block;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
   animation: pulse-dot 2s infinite ease-in-out;
+  flex-shrink: 0;
 }
 
 @keyframes pulse-dot {
@@ -337,13 +362,15 @@ button {
 }
 
 .hero-title {
-  font-size: 3.5rem;
-  line-height: 1.1;
+  font-size: clamp(2.1rem, 5.2vw + 0.5rem, 3.5rem);
+  line-height: 1.12;
   font-weight: 800;
   letter-spacing: -0.035em;
   color: var(--tabby-charcoal);
   margin-bottom: 18px;
   text-align: left;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .hero-title .highlight {
@@ -365,12 +392,14 @@ button {
 }
 
 .hero-subtitle {
-  font-size: 1.0625rem;
+  font-size: clamp(0.9375rem, 1.2vw + 0.6rem, 1.0625rem);
   line-height: 1.6;
   color: var(--tabby-muted);
   max-width: 520px;
   margin: 0 0 22px;
   text-align: left;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .hero-feature-pills {
@@ -383,6 +412,7 @@ button {
 .pill-badge {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   font-size: 0.8125rem;
   font-weight: 600;
   padding: 5px 12px;
@@ -392,6 +422,14 @@ button {
   color: #374151;
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s ease, border-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.pill-icon {
+  width: 14px;
+  height: 14px;
+  color: #B45309;
+  flex-shrink: 0;
 }
 
 .pill-badge:hover {
@@ -429,7 +467,7 @@ button {
 }
 
 /* ==========================================================================
-   3-Phone Mockup Showcase Stage (Desktop & Mobile: Stick Together!)
+   3-Phone Mockup Showcase Stage
    ========================================================================== */
 .hero-mockup-stage {
   position: relative;
@@ -585,17 +623,6 @@ button {
   background: var(--tabby-amber);
 }
 
-/* Subtle floating ambient effect for hero mockups */
-@keyframes hero-mockup-float {
-  0% { transform: translateY(var(--mockup-center-y)) scale(1.02); }
-  50% { transform: translateY(calc(var(--mockup-center-y) - 6px)) scale(1.025); }
-  100% { transform: translateY(var(--mockup-center-y)) scale(1.02); }
-}
-
-.mockup-phone-center.is-floating:not(:hover):not(.is-focused) {
-  animation: hero-mockup-float 5s ease-in-out infinite;
-}
-
 /* ==========================================================================
    Section: Feature Grid
    ========================================================================== */
@@ -623,18 +650,22 @@ button {
 }
 
 .section-title {
-  font-size: 2.25rem;
+  font-size: clamp(1.65rem, 3.2vw + 0.6rem, 2.25rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--tabby-charcoal);
   margin-bottom: 16px;
-  line-height: 1.2;
+  line-height: 1.22;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .section-description {
-  font-size: 1.0625rem;
+  font-size: clamp(0.9rem, 1vw + 0.65rem, 1.0625rem);
   color: var(--tabby-muted);
   line-height: 1.6;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .features-grid {
@@ -728,11 +759,11 @@ button {
 }
 
 .mascot-banner-text h3 {
-  font-size: 2rem;
+  font-size: clamp(1.4rem, 2.6vw + 0.6rem, 2rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   margin-bottom: 14px;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .mascot-banner-text p {
@@ -784,8 +815,25 @@ button {
 }
 
 .state-icon-badge {
-  font-size: 2rem;
-  margin-bottom: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--tabby-amber-light);
+  color: #B45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  transition: transform 0.25s ease;
+}
+
+.state-icon-badge svg {
+  width: 22px;
+  height: 22px;
+}
+
+.mascot-state-card:hover .state-icon-badge {
+  transform: scale(1.08);
 }
 
 .state-status-pill {
@@ -1011,7 +1059,7 @@ button {
 }
 
 .download-main-title {
-  font-size: 1.75rem;
+  font-size: clamp(1.35rem, 2.2vw + 0.7rem, 1.75rem);
   font-weight: 800;
   letter-spacing: -0.02em;
   margin-bottom: 12px;
@@ -1296,7 +1344,6 @@ button {
 
 /* ==========================================================================
    Responsive Breakpoints
-   - The 3 mockups remain STUCK TOGETHER in desktop, tablet & mobile!
    ========================================================================== */
 @media (max-width: 1100px) {
   :root {
@@ -1309,10 +1356,6 @@ button {
   .hero-container {
     gap: 32px;
   }
-
-  .hero-title {
-    font-size: 3rem;
-  }
 }
 
 @media (max-width: 992px) {
@@ -1323,6 +1366,10 @@ button {
     --mockup-tilt: 2.8deg;
     --mockup-side-y: 16px;
     --mockup-center-y: -6px;
+  }
+
+  .nav-tagline {
+    display: none; /* Hide tagline on tablet to keep nav bar spacious */
   }
 
   .hero-container {
@@ -1344,7 +1391,6 @@ button {
   }
 
   .hero-title {
-    font-size: 2.85rem;
     text-align: center;
   }
 
@@ -1396,6 +1442,12 @@ button {
   }
 }
 
+@media (max-width: 860px) {
+  .nav-links {
+    display: none; /* Clean collapse of desktop navigation links */
+  }
+}
+
 @media (max-width: 768px) {
   :root {
     --mockup-side-w: 140px;
@@ -1410,8 +1462,17 @@ button {
     padding: 0 20px;
   }
 
+  .navbar-inner {
+    height: 64px;
+    gap: 12px;
+  }
+
+  .brand-icon {
+    width: 34px;
+    height: 34px;
+  }
+
   .hero-mockup-stage {
-    /* Retain stick-together presentation in mobile view! */
     display: flex;
     justify-content: center;
     align-items: flex-end;
@@ -1436,6 +1497,19 @@ button {
   }
 }
 
+@media (max-width: 640px) {
+  .footer-top, .footer-bottom {
+    flex-direction: column;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 520px) {
   :root {
     --mockup-side-w: 114px;
@@ -1450,8 +1524,19 @@ button {
     padding: 0 16px;
   }
 
-  .hero-title {
-    font-size: 2.35rem;
+  .navbar-inner {
+    height: 60px;
+    gap: 8px;
+  }
+
+  .nav-cta .btn {
+    padding: 7px 12px;
+    font-size: 0.8rem;
+    gap: 6px;
+  }
+
+  .nav-cta .btn-pill-version {
+    display: none;
   }
 
   .hero-mockup-stage {
@@ -1460,10 +1545,6 @@ button {
 
   .download-main-card {
     padding: 28px 20px;
-  }
-
-  .download-main-title {
-    font-size: 1.45rem;
   }
 }
 
@@ -1481,29 +1562,24 @@ button {
     padding: 0 12px;
   }
 
-  .hero-title {
-    font-size: 2.05rem;
-  }
-}
-
-@media (max-width: 640px) {
   .navbar-inner {
-    height: 64px;
+    height: 56px;
+    gap: 6px;
   }
 
-  .nav-links {
-    display: none;
+  .brand-icon {
+    width: 30px;
+    height: 30px;
   }
 
-  .footer-top, .footer-bottom {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
+  .brand-name {
+    font-size: 1.05rem;
   }
 
-  .footer-links {
-    flex-wrap: wrap;
-    justify-content: center;
+  .nav-cta .btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    gap: 5px;
   }
 }
 

@@ -30,7 +30,7 @@
     <div class="container navbar-inner">
       <a href="#" class="nav-brand">
         <img src="assets/tabby-icon.jpg" alt="Tabby Mascot" class="brand-icon">
-        <span>Tabby</span>
+        <span class="brand-name">Tabby</span>
         <span class="nav-tagline">Keep tabs. Settle up.</span>
       </a>
 
@@ -50,12 +50,12 @@
            class="btn btn-primary btn-sm"
            data-role="apk-download-btn"
            download="Tabby.apk">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="btn-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span>Download APK</span>
+          <span class="btn-text">Download APK</span>
           <span class="btn-pill-version" data-role="version-tag">v1.0.1</span>
         </a>
       </div>
@@ -65,7 +65,7 @@
   <!-- Hero Section -->
   <section class="hero-section">
     <div class="container hero-container">
-      <div class="hero-text-col hero-header-center pop-on-scroll">
+      <div class="hero-text-col hero-header-center">
         <div class="status-badge pop-on-scroll pop-delay-1">
           <span class="status-dot"></span>
           <span data-role="live-status">Checking for latest build...</span>
@@ -80,12 +80,36 @@
           The warm, socially frictionless shared-expense tracker built specifically for Filipino barkadas, roommates, and couples. Track shared meals and trips in Philippine Pesos with zero floating-point drift, defuse awkwardness with our companion mascot, and settle instantly via GCash, Maya, or Cash.
         </p>
 
-        <!-- Feature Pill Highlights -->
+        <!-- Feature Pill Highlights (Clean Minimalist Vector Icons) -->
         <div class="hero-feature-pills pop-on-scroll pop-delay-4">
-          <span class="pill-badge">🪙 Centavo-Accurate (₱)</span>
-          <span class="pill-badge">⚡ GCash, Maya & QR Ph</span>
-          <span class="pill-badge">🐱 Mascot Companion</span>
-          <span class="pill-badge">☁️ Offline-First Sync</span>
+          <span class="pill-badge">
+            <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v12M15 9.5a2.5 2.5 0 0 0-2.5-2.5H9.5a2.5 2.5 0 0 0 0 5h5a2.5 2.5 0 0 1 0 5H9a2.5 2.5 0 0 1-2.5-2.5"></path>
+            </svg>
+            <span>Centavo-Accurate (₱)</span>
+          </span>
+          <span class="pill-badge">
+            <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <span>GCash, Maya &amp; QR Ph</span>
+          </span>
+          <span class="pill-badge">
+            <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+              <line x1="9" y1="9" x2="9.01" y2="9"></line>
+              <line x1="15" y1="9" x2="15.01" y2="9"></line>
+            </svg>
+            <span>Mascot Companion</span>
+          </span>
+          <span class="pill-badge">
+            <svg class="pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+            </svg>
+            <span>Offline-First Sync</span>
+          </span>
         </div>
 
         <div class="hero-cta-group pop-on-scroll pop-delay-5">
@@ -110,7 +134,8 @@
         <div class="hero-meta pop-on-scroll pop-delay-6">
           <div class="meta-item">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
             </svg>
             <span>Direct APK</span>
           </div>
@@ -131,9 +156,9 @@
         </div>
       </div>
 
-      <!-- 3-Phone Mockup Showcase Stage (Stuck Together in Desktop & Mobile Format) -->
+      <!-- 3-Phone Mockup Showcase Stage -->
       <div class="hero-mockup-stage pop-on-scroll pop-delay-2" title="Tap any phone to focus">
-        <!-- Phone 1: Homepage of App -->
+        <!-- Phone 1: Homepage -->
         <div class="mockup-item mockup-phone-left" tabindex="0" role="button" aria-label="Tabby App Homepage Screen">
           <div class="mockup-frame">
             <div class="mockup-notch"></div>
@@ -147,7 +172,7 @@
           </div>
         </div>
 
-        <!-- Phone 2: Banner Page of App (Hero Center) -->
+        <!-- Phone 2: Banner Page -->
         <div class="mockup-item mockup-phone-center is-floating" tabindex="0" role="button" aria-label="Tabby App Mascot Onboarding Screen">
           <div class="mockup-frame mockup-frame-primary">
             <div class="mockup-notch"></div>
@@ -185,7 +210,7 @@
         <span class="section-tag pop-on-scroll pop-delay-1">Engineered for Barkadas</span>
         <h2 class="section-title pop-on-scroll pop-delay-2">Friendship First, Accounting Second</h2>
         <p class="section-description pop-on-scroll pop-delay-3">
-          Traditional expense trackers feel cold, confrontational, or corporate. Tabby absorbs interpersonal awkwardness ("hiya") with companion warmth, transparent ledgers, and lightning-fast entry.
+          Traditional expense trackers feel cold, confrontational, or corporate. Tabby absorbs interpersonal awkwardness with companion warmth, transparent ledgers, and lightning-fast entry.
         </p>
       </div>
 
@@ -223,10 +248,8 @@
         <div class="feature-card pop-on-scroll pop-delay-3">
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
+              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
             </svg>
           </div>
           <h3 class="feature-card-title">Philippine Payment Rails</h3>
@@ -239,15 +262,21 @@
         <div class="feature-card pop-on-scroll pop-delay-4">
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="6" x2="12" y2="18"></line>
-              <line x1="8" y1="10" x2="16" y2="10"></line>
-              <line x1="8" y1="14" x2="16" y2="14"></line>
+              <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+              <line x1="8" y1="6" x2="16" y2="6"></line>
+              <line x1="16" y1="14" x2="16" y2="18"></line>
+              <path d="M16 10h.01"></path>
+              <path d="M12 10h.01"></path>
+              <path d="M8 10h.01"></path>
+              <path d="M12 14h.01"></path>
+              <path d="M8 14h.01"></path>
+              <path d="M12 18h.01"></path>
+              <path d="M8 18h.01"></path>
             </svg>
           </div>
           <h3 class="feature-card-title">Zero Floating-Point Drift</h3>
           <p class="feature-card-desc">
-            Centavo-accurate integer arithmetic (1 PHP = 100 centavos). When splitting odd amounts (e.g. ₱500 among 3 friends), odd centavos are distributed deterministically so no penny is lost.
+            Centavo-accurate integer arithmetic (1 PHP = 100 centavos). When splitting odd amounts (such as ₱500 among 3 friends), odd centavos are distributed deterministically so no penny is lost.
           </p>
         </div>
 
@@ -297,10 +326,10 @@
         <div class="feature-card pop-on-scroll pop-delay-2">
           <div class="feature-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <polyline points="9 15 12 18 15 15"></polyline>
-              <line x1="12" y1="9" x2="12" y2="18"></line>
+              <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"></path>
+              <path d="M14 8H8"></path>
+              <path d="M16 12H8"></path>
+              <path d="M13 16H8"></path>
             </svg>
           </div>
           <h3 class="feature-card-title">Proof-of-Payment Receipts</h3>
@@ -325,25 +354,29 @@
 
       <!-- Mascot Banner -->
       <div class="mascot-banner pop-on-scroll">
-        <div class="mascot-banner-text pop-on-scroll pop-delay-1">
-          <h3 class="pop-on-scroll pop-delay-2">Friendship First, Accounting Second</h3>
-          <p class="pop-on-scroll pop-delay-3">
+        <div class="mascot-banner-text">
+          <h3>Friendship First, Accounting Second</h3>
+          <p>
             No aggressive red warning banners, no legalistic notices, and no cold debt-collector language. Tabby's friendly cat companion reflects the state of your financial ledger with empathy, disarming reminders, and celebration confetti.
           </p>
-          <div class="mascot-quote pop-on-scroll pop-delay-4">
-            <em>"Para klaro ang usapan — without any of the awkwardness."</em>
+          <div class="mascot-quote">
+            <em>"Clear agreements and peaceful settlement, with zero awkwardness."</em>
           </div>
         </div>
-        <div class="mascot-img-wrap pop-on-scroll pop-delay-2">
+        <div class="mascot-img-wrap">
           <img src="assets/tabby-icon.jpg" alt="Tabby Mascot Companion" class="mascot-circle-img">
         </div>
       </div>
 
-      <!-- 3 Mascot Emotion States Cards -->
+      <!-- 3 Mascot Emotion States Cards (Minimalist SVG Icons) -->
       <div class="mascot-states-grid">
         <!-- State 1: Sleeping (Zero Balance) -->
         <div class="mascot-state-card pop-on-scroll pop-delay-1">
-          <div class="state-icon-badge">💤</div>
+          <div class="state-icon-badge" aria-label="Settled and Sleeping">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </div>
           <div class="state-status-pill status-pill-settled">Net Balance: ₱0.00</div>
           <h4 class="state-title">Sleeping & Content ("Bayad na!")</h4>
           <p class="state-desc">
@@ -353,7 +386,12 @@
 
         <!-- State 2: Curious & Alert (Active Balance) -->
         <div class="mascot-state-card pop-on-scroll pop-delay-2">
-          <div class="state-icon-badge">👀</div>
+          <div class="state-icon-badge" aria-label="Curious and Alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
           <div class="state-status-pill status-pill-active">Running Ledger</div>
           <h4 class="state-title">Curious & Alert</h4>
           <p class="state-desc">
@@ -363,11 +401,19 @@
 
         <!-- State 3: Celebrating (Payment Confirmed) -->
         <div class="mascot-state-card pop-on-scroll pop-delay-3">
-          <div class="state-icon-badge">🎉</div>
+          <div class="state-icon-badge" aria-label="Settled Celebration">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+              <path d="M5 3v4"></path>
+              <path d="M19 17v4"></path>
+              <path d="M3 5h4"></path>
+              <path d="M17 19h4"></path>
+            </svg>
+          </div>
           <div class="state-status-pill status-pill-settled">Payment Confirmed</div>
           <h4 class="state-title">Settled Celebration</h4>
           <p class="state-desc">
-            When payment proof is uploaded and confirmed via GCash, Maya, or Cash, Tabby bursts with confetti to celebrate a clean ledger with your friend.
+            When payment proof is uploaded and confirmed via GCash, Maya, or Cash, Tabby celebrates a clean ledger with your friend.
           </p>
         </div>
       </div>
@@ -411,7 +457,7 @@
           <div class="comp-body">
             <div class="comp-row comp-bad">
               <span class="comp-tag">Generic Apps:</span>
-              <p>US-centric rails (Venmo, PayPal, Zelle) with no integration for Philippine mobile wallets.</p>
+              <p>US-centric rails with no native integration for Philippine mobile wallets.</p>
             </div>
             <div class="comp-row comp-good">
               <span class="comp-tag">Tabby:</span>
@@ -445,11 +491,11 @@
           <div class="comp-body">
             <div class="comp-row comp-bad">
               <span class="comp-tag">Generic Apps:</span>
-              <p>Aggressive red debt badges and formal collection notices that ruin friendships.</p>
+              <p>Aggressive debt badges and formal collection notices that ruin friendships.</p>
             </div>
             <div class="comp-row comp-good">
               <span class="comp-tag">Tabby:</span>
-              <p><strong>Warm Mascot Companion.</strong> Empathetic Taglish/conversational English reminders and zero debt shaming.</p>
+              <p><strong>Warm Mascot Companion.</strong> Empathetic reminders and zero debt shaming.</p>
             </div>
           </div>
         </div>
@@ -772,7 +818,7 @@
       <div class="footer-top">
         <div class="nav-brand">
           <img src="assets/tabby-icon.jpg" alt="Tabby Mascot" class="brand-icon">
-          <span>Tabby</span>
+          <span class="brand-name">Tabby</span>
           <span class="nav-tagline">Keep tabs. Settle up.</span>
         </div>
 
