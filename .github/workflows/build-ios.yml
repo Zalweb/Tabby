@@ -2,6 +2,7 @@ name: Build iOS IPA
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -75,6 +76,11 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string google" "$INFO_PLIST"
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$INFO_PLIST"
           /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" "$INFO_PLIST"
+
+          # Ensure camera, photo library, and Face ID descriptions exist
+          /usr/libexec/PlistBuddy -c "Add :NSFaceIDUsageDescription string 'Tabby uses Face ID to securely authenticate and protect your financial tabs.'" "$INFO_PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Tabby uses the camera to scan and upload QR codes, payment receipts, and profile photos.'" "$INFO_PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Tabby accesses your photo library to let you upload QR codes, payment receipts, and profile photos.'" "$INFO_PLIST" 2>/dev/null || true
 
           echo "Info.plist patched successfully."
           /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" "$INFO_PLIST"

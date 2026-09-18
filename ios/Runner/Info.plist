@@ -28,6 +28,10 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Tabby uses Face ID to securely authenticate and protect your financial tabs.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Tabby uses the camera to scan and upload QR codes, payment receipts, and profile photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Tabby accesses your photo library to let you upload QR codes, payment receipts, and profile photos.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
