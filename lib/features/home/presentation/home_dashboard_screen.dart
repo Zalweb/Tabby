@@ -6,6 +6,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/currency_card.dart';
 import '../../../shared/widgets/notification_center_sheet.dart';
 import '../../classroom/application/classroom_providers.dart';
+import '../../classroom/domain/classroom_models.dart';
 import '../../classroom/presentation/task_card_widget.dart';
 import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/domain/models.dart';
@@ -27,6 +28,22 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     final dashboardState = ref.watch(tabbyProvider);
     final notifier = ref.read(tabbyProvider.notifier);
     final currentUser = ref.watch(currentUserProvider);
+    final isClassroomConnected = ref.watch(classroomConnectionProvider) != null;
+    final classroomTasks = ref.watch(classroomTasksProvider);
+
+    // Include Google Classroom task reminders if they have a due date
+    final classroomReminders = isClassroomConnected
+        ? classroomTasks
+            .where((task) =>
+                task.state == ClassroomTaskState.assigned &&
+                task.dueAt != null)
+            .toList()
+        : <ClassroomTask>[];
+
+    final List<_HomeReminderItem> combinedReminders = [
+      ...dashboardState.reminders.map((r) => _TabDueReminderItem(r)),
+      ...classroomReminders.map((t) => _ClassroomTaskReminderItem(t)),
+    ]..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
     return Scaffold(
       backgroundColor: TabbyColors.brandEmerald,
@@ -37,6 +54,8 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
             await Future.wait([
               ref.read(tabbyProvider.notifier).refreshTabs(),
               ref.read(currentUserProvider.notifier).loadFromSupabase(),
+              if (ref.read(classroomConnectionProvider) != null)
+                ref.read(classroomTasksProvider.notifier).refresh(),
             ]);
           },
           color: TabbyColors.brandEmerald,
@@ -552,10 +571,6 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-
-                      _buildUpcomingTasksPreview(context, ref),
-
                       const SizedBox(height: 24),
 
                       // Upcoming & Reminders Header
@@ -576,8 +591,25 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
+                          if (isClassroomConnected)
+                            TextButton(
+                              onPressed: () => context.go('/tasks'),
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                              ),
+                              child: const Text(
+                                'Tasks',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandEmerald,
+                                ),
+                              ),
+                            ),
                           Text(
-                            '${dashboardState.reminders.length} items',
+                            '${combinedReminders.length} items',
                             style: const TextStyle(
                               fontSize: 12,
                               color: TabbyColors.textSecondary,
@@ -589,7 +621,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                       const SizedBox(height: 10),
 
                       // Upcoming Reminders List
-                      if (dashboardState.reminders.isEmpty)
+                      if (combinedReminders.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -609,165 +641,14 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                           ),
                         )
                       else
-                        ...dashboardState.reminders.map((reminder) {
-                          final isOverdue =
-                              reminder.dueDate.isBefore(DateTime.now());
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: TabbyColors.surfaceWhite,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: TabbyColors.borderMint),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x04000000),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor: reminder.isIWhoOwe
-                                      ? TabbyColors.iconBgBlue
-                                      : TabbyColors.iconBgMint,
-                                  child: Text(
-                                    reminder.friendName.isNotEmpty
-                                        ? reminder.friendName
-                                            .substring(0, 1)
-                                            .toUpperCase()
-                                        : '?',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      color: reminder.isIWhoOwe
-                                          ? TabbyColors.accentBlue
-                                          : TabbyColors.brandEmerald,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        reminder.friendName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                          color: TabbyColors.brandDarkTeal,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        reminder.description,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: TabbyColors.textSecondary,
-                                        ),
-                                      ),
-                                      if (isOverdue) ...[
-                                        const SizedBox(height: 2),
-                                        const Text(
-                                          'Past due date',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: TabbyColors.alertRed,
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      CurrencyFormatter.formatCentavos(
-                                          reminder.amountCentavos),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w800,
-                                        color: reminder.isIWhoOwe
-                                            ? TabbyColors.accentBlue
-                                            : TabbyColors.brandDarkTeal,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    if (reminder.isIWhoOwe)
-                                      InkWell(
-                                        onTap: () => context
-                                            .go('/tabs/${reminder.tabId}'),
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: TabbyColors.brandEmerald,
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: const Text(
-                                            'Pay',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: TabbyColors.surfaceWhite,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      InkWell(
-                                        onTap: () {
-                                          notifier.sendGentleNudge(
-                                            tabId: reminder.tabId,
-                                            friendName: reminder.friendName,
-                                            amountCentavos:
-                                                reminder.amountCentavos,
-                                          );
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                  'Friendly reminder sent to ${reminder.friendName}!'),
-                                              backgroundColor:
-                                                  TabbyColors.brandDarkTeal,
-                                              duration:
-                                                  const Duration(seconds: 2),
-                                            ),
-                                          );
-                                        },
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: TabbyColors.brandMintAccent,
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: const Text(
-                                            'Remind',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: TabbyColors.brandDarkTeal,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
+                        ...combinedReminders.map((item) {
+                          if (item is _TabDueReminderItem) {
+                            return _buildTabDueCard(
+                                context, item.reminder, notifier);
+                          } else if (item is _ClassroomTaskReminderItem) {
+                            return _buildClassroomTaskCard(context, item.task);
+                          }
+                          return const SizedBox.shrink();
                         }),
                       const SizedBox(height: 24),
 
@@ -997,35 +878,313 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
     );
   }
 
-  Widget _buildUpcomingTasksPreview(BuildContext context, WidgetRef ref) {
-    final isConnected = ref.watch(classroomConnectionProvider) != null;
-    final preview = ref.watch(upcomingTasksPreviewProvider);
-    if (!isConnected || preview.isEmpty) return const SizedBox.shrink();
+  Widget _buildTabDueCard(
+    BuildContext context,
+    UpcomingReminder reminder,
+    TabbyNotifier notifier,
+  ) {
+    final isOverdue = reminder.dueDate.isBefore(DateTime.now());
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Upcoming Tasks',
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: TabbyColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: TabbyColors.borderMint),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x04000000),
+            blurRadius: 6,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: reminder.isIWhoOwe
+                ? TabbyColors.iconBgBlue
+                : TabbyColors.iconBgMint,
+            child: Text(
+              reminder.friendName.isNotEmpty
+                  ? reminder.friendName.substring(0, 1).toUpperCase()
+                  : '?',
               style: TextStyle(
-                fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: TabbyColors.brandDarkTeal,
+                color: reminder.isIWhoOwe
+                    ? TabbyColors.accentBlue
+                    : TabbyColors.brandEmerald,
               ),
             ),
-            TextButton(
-              onPressed: () => context.go('/tasks'),
-              child: const Text('See All'),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  reminder.friendName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: TabbyColors.brandDarkTeal,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  reminder.description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: TabbyColors.textSecondary,
+                  ),
+                ),
+                if (isOverdue) ...[
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Past due date',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: TabbyColors.alertRed,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
-        ),
-        ...preview.map((task) => CompactTaskCard(task: task)),
-        const SizedBox(height: 16),
-      ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                CurrencyFormatter.formatCentavos(reminder.amountCentavos),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: reminder.isIWhoOwe
+                      ? TabbyColors.accentBlue
+                      : TabbyColors.brandDarkTeal,
+                ),
+              ),
+              const SizedBox(height: 6),
+              if (reminder.isIWhoOwe)
+                InkWell(
+                  onTap: () => context.go('/tabs/${reminder.tabId}'),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: TabbyColors.brandEmerald,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Pay',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: TabbyColors.surfaceWhite,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                InkWell(
+                  onTap: () {
+                    notifier.sendGentleNudge(
+                      tabId: reminder.tabId,
+                      friendName: reminder.friendName,
+                      amountCentavos: reminder.amountCentavos,
+                    );
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Friendly reminder sent to ${reminder.friendName}!',
+                        ),
+                        backgroundColor: TabbyColors.brandEmerald,
+                      ),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: TabbyColors.brandMintAccent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Remind',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildClassroomTaskCard(
+    BuildContext context,
+    ClassroomTask task,
+  ) {
+    final isOverdue = task.isOverdue;
+    final courseColor = classroomColorFromHex(task.courseColorHex);
+    final dueAt = task.dueAt;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.go('/tasks'),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: TabbyColors.borderMint),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x04000000),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: courseColor.withValues(alpha: 0.14),
+                child: Icon(
+                  Icons.assignment_outlined,
+                  color: courseColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task.courseName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: courseColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    if (isOverdue) ...[
+                      const Text(
+                        'Past due date',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: TabbyColors.alertRed,
+                        ),
+                      ),
+                    ] else if (dueAt != null) ...[
+                      Text(
+                        'Due ${_formatDueDateTime(dueAt)}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: TabbyColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    classroomTimeRemainingLabel(task),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: task.urgency == TaskUrgency.upcoming
+                          ? TabbyColors.textSecondary
+                          : classroomUrgencyColor(task.urgency),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: TabbyColors.brandMintAccent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'View',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDueDateTime(DateTime dt) {
+    final now = DateTime.now();
+    final isToday =
+        now.year == dt.year && now.month == dt.month && now.day == dt.day;
+    final hour = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    if (isToday) {
+      return 'Today at $hour:$minute $period';
+    }
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    final month = months[dt.month - 1];
+    return '$month ${dt.day} at $hour:$minute $period';
   }
 
   Widget _buildSplitFriendsPromoCard(BuildContext context) {
@@ -1309,4 +1468,22 @@ class _PromoPerson extends StatelessWidget {
       child: Icon(icon, size: size * 0.55, color: color),
     );
   }
+}
+
+abstract class _HomeReminderItem {
+  DateTime get dueDate;
+}
+
+class _TabDueReminderItem extends _HomeReminderItem {
+  final UpcomingReminder reminder;
+  _TabDueReminderItem(this.reminder);
+  @override
+  DateTime get dueDate => reminder.dueDate;
+}
+
+class _ClassroomTaskReminderItem extends _HomeReminderItem {
+  final ClassroomTask task;
+  _ClassroomTaskReminderItem(this.task);
+  @override
+  DateTime get dueDate => task.dueAt!;
 }
