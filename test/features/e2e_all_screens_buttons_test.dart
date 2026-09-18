@@ -949,10 +949,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // 6. Create Group validation: empty group name
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
-      await tester.pumpAndSettle();
-
       final createGroupBtn = find.text('Create a Group');
+      await tester.ensureVisible(createGroupBtn);
+      await tester.pumpAndSettle();
       if (createGroupBtn.evaluate().isNotEmpty) {
         await tester.tap(createGroupBtn);
         await tester.pumpAndSettle();

@@ -38,7 +38,7 @@ void main() {
     // Verify Profile screen elements
     expect(find.text('Profile & Settings'), findsOneWidget);
     expect(find.text('Payment Methods'), findsOneWidget);
-    expect(find.text('No friends added yet'), findsOneWidget);
+    expect(find.text('Manage Friends'), findsOneWidget);
     expect(find.text('Currency Precision'), findsOneWidget);
   });
 }

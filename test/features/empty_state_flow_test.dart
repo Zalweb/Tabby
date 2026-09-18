@@ -50,7 +50,11 @@ void main() {
     // 3. Verify Profile empty state
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Manage Friends'));
+    await tester.pumpAndSettle();
     expect(find.text('No friends added yet'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
 
     // 4. Open Add Expense Modal
     await tester.tap(find.text('Home'));
@@ -106,6 +110,9 @@ void main() {
 
     // 7. Navigate to Profile and verify an unregistered participant is not a Friend
     await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('Alex'), findsNothing);
+    await tester.tap(find.text('Manage Friends'));
     await tester.pumpAndSettle();
     expect(find.text('Alex'), findsNothing);
     expect(find.text('No friends added yet'), findsOneWidget);

@@ -312,6 +312,12 @@ void main() {
     seedAcceptedFriend(profileContainer, name: 'Carlos Yulo');
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
+
+    // Navigate to Connections to manage friends
+    final manageFriends = find.text('Manage Friends');
+    await tester.ensureVisible(manageFriends);
+    await tester.tap(manageFriends);
+    await tester.pumpAndSettle();
     expect(find.text('Carlos Yulo'), findsOneWidget);
 
     // 2. Open friend options sheet and edit friend
@@ -344,10 +350,11 @@ void main() {
     expect(find.text('Carlos Edriel Yulo'), findsOneWidget);
 
     // 3. Create a Group Tab
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
+    appRouter.go('/profile');
     await tester.pumpAndSettle();
-    expect(find.text('Create a Group'), findsOneWidget);
-    await tester.tap(find.text('Create a Group'), warnIfMissed: false);
+    final createGroupBtn = find.text('Create a Group');
+    await tester.ensureVisible(createGroupBtn);
+    await tester.tap(createGroupBtn);
     await tester.pumpAndSettle();
 
     expect(find.text('Create New Group Tab'), findsOneWidget);
@@ -367,9 +374,19 @@ void main() {
 
     await tester.tap(find.text('Create Group Tab'));
     await tester.pumpAndSettle();
-
-    expect(find.text('Gym Barkada'), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    // Verify group in Connections Groups tab
+    appRouter.go('/profile/connections');
+    await tester.pumpAndSettle();
+    final groupsTab = find.textContaining('Groups');
+    await tester.tap(groupsTab);
+    await tester.pumpAndSettle();
+    expect(find.text('Gym Barkada'), findsOneWidget);
+
+    // Return to profile for subsequent checks
+    appRouter.go('/profile');
     await tester.pumpAndSettle();
 
     // 4. Test QR Ph upload and removal
@@ -391,7 +408,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 5. Remove Friend
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -300));
+    appRouter.go('/profile/connections');
     await tester.pumpAndSettle();
     final moreBtn2 = find.byIcon(Icons.more_vert_rounded).first;
     await tester.ensureVisible(moreBtn2);
@@ -619,10 +636,9 @@ void main() {
     seedAcceptedFriend(profileContainer, name: 'Alex Dela Cruz');
 
     // Create a group
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -900));
-    await tester.pumpAndSettle();
     final createGroupBtn = find.text('Create a Group');
-    await tester.tap(createGroupBtn, warnIfMissed: false);
+    await tester.ensureVisible(createGroupBtn);
+    await tester.tap(createGroupBtn);
     await tester.pumpAndSettle();
 
     final groupNameField = find
@@ -669,10 +685,11 @@ void main() {
     await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pumpAndSettle();
 
-    // Remove group tab from profile
-    appRouter.go('/profile');
+    // Remove group tab from connections
+    appRouter.go('/profile/connections');
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -600));
+    final groupsTab = find.textContaining('Groups');
+    await tester.tap(groupsTab);
     await tester.pumpAndSettle();
 
     final groupTile = find.ancestor(
