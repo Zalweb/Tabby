@@ -12,7 +12,9 @@ import 'package:tabby/core/config/app_state.dart';
 
 void main() {
   group('Web & Responsive Viewport Rendering', () {
-    testWidgets('TabbyApp renders flawlessly on mobile viewport (390x844) without any white screen or overflow', (tester) async {
+    testWidgets(
+        'TabbyApp renders flawlessly on mobile viewport (390x844) without any white screen or overflow',
+        (tester) async {
       AppState.isAuthenticated.value = true;
       appRouter.go('/home');
       tester.view.physicalSize = const Size(390, 844);
@@ -36,7 +38,7 @@ void main() {
       expect(find.text('Upcoming & Reminders'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Recent Activity'), 300);
       expect(find.text('Recent Activity'), findsOneWidget);
-      expect(find.text('Log Expense'), findsOneWidget);
+      expect(find.text('Create a Tab'), findsOneWidget);
 
       // Navigate to My Tabs
       await tester.tap(find.text('My Tabs'));
@@ -48,14 +50,16 @@ void main() {
       await tester.tap(find.text('Profile'));
       await tester.pumpAndSettle();
       expect(find.text('Profile & Settings'), findsOneWidget);
-      expect(find.text('My Payment QR Ph'), findsOneWidget);
+      expect(find.text('Payment Methods'), findsOneWidget);
 
       // Reset route
       appRouter.go('/home');
       await tester.pumpAndSettle();
     });
 
-    testWidgets('TabbyApp renders flawlessly on desktop browser viewport (1200x800) inside IPhoneDeviceFrameWrapper', (tester) async {
+    testWidgets(
+        'TabbyApp renders flawlessly on desktop browser viewport (1200x800) inside IPhoneDeviceFrameWrapper',
+        (tester) async {
       AppState.isAuthenticated.value = true;
       appRouter.go('/home');
       tester.view.physicalSize = const Size(1200, 800);
@@ -103,7 +107,8 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('TabbyApp renders on compact mobile viewport (360x640)', (tester) async {
+    testWidgets('TabbyApp renders on compact mobile viewport (360x640)',
+        (tester) async {
       AppState.isAuthenticated.value = true;
       appRouter.go('/home');
       tester.view.physicalSize = const Size(360, 640);
@@ -124,7 +129,8 @@ void main() {
   });
 
   group('Standalone Widget Architectural Integrity', () {
-    testWidgets('CurrencyCard builds standalone without ParentDataWidget crash', (tester) async {
+    testWidgets('CurrencyCard builds standalone without ParentDataWidget crash',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -145,7 +151,9 @@ void main() {
       expect(find.text('To Pay'), findsOneWidget);
     });
 
-    testWidgets('CurrencyCard handles zero balance and positive balance correctly', (tester) async {
+    testWidgets(
+        'CurrencyCard handles zero balance and positive balance correctly',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -171,7 +179,8 @@ void main() {
       expect(find.text('Settled'), findsOneWidget);
     });
 
-    testWidgets('TabbyMascotWidget renders all 9 emotions without errors', (tester) async {
+    testWidgets('TabbyMascotWidget renders all 9 emotions without errors',
+        (tester) async {
       for (final emotion in MascotEmotion.values) {
         await tester.pumpWidget(
           MaterialApp(
@@ -186,7 +195,8 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Tabby'), findsOneWidget);
-        expect(find.text('Custom emotion message for ${emotion.name}'), findsOneWidget);
+        expect(find.text('Custom emotion message for ${emotion.name}'),
+            findsOneWidget);
       }
     });
 
@@ -212,8 +222,9 @@ void main() {
       await tester.tap(find.text('Open Modal'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Quick Log Expense'), findsOneWidget);
-      expect(find.text('Save Tab'), findsOneWidget);
+      expect(find.text('Create Tab'), findsOneWidget);
+      expect(find.text('Add People'), findsNWidgets(2));
+      expect(find.text('Next'), findsOneWidget);
     });
   });
 }

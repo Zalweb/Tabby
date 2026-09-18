@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/config/app_state.dart';
 import '../../../core/theme/tabby_colors.dart';
+import '../../../core/widgets/app_version_footer.dart';
 import '../../../shared/widgets/notification_center_sheet.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
@@ -12,11 +13,19 @@ import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
 import '../../tabs/domain/models.dart';
 import '../../tabs/presentation/add_expense_modal.dart';
+import '../../payment_methods/application/payment_methods_provider.dart';
+import '../../payment_methods/presentation/payment_methods_sheet.dart';
+import '../../app_update/data/app_update_service.dart';
+import '../../app_update/domain/app_update_models.dart';
 import '../../classroom/application/classroom_providers.dart';
+import '../../classroom/domain/classroom_models.dart';
 import '../../classroom/presentation/classroom_connect_sheet.dart';
+import '../application/sync_diagnostics_provider.dart';
+import 'sync_diagnostics_sheet.dart';
 
 typedef FriendLookup = Future<TabbyUser?> Function(String friendCode);
-typedef FriendRequestSubmitter = Future<FriendRequest?> Function(String friendCode);
+typedef FriendRequestSubmitter = Future<FriendRequest?> Function(
+    String friendCode);
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -33,14 +42,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final user = ref.watch(currentUserProvider);
     final friends = ref.watch(friendsProvider);
     final groups = ref.watch(groupsProvider);
-    final classroomConnection = ref.watch(classroomConnectionProvider);
-    final classroomCourses = ref.watch(classroomCoursesProvider);
-    final incomingRequests = ref.watch(tabbyProvider).friendRequests.where(
+    final incomingRequests = ref
+        .watch(tabbyProvider)
+        .friendRequests
+        .where(
           (request) =>
-              request.isIncoming && request.status == FriendRequestStatus.pending,
-        ).toList();
+              request.isIncoming &&
+              request.status == FriendRequestStatus.pending,
+        )
+        .toList();
     final settings = ref.watch(userSettingsProvider);
     final settingsNotifier = ref.read(userSettingsProvider.notifier);
+    final paymentMethods = ref.watch(paymentMethodsProvider(user.id));
+    final syncDiagnostics = ref.watch(syncDiagnosticsProvider);
+    final classroomConnection = ref.watch(classroomConnectionProvider);
+    final classroomCourses = ref.watch(classroomCoursesProvider);
+
+    void updateBiometrics(bool value) async {
+      final enabled = await settingsNotifier.toggleBiometrics(value);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(enabled
+                ? (value
+                    ? 'Biometric security enabled.'
+                    : 'Biometric security disabled.')
+                : 'This device could not verify biometric security.'),
+          ),
+        );
+    }
+
+    void updateNotifications(bool value) {
+      settingsNotifier.update(notificationsEnabled: value);
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+                value ? 'Notifications enabled.' : 'Notifications disabled.'),
+          ),
+        );
+    }
 
     return Scaffold(
       backgroundColor: TabbyColors.brandEmerald,
@@ -48,1071 +92,244 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         bottom: false,
         child: Column(
           children: [
-            // Top Green Header Section (Figma profile_7020_3844)
-            Container(
-              color: TabbyColors.brandEmerald,
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Profile & Settings',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: TabbyColors.brandDarkTeal,
-                        letterSpacing: -0.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.surfaceWhite,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.notifications_none_rounded,
-                        size: 22,
-                        color: TabbyColors.brandDarkTeal,
-                      ),
-                      onPressed: () => NotificationCenterSheet.show(context),
-                      tooltip: 'Notifications',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Main Curved Body with Center Avatar (Figma profile_7020_3844)
+            _buildProfileOuterHeader(context),
             Expanded(
               child: Material(
                 color: TabbyColors.bgCanvas,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(36)),
                 clipBehavior: Clip.antiAlias,
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 100),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Center Avatar Card (Figma profile_7020_3844)
-                      Center(
-                        child: Column(
-                          children: [
-                            GestureDetector(
-                              onTap: () => _showAvatarOptionsSheet(context, user),
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    width: 90,
-                                    height: 90,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: TabbyColors.brandEmerald, width: 3.5),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.1),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: ClipOval(
-                                      child: Container(
-                                        color: TabbyColors.brandEmerald,
-                                        child: Center(
-                                          child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                                              ? (user.avatarUrl == 'asset:mascot'
-                                                  ? const Icon(Icons.pets_rounded, size: 44, color: TabbyColors.surfaceWhite)
-                                                  : user.avatarUrl == 'asset:cat_cool'
-                                                      ? const Icon(Icons.sentiment_very_satisfied_rounded, size: 44, color: TabbyColors.surfaceWhite)
-                                                      : user.avatarUrl == 'asset:camera_snap'
-                                                          ? const Icon(Icons.camera_alt_rounded, size: 44, color: TabbyColors.surfaceWhite)
-                                                          : const Icon(Icons.account_circle_rounded, size: 48, color: TabbyColors.surfaceWhite))
-                                              : Text(
-                                                  user.displayName.isNotEmpty
-                                                      ? user.displayName.substring(0, 1).toUpperCase()
-                                                      : 'T',
-                                                  style: const TextStyle(
-                                                    fontSize: 36,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: TabbyColors.surfaceWhite,
-                                                  ),
-                                                ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    bottom: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: const BoxDecoration(
-                                        color: TabbyColors.brandDarkTeal,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.camera_alt_rounded,
-                                        size: 14,
-                                        color: TabbyColors.surfaceWhite,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              user.displayName,
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: TabbyColors.brandDarkTeal,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              user.friendCode == null
-                                  ? 'Tabby ID not available yet'
-                                  : 'Tabby ID: ${user.friendCode}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: TabbyColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${user.phone} • ${user.email}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: TabbyColors.textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Shareable account ID card
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: TabbyColors.surfaceWhite,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: TabbyColors.borderMint),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                      _buildProfileIdentity(context, user),
+                      const SizedBox(height: 22),
+                      _buildSectionHeading('Account'),
+                      const SizedBox(height: 8),
+                      _buildSettingsCard(
+                        rows: [
+                          _buildSettingsRow(
+                            icon: Icons.account_balance_wallet_outlined,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'Payment Methods',
+                            subtitle: paymentMethods.methods.isEmpty
+                                ? 'Add a payment method'
+                                : '${paymentMethods.methods.first.displayName} · ${paymentMethods.methods.length} saved',
+                            trailing: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: TabbyColors.iconBgBlue,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(
-                                    Icons.badge_outlined,
-                                    color: TabbyColors.accentLightBlue,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                const Expanded(
+                                ConstrainedBox(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 124),
                                   child: Text(
-                                    'Your Tabby ID',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: TabbyColors.brandDarkTeal,
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Copy Tabby ID',
-                                  onPressed: user.friendCode == null
-                                      ? null
-                                      : () {
-                                          Clipboard.setData(
-                                            ClipboardData(text: user.friendCode!),
-                                          );
-                                          ScaffoldMessenger.of(context)
-                                            ..clearSnackBars()
-                                            ..showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Tabby ID copied to clipboard.',
-                                                ),
-                                              ),
-                                            );
-                                        },
-                                  icon: const Icon(Icons.copy_rounded),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              user.friendCode ??
-                                  'Your shareable ID will appear after your account is synced.',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.2,
-                                color: TabbyColors.brandEmerald,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Share this ID with friends so they can connect with you without using account details.',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: TabbyColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            OutlinedButton.icon(
-                              onPressed: () => _showConnectByIdSheet(context),
-                              icon: const Icon(Icons.person_add_alt_1_rounded),
-                              label: const Text('Connect by Tabby ID'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: TabbyColors.brandEmerald,
-                                side: const BorderSide(
-                                  color: TabbyColors.brandEmerald,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (incomingRequests.isNotEmpty) ...[
-                        const SizedBox(height: 24),
-                        const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Friend Requests',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Material(
-                          color: TabbyColors.surfaceWhite,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(color: TabbyColors.borderMint),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: incomingRequests.map((request) {
-                              final isResponding =
-                                  _respondingFriendshipId == request.id;
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: TabbyColors.iconBgBlue,
-                                  child: Text(
-                                    request.otherUser.displayName.isNotEmpty
-                                        ? request.otherUser.displayName
-                                            .substring(0, 1)
-                                            .toUpperCase()
-                                        : '?',
+                                    paymentMethods.isLoading
+                                        ? 'Loading payment methods'
+                                        : paymentMethods.methods.isEmpty
+                                            ? 'GCash / Maya / Bank'
+                                            : paymentMethods
+                                                .methods.first.provider,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.end,
                                     style: const TextStyle(
-                                      color: TabbyColors.accentLightBlue,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                                title: Text(
-                                  request.otherUser.displayName,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: TabbyColors.brandDarkTeal,
-                                  ),
-                                ),
-                                subtitle: const Text(
-                                  'Wants to connect a shared tab with you.',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: TabbyColors.textSecondary,
-                                  ),
-                                ),
-                                trailing: isResponding
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Wrap(
-                                        spacing: 4,
-                                        children: [
-                                          IconButton(
-                                            tooltip: 'Decline request',
-                                            onPressed: () =>
-                                                _respondToFriendRequest(
-                                              request,
-                                              accept: false,
-                                            ),
-                                            icon: const Icon(
-                                              Icons.close_rounded,
-                                              color: TabbyColors.textSecondary,
-                                            ),
-                                          ),
-                                          IconButton(
-                                            tooltip: 'Accept request',
-                                            onPressed: () =>
-                                                _respondToFriendRequest(
-                                              request,
-                                              accept: true,
-                                            ),
-                                            icon: const Icon(
-                                              Icons.check_rounded,
-                                              color: TabbyColors.brandEmerald,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ],
-
-                      // Payment QR Ph Card (Figma / FinWise)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: TabbyColors.surfaceWhite,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: TabbyColors.borderMint),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x04000000),
-                              blurRadius: 8,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          color: TabbyColors.iconBgMint,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: const Icon(
-                                          Icons.qr_code_2_rounded,
-                                          color: TabbyColors.brandEmerald,
-                                          size: 22,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      const Expanded(
-                                        child: Text(
-                                          'My Payment QR Ph',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w800,
-                                            color: TabbyColors.brandDarkTeal,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: TabbyColors.brandMintAccent,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'GCash / Maya',
-                                    style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w700,
-                                      color: TabbyColors.brandDarkTeal,
+                                      color: TabbyColors.brandEmerald,
                                     ),
+                                  ),
+                                ),
+                                const Text(
+                                  'Manage Payment QR Code',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: TabbyColors.textSecondary,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            GestureDetector(
-                              onTap: () => _showQrManagerSheet(context, user),
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: TabbyColors.brandMintAccent,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                            ? Icons.qr_code_2_rounded
-                                            : Icons.add_a_photo_outlined,
-                                        size: 28,
-                                        color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                            ? TabbyColors.brandEmerald
-                                            : TabbyColors.brandDarkTeal,
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                            ? 'Custom QR Ph Code Active & Verified'
-                                            : (user.gcashNumber.isNotEmpty || user.mayaNumber.isNotEmpty
-                                                ? 'GCash: ${user.gcashNumber.isNotEmpty ? user.gcashNumber : 'Not set'} • Maya: ${user.mayaNumber.isNotEmpty ? user.mayaNumber : 'Not set'}'
-                                                : 'Upload your GCash or Maya QR Ph code'),
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                              ? TabbyColors.brandEmerald
-                                              : TabbyColors.brandDarkTeal,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      TextButton(
-                                        onPressed: () => _showQrManagerSheet(context, user),
-                                        child: Text(
-                                          user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                              ? 'Edit Payment QR Code'
-                                              : 'Manage Payment QR Code',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: TabbyColors.brandEmerald,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                            onTap: () => PaymentMethodsSheet.show(
+                              context,
+                              ownerUserId: user.id,
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Settings & Menu List (Figma profile_7020_3844 menu style)
-                      Material(
-                        color: TabbyColors.surfaceWhite,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: const BorderSide(color: TabbyColors.borderMint),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Column(
-                          children: [
-                            _buildProfileMenuItem(
-                              icon: Icons.person_rounded,
-                              iconBg: TabbyColors.iconBgBlue,
-                              iconColor: TabbyColors.accentLightBlue,
-                              title: 'Edit Profile',
-                              subtitle: 'Name, phone, and account details',
-                              onTap: () => _showEditProfileSheet(context, user),
-                            ),
-                            const Divider(height: 1),
-                            SwitchListTile(
-                              secondary: IconButton(
-                                icon: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: TabbyColors.iconBgMint,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.security_rounded, color: TabbyColors.brandEmerald, size: 20),
-                                ),
-                                padding: EdgeInsets.zero,
-                                tooltip: 'Security Settings',
-                                onPressed: () => _showSecuritySettingsSheet(context),
-                              ),
-                              title: const Text(
-                                'Security',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                              ),
-                              subtitle: Text(
-                                settings.biometricsEnabled ? 'Biometric security active' : 'Biometric security disabled',
-                                style: const TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
-                              ),
+                          ),
+                          _buildSettingsRow(
+                            icon: Icons.security_outlined,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'Security',
+                            subtitle: settings.biometricsEnabled
+                                ? 'Biometric security active'
+                                : 'Biometric security disabled',
+                            trailing: _buildSwitchWithDetails(
                               value: settings.biometricsEnabled,
-                              activeThumbColor: TabbyColors.brandEmerald,
-                              onChanged: (val) {
-                                settingsNotifier.update(biometricsEnabled: val);
-                                ScaffoldMessenger.of(context).clearSnackBars();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(val ? 'Biometric security enabled.' : 'Biometric security disabled.'),
-                                  ),
-                                );
-                              },
+                              tooltip: 'Security Settings',
+                              onChanged: updateBiometrics,
+                              onDetails: () =>
+                                  _showSecuritySettingsSheet(context),
                             ),
-                            const Divider(height: 1),
-                            SwitchListTile(
-                              secondary: IconButton(
-                                icon: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: TabbyColors.iconBgBlue,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.settings_rounded, color: TabbyColors.accentLightBlue, size: 20),
-                                ),
-                                padding: EdgeInsets.zero,
-                                tooltip: 'Notification Preferences',
-                                onPressed: () => _showNotificationPreferencesSheet(context),
-                              ),
-                              title: const Text(
-                                'Settings',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                              ),
-                              subtitle: Text(
-                                settings.notificationsEnabled ? 'Push notifications and reminders active' : 'Notifications paused',
-                                style: const TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
-                              ),
+                            onTap: () =>
+                                updateBiometrics(!settings.biometricsEnabled),
+                          ),
+                          _buildSettingsRow(
+                            icon: Icons.people_alt_outlined,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'Manage Friends',
+                            subtitle: 'Friends and connections',
+                            onTap: () => context.push('/profile/connections'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      _buildSectionHeading('Connected Apps'),
+                      const SizedBox(height: 8),
+                      _buildSettingsCard(
+                        rows: [
+                          _buildClassroomRow(
+                            context,
+                            classroomConnection,
+                            classroomCourses.length,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      _buildSectionHeading('Preferences'),
+                      const SizedBox(height: 8),
+                      _buildSettingsCard(
+                        rows: [
+                          _buildSettingsRow(
+                            icon: Icons.currency_exchange_rounded,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'Currency Precision',
+                            subtitle: settings.currencyCode == 'USD'
+                                ? 'US Dollar (USD) · Display only'
+                                : 'Philippine Peso (PHP) · Integer Centavos',
+                            onTap: () => _showCurrencyPrecisionSheet(context),
+                          ),
+                          _buildSettingsRow(
+                            icon: Icons.notifications_none_rounded,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'Notifications',
+                            subtitle: 'Settings',
+                            trailing: _buildSwitchWithDetails(
                               value: settings.notificationsEnabled,
-                              activeThumbColor: TabbyColors.brandEmerald,
-                              onChanged: (val) {
-                                settingsNotifier.update(notificationsEnabled: val);
-                                ScaffoldMessenger.of(context).clearSnackBars();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(val ? 'Notifications enabled.' : 'Notifications disabled.'),
-                                  ),
-                                );
-                              },
+                              tooltip: 'Notification Preferences',
+                              onChanged: updateNotifications,
+                              onDetails: () =>
+                                  _showNotificationPreferencesSheet(context),
                             ),
-                            const Divider(height: 1),
-                            ListTile(
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: TabbyColors.iconBgMint,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.currency_exchange_rounded,
-                                  color: TabbyColors.brandEmerald,
-                                  size: 20,
-                                ),
-                              ),
-                              title: const Text(
-                                'Currency Precision',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: TabbyColors.brandDarkTeal,
-                                ),
-                              ),
-                              subtitle: const Text(
-                                'Philippine Peso (PHP) • Integer Centavos (ADR-001)',
-                                style: TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
-                              ),
-                              trailing: const Text(
-                                '100¢ = ₱1.00',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: TabbyColors.brandEmerald,
-                                ),
-                              ),
-                              onTap: () => _showCurrencyPrecisionSheet(context),
-                            ),
-                            const Divider(height: 1),
-                            ListTile(
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: TabbyColors.iconBgBlue,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.cloud_done_rounded,
-                                  color: TabbyColors.accentLightBlue,
-                                  size: 20,
-                                ),
-                              ),
-                              title: const Text(
-                                'Backend & Offline Sync',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: TabbyColors.brandDarkTeal,
-                                ),
-                              ),
-                              subtitle: const Text(
-                                'Supabase BaaS and Drift local cache',
-                                style: TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
-                              ),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: TabbyColors.brandMintAccent,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text(
-                                  'Online',
-                                  style: TextStyle(
-                                    color: TabbyColors.brandEmerald,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                              onTap: () => _showSyncDiagnosticsSheet(context),
-                            ),
-                            const Divider(height: 1),
-                            _buildProfileMenuItem(
-                              icon: Icons.headset_mic_rounded,
-                              iconBg: TabbyColors.iconBgMint,
-                              iconColor: TabbyColors.brandEmerald,
-                              title: 'Help Center',
-                              subtitle: 'Customer support and FAQ',
-                              onTap: () => _showHelpCenterSheet(context),
-                            ),
-                            const Divider(height: 1),
-                            _buildProfileMenuItem(
-                              icon: Icons.logout_rounded,
-                              iconBg: const Color(0xFFFEE2E2),
-                              iconColor: TabbyColors.alertRed,
-                              title: 'Logout',
-                              subtitle: 'Sign out of current account',
-                              onTap: () => _showLogoutConfirmation(context),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      _buildProfileMenuItem(
-                        icon: Icons.school_outlined,
-                        iconBg: classroomConnection?.isActive == true
-                            ? TabbyColors.iconBgMint
-                            : TabbyColors.iconBgBlue,
-                        iconColor: classroomConnection?.isActive == true
-                            ? TabbyColors.brandEmerald
-                            : TabbyColors.textSecondary,
-                        title: 'Google Classroom',
-                        subtitle: classroomConnection?.isActive == true
-                            ? 'Connected · ${classroomCourses.length} courses'
-                            : 'Connect to sync assignments',
-                        trailing: classroomConnection?.isActive == true
-                            ? const Text(
-                                'Active',
-                                style: TextStyle(
-                                  color: TabbyColors.brandEmerald,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              )
-                            : null,
-                        onTap: () => showModalBottomSheet<void>(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: TabbyColors.surfaceWhite,
-                          builder: (_) => const ClassroomConnectSheet(),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Friends List Section Header
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        runSpacing: 8,
-                        children: [
-                          const Text(
-                            'Friends',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
-                              letterSpacing: -0.3,
-                            ),
+                            onTap: () => updateNotifications(
+                                !settings.notificationsEnabled),
                           ),
-                          Row(
-                            children: [
-                              Text(
-                                '${friends.length} ${friends.length == 1 ? 'friend' : 'friends'}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: TabbyColors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              InkWell(
-                                onTap: () => _showConnectByIdSheet(context),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          _buildSettingsRow(
+                            icon: Icons.palette_outlined,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'Appearance',
+                            subtitle:
+                                '${settings.darkModeEnabled ? 'Dark' : 'Light'} mode · ${settings.motionEnabled ? 'Motion on' : 'Motion off'}',
+                            onTap: () => _showAppearanceSheet(context),
+                          ),
+                          _buildSettingsRow(
+                            icon: Icons.language_rounded,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'Language',
+                            subtitle: settings.languageCode == 'fil'
+                                ? 'Filipino'
+                                : 'English',
+                            onTap: () => _showLanguageSheet(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      _buildSectionHeading('Data & Support'),
+                      const SizedBox(height: 8),
+                      _buildSettingsCard(
+                        rows: [
+                          _buildSettingsRow(
+                            icon: Icons.cloud_done_outlined,
+                            iconBackground: TabbyColors.iconBgBlue,
+                            iconColor: TabbyColors.accentLightBlue,
+                            title: 'Sync & Offline',
+                            subtitle: 'Offline cache and server status',
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 7, vertical: 3),
                                   decoration: BoxDecoration(
                                     color: TabbyColors.brandMintAccent,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.person_add_rounded,
-                                        size: 14,
-                                        color: TabbyColors.brandEmerald,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Connect',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: TabbyColors.brandEmerald,
-                                        ),
-                                      ),
-                                    ],
+                                  child: Text(
+                                    syncStatusLabel(syncDiagnostics),
+                                    style: TextStyle(
+                                      color: syncDiagnostics.status ==
+                                              SyncStatus.offline
+                                          ? TabbyColors.alertRed
+                                          : TabbyColors.brandEmerald,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                                const Icon(Icons.chevron_right_rounded,
+                                    color: TabbyColors.textSecondary),
+                              ],
+                            ),
+                            onTap: () => SyncDiagnosticsSheet.show(context),
+                          ),
+                          _buildSettingsRow(
+                            icon: Icons.headset_mic_outlined,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'Help Center',
+                            subtitle: 'Customer support and FAQ',
+                            onTap: () => _showHelpCenterSheet(context),
+                          ),
+                          _buildSettingsRow(
+                            icon: Icons.info_outline_rounded,
+                            iconBackground: TabbyColors.iconBgMint,
+                            iconColor: TabbyColors.brandEmerald,
+                            title: 'About Tabby',
+                            subtitle: 'Version and app information',
+                            onTap: () => _showAboutTabbySheet(context),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                      if (friends.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: TabbyColors.surfaceWhite,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: TabbyColors.borderMint),
-                          ),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.people_outline_rounded,
-                                  size: 36,
-                                  color: TabbyColors.textSecondary,
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'No friends added yet',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: TabbyColors.brandDarkTeal,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'Connect with friends using their shareable Tabby ID.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: TabbyColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                ElevatedButton.icon(
-                                  onPressed: () => _showConnectByIdSheet(context),
-                                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
-                                  label: const Text('Connect by Tabby ID'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: TabbyColors.brandEmerald,
-                                    foregroundColor: TabbyColors.surfaceWhite,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showLogoutConfirmation(context),
+                          icon: const Icon(Icons.logout_rounded, size: 17),
+                          label: const Text('Log Out'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: TabbyColors.alertRed,
+                            side: const BorderSide(
+                                color: TabbyColors.alertRed, width: 1.2),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                          ),
-                        )
-                      else
-                        Material(
-                          color: TabbyColors.surfaceWhite,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(color: TabbyColors.borderMint),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: friends.map((friend) {
-                              return Column(
-                                children: [
-                                  ListTile(
-                                    leading: CircleAvatar(
-                                      radius: 18,
-                                      backgroundColor: TabbyColors.iconBgBlue,
-                                      child: Text(
-                                        friend.displayName.isNotEmpty
-                                            ? friend.displayName.substring(0, 1).toUpperCase()
-                                            : '?',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 14,
-                                          color: TabbyColors.accentLightBlue,
-                                        ),
-                                      ),
-                                    ),
-                                    title: Text(
-                                      friend.displayName,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: TabbyColors.brandDarkTeal,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      friend.friendCode?.isNotEmpty == true
-                                          ? 'Connected'
-                                          : (friend.phone.isNotEmpty
-                                              ? friend.phone
-                                              : 'Saved contact'),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: TabbyColors.textSecondary,
-                                      ),
-                                    ),
-                                    trailing: IconButton(
-                                      icon: const Icon(
-                                        Icons.more_vert_rounded,
-                                        color: TabbyColors.textSecondary,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => _showFriendOptionsSheet(context, friend),
-                                    ),
-                                    onTap: () {
-                                      context.go('/tabs/${friend.id}');
-                                    },
-                                  ),
-                                  if (friend != friends.last)
-                                    const Divider(height: 1),
-                                ],
-                              );
-                            }).toList(),
                           ),
                         ),
-                      const SizedBox(height: 24),
-
-                      // Groups Section Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Groups',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Text(
-                                '${groups.length} ${groups.length == 1 ? 'group' : 'groups'}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: TabbyColors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              InkWell(
-                                onTap: () => _showCreateGroupSheet(context),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: TabbyColors.brandMintAccent,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.group_add_rounded,
-                                        size: 14,
-                                        color: TabbyColors.brandEmerald,
-                                      ),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'New Group',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w700,
-                                          color: TabbyColors.brandEmerald,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
                       ),
-                      const SizedBox(height: 10),
-                      if (groups.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: TabbyColors.surfaceWhite,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: TabbyColors.borderMint),
-                          ),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.groups_outlined,
-                                  size: 36,
-                                  color: TabbyColors.textSecondary,
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'No group tabs yet',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: TabbyColors.brandDarkTeal,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                const Text(
-                                  'Create a group tab for barkada dinners, trips, or roommate expenses.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: TabbyColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                ElevatedButton.icon(
-                                  onPressed: () => _showCreateGroupSheet(context),
-                                  icon: const Icon(Icons.group_add_rounded, size: 16),
-                                  label: const Text('Create a Group'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: TabbyColors.brandEmerald,
-                                    foregroundColor: TabbyColors.surfaceWhite,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        Material(
-                          color: TabbyColors.surfaceWhite,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: const BorderSide(color: TabbyColors.borderMint),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Column(
-                            children: groups.map((group) {
-                              return Column(
-                                children: [
-                                  ListTile(
-                                    leading: const CircleAvatar(
-                                      radius: 18,
-                                      backgroundColor: TabbyColors.brandMintAccent,
-                                      child: Icon(
-                                        Icons.groups_rounded,
-                                        size: 18,
-                                        color: TabbyColors.brandEmerald,
-                                      ),
-                                    ),
-                                    title: Text(
-                                      group.groupName ?? group.counterpart.displayName,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: TabbyColors.brandDarkTeal,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      group.counterpart.phone.isNotEmpty
-                                          ? group.counterpart.phone
-                                          : 'Group Tab',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: TabbyColors.textSecondary,
-                                      ),
-                                    ),
-                                    trailing: IconButton(
-                                      icon: const Icon(
-                                        Icons.more_vert_rounded,
-                                        color: TabbyColors.textSecondary,
-                                        size: 20,
-                                      ),
-                                      onPressed: () => _showGroupOptionsSheet(context, group),
-                                    ),
-                                    onTap: () {
-                                      context.go('/tabs/${group.id}');
-                                    },
-                                  ),
-                                  if (group != groups.last)
-                                    const Divider(height: 1),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ),
+                      _buildConnectionsSection(
+                        context: context,
+                        friends: friends,
+                        groups: groups,
+                        incomingRequests: incomingRequests,
+                      ),
                       const SizedBox(height: 24),
-
-                      // Version & App Info Footer
                       const Center(
                         child: Column(
                           children: [
@@ -1124,6 +341,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 color: TabbyColors.textSecondary,
                               ),
                             ),
+                            SizedBox(height: 2),
+                            AppVersionFooter(),
                             SizedBox(height: 2),
                             Text(
                               'Keep tabs. Settle up.',
@@ -1147,39 +366,883 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileMenuItem({
+  Widget _buildProfileOuterHeader(BuildContext context) {
+    return Container(
+      color: TabbyColors.brandEmerald,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Expanded(
+            child: Text(
+              'Profile & Settings',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: TabbyColors.brandDarkTeal,
+                letterSpacing: -0.5,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: TabbyColors.surfaceWhite,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.notifications_none_rounded,
+                size: 22,
+                color: TabbyColors.brandDarkTeal,
+              ),
+              onPressed: () => NotificationCenterSheet.show(context),
+              tooltip: 'Notifications',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileIdentity(BuildContext context, TabbyUser user) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: () => _showAvatarOptionsSheet(context, user),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: TabbyColors.brandEmerald,
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ClipOval(
+                  child: Container(
+                    color: TabbyColors.brandEmerald,
+                    alignment: Alignment.center,
+                    child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                        ? (user.avatarUrl == 'asset:mascot'
+                            ? const Icon(Icons.pets_rounded,
+                                size: 30, color: TabbyColors.surfaceWhite)
+                            : user.avatarUrl == 'asset:cat_cool'
+                                ? const Icon(
+                                    Icons.sentiment_very_satisfied_rounded,
+                                    size: 30,
+                                    color: TabbyColors.surfaceWhite)
+                                : user.avatarUrl == 'asset:camera_snap'
+                                    ? const Icon(Icons.camera_alt_rounded,
+                                        size: 30,
+                                        color: TabbyColors.surfaceWhite)
+                                    : const Icon(Icons.account_circle_rounded,
+                                        size: 34,
+                                        color: TabbyColors.surfaceWhite))
+                        : Text(
+                            user.displayName.isNotEmpty
+                                ? user.displayName.substring(0, 1).toUpperCase()
+                                : 'T',
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              color: TabbyColors.surfaceWhite,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: TabbyColors.brandDarkTeal,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt_rounded,
+                    size: 12,
+                    color: TabbyColors.surfaceWhite,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: TabbyColors.brandDarkTeal,
+                ),
+              ),
+              const SizedBox(height: 3),
+              const Text(
+                'Your Tabby ID',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: TabbyColors.textSecondary,
+                ),
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      user.friendCode ?? 'Not available yet',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: TabbyColors.brandEmerald,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 15),
+                    color: TabbyColors.textSecondary,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 26, minHeight: 26),
+                    tooltip: 'Copy Tabby ID',
+                    onPressed: user.friendCode == null
+                        ? null
+                        : () {
+                            Clipboard.setData(
+                                ClipboardData(text: user.friendCode!));
+                            ScaffoldMessenger.of(context)
+                              ..clearSnackBars()
+                              ..showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Tabby ID copied to clipboard.'),
+                                ),
+                              );
+                          },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        OutlinedButton.icon(
+          onPressed: () => _showEditProfileSheet(context, user),
+          icon: const Icon(Icons.edit_outlined, size: 14),
+          label: const Text('Edit Profile'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: TabbyColors.brandEmerald,
+            side: const BorderSide(color: TabbyColors.brandEmerald),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+            textStyle: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeading(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
+        color: TabbyColors.brandDarkTeal,
+        letterSpacing: 0.1,
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard({required List<Widget> rows}) {
+    final children = <Widget>[];
+    for (var index = 0; index < rows.length; index++) {
+      if (index > 0) children.add(const Divider(height: 1));
+      children.add(rows[index]);
+    }
+
+    return Material(
+      color: TabbyColors.surfaceWhite,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: TabbyColors.borderMint),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildSettingsRow({
     required IconData icon,
-    required Color iconBg,
+    required Color iconBackground,
     required Color iconColor,
     required String title,
     required String subtitle,
-    Widget? trailing,
     required VoidCallback onTap,
+    Widget? trailing,
   }) {
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+      minVerticalPadding: 0,
+      horizontalTitleGap: 12,
       leading: Container(
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
-          color: iconBg,
-          borderRadius: BorderRadius.circular(12),
+          color: iconBackground,
+          borderRadius: BorderRadius.circular(11),
         ),
-        child: Icon(icon, color: iconColor, size: 20),
+        child: Icon(icon, color: iconColor, size: 19),
       ),
       title: Text(
         title,
         style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
           color: TabbyColors.brandDarkTeal,
         ),
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 10,
+          color: TabbyColors.textSecondary,
+        ),
       ),
-      trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: TabbyColors.textSecondary, size: 20),
+      trailing: trailing ??
+          const Icon(Icons.chevron_right_rounded,
+              color: TabbyColors.textSecondary, size: 20),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildClassroomRow(
+    BuildContext context,
+    ClassroomConnection? connection,
+    int courseCount,
+  ) {
+    final isConnected = connection?.isActive == true;
+    return _buildSettingsRow(
+      icon: Icons.school_outlined,
+      iconBackground:
+          isConnected ? TabbyColors.iconBgMint : TabbyColors.iconBgBlue,
+      iconColor:
+          isConnected ? TabbyColors.brandEmerald : TabbyColors.textSecondary,
+      title: 'Google Classroom',
+      subtitle:
+          isConnected ? 'Connected · $courseCount courses' : 'Not connected',
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isConnected)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: TabbyColors.brandMintAccent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Active',
+                style: TextStyle(
+                  color: TabbyColors.brandEmerald,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          const Icon(Icons.chevron_right_rounded,
+              color: TabbyColors.textSecondary),
+        ],
+      ),
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: TabbyColors.surfaceWhite,
+        builder: (_) => const ClassroomConnectSheet(),
+      ),
+    );
+  }
+
+  Widget _buildSwitchWithDetails({
+    required bool value,
+    required String tooltip,
+    required ValueChanged<bool> onChanged,
+    required VoidCallback onDetails,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Switch(
+          value: value,
+          activeThumbColor: TabbyColors.brandEmerald,
+          onChanged: onChanged,
+        ),
+        IconButton(
+          tooltip: tooltip,
+          onPressed: onDetails,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          icon: const Icon(Icons.chevron_right_rounded,
+              color: TabbyColors.textSecondary, size: 20),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreferenceChoice({
+    required String title,
+    required bool selected,
+    required VoidCallback onTap,
+    String? subtitle,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title),
+      subtitle: subtitle == null ? null : Text(subtitle),
+      trailing: Icon(
+        selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+        color: selected ? TabbyColors.brandEmerald : TabbyColors.textSecondary,
+      ),
+      onTap: onTap,
+    );
+  }
+
+  void _showAboutTabbySheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setState) {
+          final checker = AppUpdateService();
+          return Material(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                child: FutureBuilder<AppUpdateCheckResult>(
+                  future: checker.checkStatus(),
+                  builder: (context, snapshot) {
+                    final result = snapshot.data;
+                    final statusText = result == null
+                        ? 'Checking for updates...'
+                        : switch (result.status) {
+                            AppUpdateStatus.upToDate => 'Tabby is up to date.',
+                            AppUpdateStatus.updateAvailable =>
+                              'A new update is available.',
+                            AppUpdateStatus.unavailable =>
+                              'Update check unavailable. Try again later.',
+                            AppUpdateStatus.checking =>
+                              'Checking for updates...',
+                          };
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text('About Tabby',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: TabbyColors.brandDarkTeal)),
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.pop(sheetContext),
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Version 1.0.1+2',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        Text(statusText,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                color: TabbyColors.textSecondary)),
+                        if (result?.update != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Version ${result!.update!.release.version.fullDisplayValue} is ready.',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(result.update!.release.releaseNotes),
+                        ],
+                        const SizedBox(height: 20),
+                        TabbyButton(
+                          label: snapshot.connectionState ==
+                                  ConnectionState.waiting
+                              ? 'Checking...'
+                              : 'Check for Updates',
+                          onPressed: snapshot.connectionState ==
+                                  ConnectionState.waiting
+                              ? null
+                              : () => setState(() {}),
+                        ),
+                        const SizedBox(height: 10),
+                        Center(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(sheetContext),
+                            child: const Text('Close'),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAppearanceSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Consumer(
+        builder: (context, ref, _) {
+          final settings = ref.watch(userSettingsProvider);
+          final notifier = ref.read(userSettingsProvider.notifier);
+          return Material(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Appearance',
+                        style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyColors.brandDarkTeal)),
+                    const SizedBox(height: 12),
+                    _buildPreferenceChoice(
+                      title: 'Light mode',
+                      selected: !settings.darkModeEnabled,
+                      onTap: () => notifier.update(darkModeEnabled: false),
+                    ),
+                    _buildPreferenceChoice(
+                      title: 'Dark mode',
+                      selected: settings.darkModeEnabled,
+                      onTap: () => notifier.update(darkModeEnabled: true),
+                    ),
+                    const Divider(),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeThumbColor: TabbyColors.brandEmerald,
+                      title: const Text('Motion effects'),
+                      subtitle:
+                          const Text('Animate Tabby transitions and feedback'),
+                      value: settings.motionEnabled,
+                      onChanged: (value) =>
+                          notifier.update(motionEnabled: value),
+                    ),
+                    TabbyButton(
+                      label: 'Done',
+                      onPressed: () => Navigator.pop(sheetContext),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showLanguageSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Consumer(
+        builder: (context, ref, _) {
+          final settings = ref.watch(userSettingsProvider);
+          final notifier = ref.read(userSettingsProvider.notifier);
+          return Material(
+            color: TabbyColors.surfaceWhite,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const ListTile(
+                    leading: Icon(Icons.language_rounded,
+                        color: TabbyColors.brandEmerald),
+                    title: Text('Language',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                  _buildPreferenceChoice(
+                    title: 'English',
+                    selected: settings.languageCode == 'en',
+                    onTap: () => notifier.update(languageCode: 'en'),
+                  ),
+                  _buildPreferenceChoice(
+                    title: 'Filipino',
+                    selected: settings.languageCode == 'fil',
+                    onTap: () => notifier.update(languageCode: 'fil'),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(24, 4, 24, 20),
+                    child: Text(
+                      'More languages can be added without changing your financial records.',
+                      style: TextStyle(
+                          fontSize: 12, color: TabbyColors.textSecondary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildConnectionsSection({
+    required BuildContext context,
+    required List<TabbyUser> friends,
+    required List<BilateralTab> groups,
+    required List<FriendRequest> incomingRequests,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (incomingRequests.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _buildSectionHeading('Friend Requests'),
+          const SizedBox(height: 8),
+          _buildSettingsCard(
+            rows: incomingRequests.map((request) {
+              final isResponding = _respondingFriendshipId == request.id;
+              return ListTile(
+                leading: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: TabbyColors.iconBgBlue,
+                  child: Text(
+                    request.otherUser.displayName.isNotEmpty
+                        ? request.otherUser.displayName
+                            .substring(0, 1)
+                            .toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      color: TabbyColors.accentLightBlue,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                title: Text(request.otherUser.displayName),
+                subtitle: const Text('Wants to connect a shared tab with you.'),
+                trailing: isResponding
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Wrap(
+                        spacing: 4,
+                        children: [
+                          IconButton(
+                            tooltip: 'Decline request',
+                            onPressed: () =>
+                                _respondToFriendRequest(request, accept: false),
+                            icon: const Icon(Icons.close_rounded,
+                                color: TabbyColors.textSecondary),
+                          ),
+                          IconButton(
+                            tooltip: 'Accept request',
+                            onPressed: () =>
+                                _respondToFriendRequest(request, accept: true),
+                            icon: const Icon(Icons.check_rounded,
+                                color: TabbyColors.brandEmerald),
+                          ),
+                        ],
+                      ),
+              );
+            }).toList(),
+          ),
+        ],
+        const SizedBox(height: 24),
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          runSpacing: 8,
+          children: [
+            _buildSectionHeading('Friends'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${friends.length} ${friends.length == 1 ? 'friend' : 'friends'}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: TabbyColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () => _showConnectByIdSheet(context),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: TabbyColors.brandMintAccent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_add_rounded,
+                            size: 14, color: TabbyColors.brandEmerald),
+                        SizedBox(width: 4),
+                        Text('Connect',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: TabbyColors.brandEmerald)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (friends.isEmpty)
+          _buildEmptyConnectionCard(
+            icon: Icons.people_outline_rounded,
+            title: 'No friends added yet',
+            message: 'Connect with friends using their shareable Tabby ID.',
+            actionLabel: 'Connect by Tabby ID',
+            onAction: () => _showConnectByIdSheet(context),
+          )
+        else
+          _buildSettingsCard(
+            rows: friends.map((friend) {
+              return ListTile(
+                leading: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: TabbyColors.iconBgBlue,
+                  child: Text(
+                    friend.displayName.isNotEmpty
+                        ? friend.displayName.substring(0, 1).toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: TabbyColors.accentLightBlue,
+                    ),
+                  ),
+                ),
+                title: Text(friend.displayName),
+                subtitle: Text(
+                  friend.friendCode?.isNotEmpty == true
+                      ? 'Connected'
+                      : (friend.phone.isNotEmpty
+                          ? friend.phone
+                          : 'Saved contact'),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.more_vert_rounded,
+                      color: TabbyColors.textSecondary, size: 20),
+                  onPressed: () => _showFriendOptionsSheet(context, friend),
+                ),
+                onTap: () => context.go('/tabs/${friend.id}'),
+              );
+            }).toList(),
+          ),
+        const SizedBox(height: 24),
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          runSpacing: 8,
+          children: [
+            _buildSectionHeading('Groups'),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${groups.length} ${groups.length == 1 ? 'group' : 'groups'}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: TabbyColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () => _showCreateGroupSheet(context),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: TabbyColors.brandMintAccent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.group_add_rounded,
+                            size: 14, color: TabbyColors.brandEmerald),
+                        SizedBox(width: 4),
+                        Text('New Group',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: TabbyColors.brandEmerald)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (groups.isEmpty)
+          _buildEmptyConnectionCard(
+            icon: Icons.groups_outlined,
+            title: 'No groups yet',
+            message:
+                'Create a group tab for barkada dinners, trips, or roommate expenses.',
+            actionLabel: 'Create a Group',
+            onAction: () => _showCreateGroupSheet(context),
+          )
+        else
+          _buildSettingsCard(
+            rows: groups.map((group) {
+              return ListTile(
+                leading: const CircleAvatar(
+                  radius: 18,
+                  backgroundColor: TabbyColors.brandMintAccent,
+                  child: Icon(Icons.groups_rounded,
+                      size: 18, color: TabbyColors.brandEmerald),
+                ),
+                title: Text(group.groupName ?? group.counterpart.displayName),
+                subtitle: Text(
+                  group.counterpart.phone.isNotEmpty
+                      ? group.counterpart.phone
+                      : 'Group Tab',
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.more_vert_rounded,
+                      color: TabbyColors.textSecondary, size: 20),
+                  onPressed: () => _showGroupOptionsSheet(context, group),
+                ),
+                onTap: () => context.go('/tabs/${group.id}'),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyConnectionCard({
+    required IconData icon,
+    required String title,
+    required String message,
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+      decoration: BoxDecoration(
+        color: TabbyColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: TabbyColors.borderMint),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 34, color: TabbyColors.textSecondary),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: TabbyColors.brandDarkTeal,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              color: TabbyColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            onPressed: onAction,
+            icon: const Icon(Icons.add_rounded, size: 16),
+            label: Text(actionLabel),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: TabbyColors.brandEmerald,
+              foregroundColor: TabbyColors.surfaceWhite,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1200,129 +1263,158 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Profile Photo',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: TabbyColors.brandDarkTeal,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Profile Photo',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: TabbyColors.brandDarkTeal,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.iconBgMint,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.photo_library_rounded, color: TabbyColors.brandEmerald, size: 20),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ),
-                  title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Upload a photo from your camera roll', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    ref.read(currentUserProvider.notifier).updateProfile(avatarUrl: 'asset:cat_cool');
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Profile photo updated successfully.'),
-                        backgroundColor: TabbyColors.brandEmerald,
+                  const SizedBox(height: 16),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.iconBgMint,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.iconBgBlue,
-                      borderRadius: BorderRadius.circular(12),
+                      child: const Icon(Icons.photo_library_rounded,
+                          color: TabbyColors.brandEmerald, size: 20),
                     ),
-                    child: const Icon(Icons.camera_alt_rounded, color: TabbyColors.accentBlue, size: 20),
+                    title: const Text('Choose from Gallery',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text('Upload a photo from your camera roll',
+                        style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      ref
+                          .read(currentUserProvider.notifier)
+                          .updateProfile(avatarUrl: 'asset:cat_cool');
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Profile photo updated successfully.'),
+                          backgroundColor: TabbyColors.brandEmerald,
+                        ),
+                      );
+                    },
                   ),
-                  title: const Text('Take Photo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Use your device camera to take a picture', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    ref.read(currentUserProvider.notifier).updateProfile(avatarUrl: 'asset:camera_snap');
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Camera snapshot applied to profile.'),
-                        backgroundColor: TabbyColors.brandEmerald,
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.iconBgBlue,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.brandMintAccent,
-                      borderRadius: BorderRadius.circular(12),
+                      child: const Icon(Icons.camera_alt_rounded,
+                          color: TabbyColors.accentBlue, size: 20),
                     ),
-                    child: const Icon(Icons.pets_rounded, color: TabbyColors.brandDarkTeal, size: 20),
+                    title: const Text('Take Photo',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text(
+                        'Use your device camera to take a picture',
+                        style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      ref
+                          .read(currentUserProvider.notifier)
+                          .updateProfile(avatarUrl: 'asset:camera_snap');
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Camera snapshot applied to profile.'),
+                          backgroundColor: TabbyColors.brandEmerald,
+                        ),
+                      );
+                    },
                   ),
-                  title: const Text('Tabby Mascot Style', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: const Text('Use official Tabby cat companion as avatar', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    ref.read(currentUserProvider.notifier).updateProfile(avatarUrl: 'asset:mascot');
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tabby companion avatar applied!'),
-                        backgroundColor: TabbyColors.brandEmerald,
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.brandMintAccent,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  },
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEE2E2),
-                      borderRadius: BorderRadius.circular(12),
+                      child: const Icon(Icons.pets_rounded,
+                          color: TabbyColors.brandDarkTeal, size: 20),
                     ),
-                    child: const Icon(Icons.delete_outline_rounded, color: TabbyColors.alertRed, size: 20),
+                    title: const Text('Tabby Mascot Style',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text(
+                        'Use official Tabby cat companion as avatar',
+                        style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      ref
+                          .read(currentUserProvider.notifier)
+                          .updateProfile(avatarUrl: 'asset:mascot');
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Tabby companion avatar applied!'),
+                          backgroundColor: TabbyColors.brandEmerald,
+                        ),
+                      );
+                    },
                   ),
-                  title: const Text('Remove Photo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: TabbyColors.alertRed)),
-                  subtitle: const Text('Revert back to default avatar initials', style: TextStyle(fontSize: 12)),
-                  onTap: () {
-                    ref.read(currentUserProvider.notifier).updateProfile(avatarUrl: '');
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Avatar reset to default initials.'),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  },
-                ),
-              ],
+                      child: const Icon(Icons.delete_outline_rounded,
+                          color: TabbyColors.alertRed, size: 20),
+                    ),
+                    title: const Text('Remove Photo',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: TabbyColors.alertRed)),
+                    subtitle: const Text(
+                        'Revert back to default avatar initials',
+                        style: TextStyle(fontSize: 12)),
+                    onTap: () {
+                      ref
+                          .read(currentUserProvider.notifier)
+                          .updateProfile(avatarUrl: '');
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Avatar reset to default initials.'),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
   }
 
   // 2. Edit Profile Modal Sheet
@@ -1343,10 +1435,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom),
               child: Material(
                 color: TabbyColors.surfaceWhite,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: SingleChildScrollView(
@@ -1433,23 +1527,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               return;
                             }
 
-                            if (newEmail.isNotEmpty && (!newEmail.contains('@') || !newEmail.contains('.'))) {
+                            if (newEmail.isNotEmpty &&
+                                (!newEmail.contains('@') ||
+                                    !newEmail.contains('.'))) {
                               ScaffoldMessenger.of(context).clearSnackBars();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Please enter a valid email address.'),
+                                  content: Text(
+                                      'Please enter a valid email address.'),
                                   backgroundColor: TabbyColors.alertRed,
                                 ),
                               );
                               return;
                             }
 
-                            final phoneDigits = newPhone.replaceAll(RegExp(r'[^0-9]'), '');
+                            final phoneDigits =
+                                newPhone.replaceAll(RegExp(r'[^0-9]'), '');
                             if (newPhone.isNotEmpty && phoneDigits.length < 7) {
                               ScaffoldMessenger.of(context).clearSnackBars();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Please enter a valid phone number.'),
+                                  content: Text(
+                                      'Please enter a valid phone number.'),
                                   backgroundColor: TabbyColors.alertRed,
                                 ),
                               );
@@ -1458,7 +1557,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                             setModalState(() => isSubmitting = true);
 
-                            ref.read(currentUserProvider.notifier).updateProfile(
+                            ref
+                                .read(currentUserProvider.notifier)
+                                .updateProfile(
                                   displayName: newName,
                                   email: newEmail,
                                   phone: newPhone,
@@ -1470,242 +1571,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ScaffoldMessenger.of(context).clearSnackBars();
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Profile details updated successfully!'),
-                                backgroundColor: TabbyColors.brandEmerald,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // 3. QR Manager Modal Sheet
-  void _showQrManagerSheet(BuildContext context, TabbyUser user) {
-    final gcashController = TextEditingController(text: user.gcashNumber.isNotEmpty ? user.gcashNumber : user.phone);
-    final mayaController = TextEditingController(text: user.mayaNumber.isNotEmpty ? user.mayaNumber : user.phone);
-
-    bool isUploading = false;
-    bool isSaving = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: Material(
-                color: TabbyColors.surfaceWhite,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Payment QR Ph Settings',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: TabbyColors.brandDarkTeal,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Center(
-                          child: Container(
-                            width: 140,
-                            height: 140,
-                            decoration: BoxDecoration(
-                              color: TabbyColors.brandMintAccent,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                    ? TabbyColors.brandEmerald
-                                    : TabbyColors.borderMint,
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (isUploading)
-                                  const SizedBox(
-                                    width: 36,
-                                    height: 36,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 3,
-                                      valueColor: AlwaysStoppedAnimation(TabbyColors.brandEmerald),
-                                    ),
-                                  )
-                                else ...[
-                                  Icon(
-                                    Icons.qr_code_2_rounded,
-                                    size: 64,
-                                    color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                        ? TabbyColors.brandEmerald
-                                        : TabbyColors.brandDarkTeal,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                        ? 'QR Ph Active'
-                                        : 'No QR Linked',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty
-                                          ? TabbyColors.brandEmerald
-                                          : TabbyColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildInputField(
-                          label: 'GCash Number',
-                          controller: gcashController,
-                          icon: Icons.account_balance_wallet_outlined,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'Maya Number',
-                          controller: mayaController,
-                          icon: Icons.credit_card_outlined,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          onPressed: isUploading || isSaving
-                              ? null
-                              : () async {
-                                  setModalState(() => isUploading = true);
-                                  await Future.delayed(const Duration(milliseconds: 300));
-                                  final simulatedQrUrl = 'https://tabby.ph/qr/${user.id}_qrph.png';
-                                  ref.read(currentUserProvider.notifier).updateProfile(
-                                        qrCodeUrl: simulatedQrUrl,
-                                        gcashNumber: gcashController.text.trim(),
-                                        mayaNumber: mayaController.text.trim(),
-                                      );
-                                  if (context.mounted) {
-                                    Navigator.pop(context);
-                                    ScaffoldMessenger.of(context).clearSnackBars();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Payment QR Ph code verified and linked!'),
-                                        backgroundColor: TabbyColors.brandEmerald,
-                                      ),
-                                    );
-                                  }
-                                },
-                          icon: isUploading
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.upload_file_rounded, size: 18),
-                          label: Text(isUploading ? 'Verifying QR Code...' : 'Upload New QR Code Image'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: TabbyColors.brandDarkTeal,
-                            minimumSize: const Size(double.infinity, 48),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                        ),
-                        if (user.qrCodeUrl != null && user.qrCodeUrl!.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () {
-                              ref.read(currentUserProvider.notifier).updateProfile(
-                                    qrCodeUrl: '',
-                                    gcashNumber: gcashController.text.trim(),
-                                    mayaNumber: mayaController.text.trim(),
-                                  );
-                              Navigator.pop(context);
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Custom QR code removed.'),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.delete_outline_rounded, size: 16, color: TabbyColors.alertRed),
-                            label: const Text('Remove QR Code', style: TextStyle(color: TabbyColors.alertRed)),
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        TabbyButton(
-                          label: 'Save Payment Details',
-                          isLoading: isSaving,
-                          onPressed: () {
-                            if (isSaving || isUploading) return;
-
-                            final gcash = gcashController.text.trim();
-                            final maya = mayaController.text.trim();
-
-                            final gcashDigits = gcash.replaceAll(RegExp(r'[^0-9]'), '');
-                            if (gcash.isNotEmpty && gcashDigits.length < 10) {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please enter a valid GCash mobile number (at least 10 digits).'),
-                                  backgroundColor: TabbyColors.alertRed,
-                                ),
-                              );
-                              return;
-                            }
-
-                            final mayaDigits = maya.replaceAll(RegExp(r'[^0-9]'), '');
-                            if (maya.isNotEmpty && mayaDigits.length < 10) {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please enter a valid Maya mobile number (at least 10 digits).'),
-                                  backgroundColor: TabbyColors.alertRed,
-                                ),
-                              );
-                              return;
-                            }
-
-                            setModalState(() => isSaving = true);
-
-                            ref.read(currentUserProvider.notifier).updateProfile(
-                                  gcashNumber: gcash,
-                                  mayaNumber: maya,
-                                );
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Payment QR and numbers saved!'),
+                                content: Text(
+                                    'Profile details updated successfully!'),
                                 backgroundColor: TabbyColors.brandEmerald,
                               ),
                             );
@@ -1736,7 +1603,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             final notifier = ref.read(userSettingsProvider.notifier);
             return Material(
               color: TabbyColors.surfaceWhite,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(32)),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: SingleChildScrollView(
@@ -1744,111 +1612,154 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Security & App Lock',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: TabbyColors.brandEmerald,
-                      title: const Text(
-                        'Biometric Unlock',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                      ),
-                      subtitle: const Text(
-                        'Use fingerprint or Face ID to unlock Tabby',
-                        style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-                      ),
-                      value: settings.biometricsEnabled,
-                      onChanged: (val) async {
-                        await notifier.toggleBiometrics(val);
-                      },
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: TabbyColors.brandEmerald,
-                      title: const Text(
-                        'Passcode Protection',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                      ),
-                      subtitle: const Text(
-                        'Require a security PIN to access ledgers',
-                        style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-                      ),
-                      value: settings.passcodeEnabled,
-                      onChanged: (val) {
-                        notifier.update(passcodeEnabled: val);
-                      },
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: TabbyColors.brandEmerald,
-                      title: const Text(
-                        'Auto-Lock on Exit',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                      ),
-                      subtitle: const Text(
-                        'Lock Tabby immediately when backgrounded',
-                        style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-                      ),
-                      value: settings.autoLockEnabled,
-                      onChanged: (val) {
-                        notifier.update(autoLockEnabled: val);
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: TabbyColors.brandMintAccent,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Row(
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.shield_outlined, color: TabbyColors.brandEmerald, size: 20),
-                          SizedBox(width: 10),
-                          Expanded(
+                          const Expanded(
                             child: Text(
-                              'Financial records are stored locally with AES-256 device encryption and synced via TLS 1.3 to Supabase with Row Level Security.',
-                              style: TextStyle(fontSize: 11, color: TabbyColors.brandDarkTeal, height: 1.3),
+                              'Security & App Lock',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: TabbyColors.brandDarkTeal,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => Navigator.pop(context),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    TabbyButton(
-                      label: 'Done',
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeThumbColor: TabbyColors.brandEmerald,
+                        title: const Text(
+                          'Biometric Unlock',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: TabbyColors.brandDarkTeal),
+                        ),
+                        subtitle: FutureBuilder<String>(
+                          future: notifier.biometricLabel(),
+                          builder: (context, snapshot) => Text(
+                            settings.biometricsEnabled
+                                ? '${snapshot.data ?? 'Biometric'} active'
+                                : (snapshot.data ?? 'Checking device support'),
+                            style: const TextStyle(
+                                fontSize: 12, color: TabbyColors.textSecondary),
+                          ),
+                        ),
+                        value: settings.biometricsEnabled,
+                        onChanged: (val) async {
+                          await notifier.toggleBiometrics(val);
+                        },
+                      ),
+                      const Divider(height: 1),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeThumbColor: TabbyColors.brandEmerald,
+                        title: const Text(
+                          'Passcode Protection',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: TabbyColors.brandDarkTeal),
+                        ),
+                        subtitle: const Text(
+                          'Require a security PIN to access ledgers',
+                          style: TextStyle(
+                              fontSize: 12, color: TabbyColors.textSecondary),
+                        ),
+                        value: settings.passcodeEnabled,
+                        onChanged: (val) async {
+                          if (val) {
+                            _showPinSetupSheet(context);
+                          } else {
+                            await notifier.clearPin();
+                          }
+                        },
+                      ),
+                      if (settings.passcodeEnabled)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () => _showPinSetupSheet(context),
+                            icon: const Icon(Icons.pin_outlined, size: 17),
+                            label: const Text('Change PIN'),
+                          ),
+                        ),
+                      const Divider(height: 1),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeThumbColor: TabbyColors.brandEmerald,
+                        title: const Text(
+                          'Auto-Lock on Exit',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: TabbyColors.brandDarkTeal),
+                        ),
+                        subtitle: const Text(
+                          'Lock Tabby immediately when backgrounded',
+                          style: TextStyle(
+                              fontSize: 12, color: TabbyColors.textSecondary),
+                        ),
+                        value: settings.autoLockEnabled,
+                        onChanged: (val) {
+                          notifier.update(autoLockEnabled: val);
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.brandMintAccent,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.shield_outlined,
+                                color: TabbyColors.brandEmerald, size: 20),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Financial records are stored locally with AES-256 device encryption and synced via TLS 1.3 to Supabase with Row Level Security.',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: TabbyColors.brandDarkTeal,
+                                    height: 1.3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      TabbyButton(
+                        label: 'Done',
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
+            );
           },
         );
       },
+    );
+  }
+
+  void _showPinSetupSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _PinSetupSheet(hostContext: context),
     );
   }
 
@@ -1865,7 +1776,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             final notifier = ref.read(userSettingsProvider.notifier);
             return Material(
               color: TabbyColors.surfaceWhite,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(32)),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: SingleChildScrollView(
@@ -1873,92 +1785,104 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Notification Preferences',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Notification Preferences',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: TabbyColors.brandDarkTeal,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeThumbColor: TabbyColors.brandEmerald,
+                        title: const Text(
+                          'Push Notifications',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: TabbyColors.brandDarkTeal),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded),
-                          onPressed: () => Navigator.pop(context),
+                        subtitle: const Text(
+                          'Master switch for all device notifications',
+                          style: TextStyle(
+                              fontSize: 12, color: TabbyColors.textSecondary),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: TabbyColors.brandEmerald,
-                      title: const Text(
-                        'Push Notifications',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                        value: settings.notificationsEnabled,
+                        onChanged: (val) {
+                          notifier.update(notificationsEnabled: val);
+                        },
                       ),
-                      subtitle: const Text(
-                        'Master switch for all device notifications',
-                        style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                      const Divider(height: 1),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeThumbColor: TabbyColors.brandEmerald,
+                        title: const Text(
+                          'Instant Payment Alerts',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: TabbyColors.brandDarkTeal),
+                        ),
+                        subtitle: const Text(
+                          'Notify when friends record or confirm a payment',
+                          style: TextStyle(
+                              fontSize: 12, color: TabbyColors.textSecondary),
+                        ),
+                        value: settings.paymentAlertsEnabled,
+                        onChanged: settings.notificationsEnabled
+                            ? (val) {
+                                notifier.update(paymentAlertsEnabled: val);
+                              }
+                            : null,
                       ),
-                      value: settings.notificationsEnabled,
-                      onChanged: (val) {
-                        notifier.update(notificationsEnabled: val);
-                      },
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: TabbyColors.brandEmerald,
-                      title: const Text(
-                        'Instant Payment Alerts',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                      const Divider(height: 1),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeThumbColor: TabbyColors.brandEmerald,
+                        title: const Text(
+                          'Gentle Reminder Nudges',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: TabbyColors.brandDarkTeal),
+                        ),
+                        subtitle: const Text(
+                          'Notify when due dates approach or tabs remain open',
+                          style: TextStyle(
+                              fontSize: 12, color: TabbyColors.textSecondary),
+                        ),
+                        value: settings.reminderNudgesEnabled,
+                        onChanged: settings.notificationsEnabled
+                            ? (val) {
+                                notifier.update(reminderNudgesEnabled: val);
+                              }
+                            : null,
                       ),
-                      subtitle: const Text(
-                        'Notify when friends record or confirm a payment',
-                        style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                      const SizedBox(height: 24),
+                      TabbyButton(
+                        label: 'Done',
+                        onPressed: () => Navigator.pop(context),
                       ),
-                      value: settings.paymentAlertsEnabled,
-                      onChanged: settings.notificationsEnabled
-                          ? (val) {
-                              notifier.update(paymentAlertsEnabled: val);
-                            }
-                          : null,
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: TabbyColors.brandEmerald,
-                      title: const Text(
-                        'Gentle Reminder Nudges',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                      ),
-                      subtitle: const Text(
-                        'Notify when due dates approach or tabs remain open',
-                        style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-                      ),
-                      value: settings.reminderNudgesEnabled,
-                      onChanged: settings.notificationsEnabled
-                          ? (val) {
-                              notifier.update(reminderNudgesEnabled: val);
-                            }
-                          : null,
-                    ),
-                    const SizedBox(height: 24),
-                    TabbyButton(
-                      label: 'Done',
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
+            );
           },
         );
       },
@@ -2004,6 +1928,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final settings = ref.watch(userSettingsProvider);
+                      final notifier = ref.read(userSettingsProvider.notifier);
+                      return Column(
+                        children: [
+                          _buildPreferenceChoice(
+                            title: 'Philippine Peso (PHP)',
+                            subtitle: 'Primary ledger currency',
+                            selected: settings.currencyCode == 'PHP',
+                            onTap: () => notifier.update(currencyCode: 'PHP'),
+                          ),
+                          _buildPreferenceChoice(
+                            title: 'US Dollar (USD)',
+                            subtitle: 'Display conversion preference',
+                            selected: settings.currencyCode == 'USD',
+                            onTap: () => notifier.update(currencyCode: 'USD'),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const Divider(height: 24),
                   const TabbyMascotWidget(
                     emotion: MascotEmotion.calculating,
                     size: 50,
@@ -2012,12 +1959,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: 12),
                   const Text(
                     'ADR-001 Financial Standard',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: TabbyColors.brandDarkTeal),
                   ),
                   const SizedBox(height: 6),
                   const Text(
                     'Tabby computes and stores all currency internally as integer centavos (1 PHP = 100 centavos). This guarantees absolute mathematical accuracy and eliminates IEEE-754 floating-point rounding errors when splitting odd bills across multiple friends.',
-                    style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary, height: 1.5),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: TabbyColors.textSecondary,
+                        height: 1.5),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -2028,12 +1981,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.verified_outlined, color: TabbyColors.brandEmerald, size: 24),
+                        Icon(Icons.verified_outlined,
+                            color: TabbyColors.brandEmerald, size: 24),
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Example: ₱1,000.00 is stored as 100000 centavos. A 3-way split divides exactly into 33334¢, 33333¢, and 33333¢ with zero lost centavos.',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: TabbyColors.brandDarkTeal),
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: TabbyColors.brandDarkTeal),
                           ),
                         ),
                       ],
@@ -2055,6 +2012,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // 5. Backend & Offline Sync Diagnostics Sheet
+  // ignore: unused_element
   void _showSyncDiagnosticsSheet(BuildContext context) {
     final messenger = ScaffoldMessenger.of(context);
     showModalBottomSheet(
@@ -2126,7 +2084,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       messenger.clearSnackBars();
                       messenger.showSnackBar(
                         const SnackBar(
-                          content: Text('All tabs and transactions are fully synchronized.'),
+                          content: Text(
+                              'All tabs and transactions are fully synchronized.'),
                           backgroundColor: TabbyColors.brandEmerald,
                         ),
                       );
@@ -2188,20 +2147,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     children: [
                       _buildFaqItem(
                         question: 'What is a Tab in Tabby?',
-                        answer: 'A Tab is the complete running bilateral financial ledger between two people. Regardless of how many meals, rides, or bills you share, there is only one running balance between you.',
+                        answer:
+                            'A Tab is the complete running bilateral financial ledger between two people. Regardless of how many meals, rides, or bills you share, there is only one running balance between you.',
                         initiallyExpanded: true,
                       ),
                       _buildFaqItem(
                         question: 'How does Bill Splitting work?',
-                        answer: 'You can choose a 50/50 Split for equal halves or Full Share if one person covered the whole item. Centavo-accurate rounding ensures exact balances.',
+                        answer:
+                            'You can choose a 50/50 Split for equal halves or Full Share if one person covered the whole item. Centavo-accurate rounding ensures exact balances.',
                       ),
                       _buildFaqItem(
                         question: 'How do I settle up?',
-                        answer: 'You can pay using GCash, Maya, Cash, or Bank Transfer. Once payment is recorded in the tab, Tabby updates your net balance immediately.',
+                        answer:
+                            'You can pay using GCash, Maya, Cash, or Bank Transfer. Once payment is recorded in the tab, Tabby updates your net balance immediately.',
                       ),
                       _buildFaqItem(
                         question: 'What is a Friendly Reminder?',
-                        answer: 'Instead of awkward texts, Tabby provides a cute mascot reminder card that you can share with your friend to defuse any tension.',
+                        answer:
+                            'Instead of awkward texts, Tabby provides a cute mascot reminder card that you can share with your friend to defuse any tension.',
                       ),
                       const SizedBox(height: 16),
                       Container(
@@ -2215,20 +2178,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           children: [
                             const Text(
                               'Still have questions?',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandDarkTeal),
                             ),
                             const SizedBox(height: 4),
                             const Text(
                               'Our support team is always happy to assist you.',
-                              style: TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: TabbyColors.textSecondary),
                             ),
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
                               onPressed: () {
-                                Clipboard.setData(const ClipboardData(text: 'support@tabby.ph'));
+                                Clipboard.setData(const ClipboardData(
+                                    text: 'support@tabby.ph'));
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Support email copied to clipboard: support@tabby.ph'),
+                                    content: Text(
+                                        'Support email copied to clipboard: support@tabby.ph'),
                                     backgroundColor: TabbyColors.brandDarkTeal,
                                   ),
                                 );
@@ -2237,7 +2207,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               label: const Text('Copy support@tabby.ph'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: TabbyColors.brandDarkTeal,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10)),
                               ),
                             ),
                           ],
@@ -2265,10 +2236,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required bool accept,
   }) async {
     setState(() => _respondingFriendshipId = request.id);
-    final success = await ref.read(tabbyProvider.notifier).respondToFriendRequest(
-          friendshipId: request.id,
-          accept: accept,
-        );
+    final success =
+        await ref.read(tabbyProvider.notifier).respondToFriendRequest(
+              friendshipId: request.id,
+              accept: accept,
+            );
     if (!mounted) return;
 
     setState(() => _respondingFriendshipId = null);
@@ -2342,7 +2314,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   : (friend.phone.isNotEmpty
                                       ? friend.phone
                                       : 'Saved contact'),
-                              style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: TabbyColors.textSecondary),
                             ),
                           ],
                         ),
@@ -2362,10 +2336,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: TabbyColors.iconBgMint,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.receipt_long_rounded, color: TabbyColors.brandEmerald, size: 20),
+                      child: const Icon(Icons.receipt_long_rounded,
+                          color: TabbyColors.brandEmerald, size: 20),
                     ),
-                    title: const Text('Open Ledger & Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text('View running balance and transaction history', style: TextStyle(fontSize: 12)),
+                    title: const Text('Open Ledger & Tab',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text(
+                        'View running balance and transaction history',
+                        style: TextStyle(fontSize: 12)),
                     onTap: () {
                       Navigator.pop(sheetContext);
                       context.go('/tabs/${friend.id}');
@@ -2380,13 +2359,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: TabbyColors.iconBgBlue,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.add_circle_outline_rounded, color: TabbyColors.accentBlue, size: 20),
+                      child: const Icon(Icons.add_circle_outline_rounded,
+                          color: TabbyColors.accentBlue, size: 20),
                     ),
-                    title: const Text('Log Shared Expense', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text('Split a new bill or record an expense', style: TextStyle(fontSize: 12)),
+                    title: const Text('Log Shared Expense',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text(
+                        'Split a new bill or record an expense',
+                        style: TextStyle(fontSize: 12)),
                     onTap: () {
                       Navigator.pop(sheetContext);
-                      AddExpenseModal.show(context, initialCounterpartId: friend.id);
+                      AddExpenseModal.show(context,
+                          initialCounterpartId: friend.id);
                     },
                   ),
                   const Divider(height: 1),
@@ -2398,10 +2383,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: TabbyColors.iconBgMint,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.edit_outlined, color: TabbyColors.brandEmerald, size: 20),
+                      child: const Icon(Icons.edit_outlined,
+                          color: TabbyColors.brandEmerald, size: 20),
                     ),
-                    title: const Text('Edit Friend Details', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text('Update name, mobile, or payment numbers', style: TextStyle(fontSize: 12)),
+                    title: const Text('Edit Friend Details',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text(
+                        'Update name, mobile, or payment numbers',
+                        style: TextStyle(fontSize: 12)),
                     onTap: () {
                       Navigator.pop(sheetContext);
                       _showEditFriendSheet(context, friend);
@@ -2416,10 +2406,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: const Color(0xFFFEE2E2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.person_remove_rounded, color: TabbyColors.alertRed, size: 20),
+                      child: const Icon(Icons.person_remove_rounded,
+                          color: TabbyColors.alertRed, size: 20),
                     ),
-                    title: const Text('Remove Friend', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: TabbyColors.alertRed)),
-                    subtitle: const Text('Remove from your friends list', style: TextStyle(fontSize: 12)),
+                    title: const Text('Remove Friend',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: TabbyColors.alertRed)),
+                    subtitle: const Text('Remove from your friends list',
+                        style: TextStyle(fontSize: 12)),
                     onTap: () {
                       Navigator.pop(sheetContext);
                       _showRemoveFriendConfirmation(context, friend);
@@ -2452,10 +2448,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom),
               child: Material(
                 color: TabbyColors.surfaceWhite,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: SingleChildScrollView(
@@ -2530,10 +2528,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   final email = emailController.text.trim();
 
                                   if (name.isEmpty) {
-                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context)
+                                        .clearSnackBars();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Please enter a valid friend name.'),
+                                        content: Text(
+                                            'Please enter a valid friend name.'),
                                         backgroundColor: TabbyColors.alertRed,
                                       ),
                                     );
@@ -2541,12 +2541,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   }
 
                                   if (phone.isNotEmpty) {
-                                    final cleanDigits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+                                    final cleanDigits =
+                                        phone.replaceAll(RegExp(r'[^0-9]'), '');
                                     if (cleanDigits.length < 10) {
-                                      ScaffoldMessenger.of(context).clearSnackBars();
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .clearSnackBars();
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         const SnackBar(
-                                          content: Text('Please enter a valid mobile number (min 10 digits).'),
+                                          content: Text(
+                                              'Please enter a valid mobile number (min 10 digits).'),
                                           backgroundColor: TabbyColors.alertRed,
                                         ),
                                       );
@@ -2555,11 +2559,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   }
 
                                   if (email.isNotEmpty &&
-                                      !RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(email)) {
-                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                      !RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$')
+                                          .hasMatch(email)) {
+                                    ScaffoldMessenger.of(context)
+                                        .clearSnackBars();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Please enter a valid email address.'),
+                                        content: Text(
+                                            'Please enter a valid email address.'),
                                         backgroundColor: TabbyColors.alertRed,
                                       ),
                                     );
@@ -2571,17 +2578,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   ref.read(tabbyProvider.notifier).updateFriend(
                                         id: friend.id,
                                         name: name,
-                                        phone: phone.isNotEmpty ? phone : friend.phone,
+                                        phone: phone.isNotEmpty
+                                            ? phone
+                                            : friend.phone,
                                         email: email,
-                                        gcashNumber: gcashController.text.trim(),
+                                        gcashNumber:
+                                            gcashController.text.trim(),
                                         mayaNumber: mayaController.text.trim(),
                                       );
 
                                   Navigator.pop(sheetContext);
-                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Updated details for $name!'),
+                                      content:
+                                          Text('Updated details for $name!'),
                                       backgroundColor: TabbyColors.brandEmerald,
                                     ),
                                   );
@@ -2605,10 +2617,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
-              Icon(Icons.person_remove_rounded, color: TabbyColors.alertRed, size: 22),
+              Icon(Icons.person_remove_rounded,
+                  color: TabbyColors.alertRed, size: 22),
               SizedBox(width: 8),
               Text(
                 'Remove Friend',
@@ -2618,12 +2632,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           content: Text(
             'Are you sure you want to remove ${friend.displayName} from your friends list?',
-            style: const TextStyle(fontSize: 14, color: TabbyColors.textSecondary),
+            style:
+                const TextStyle(fontSize: 14, color: TabbyColors.textSecondary),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: TabbyColors.textSecondary)),
+              child: const Text('Cancel',
+                  style: TextStyle(color: TabbyColors.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -2632,7 +2648,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ScaffoldMessenger.of(context).clearSnackBars();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${friend.displayName} has been removed from your friends list.'),
+                    content: Text(
+                        '${friend.displayName} has been removed from your friends list.'),
                     backgroundColor: TabbyColors.brandDarkTeal,
                   ),
                 );
@@ -2640,7 +2657,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: TabbyColors.alertRed,
                 foregroundColor: TabbyColors.surfaceWhite,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Remove'),
             ),
@@ -2654,7 +2672,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _showCreateGroupSheet(BuildContext context) {
     ScaffoldMessenger.of(context).clearSnackBars();
     final nameController = TextEditingController();
-    final customMemberController = TextEditingController();
     final friends = ref.read(friendsProvider);
     final selectedFriendIds = <String>{};
     bool isSubmitting = false;
@@ -2667,10 +2684,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom),
               child: Material(
                 color: TabbyColors.surfaceWhite,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: SingleChildScrollView(
@@ -2702,7 +2721,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const SizedBox(height: 8),
                         const Text(
                           'Keep tabs for barkada meals, roommates, or shared road trips.',
-                          style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                          style: TextStyle(
+                              fontSize: 12, color: TabbyColors.textSecondary),
                         ),
                         const SizedBox(height: 16),
                         _buildInputField(
@@ -2713,20 +2733,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const SizedBox(height: 16),
                         const Text(
                           'Select Members from Friends',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: TabbyColors.brandDarkTeal),
                         ),
                         const SizedBox(height: 8),
                         if (friends.isEmpty)
                           const Text(
-                            'No friends added yet. Add member names below.',
-                            style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                            'No accepted friends yet. Connect with a friend first.',
+                            style: TextStyle(
+                                fontSize: 12, color: TabbyColors.textSecondary),
                           )
                         else
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: friends.map((friend) {
-                              final isSelected = selectedFriendIds.contains(friend.id);
+                              final isSelected =
+                                  selectedFriendIds.contains(friend.id);
                               return FilterChip(
                                 label: Text(friend.displayName),
                                 selected: isSelected,
@@ -2735,7 +2760,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 labelStyle: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: isSelected ? TabbyColors.brandEmerald : TabbyColors.brandDarkTeal,
+                                  color: isSelected
+                                      ? TabbyColors.brandEmerald
+                                      : TabbyColors.brandDarkTeal,
                                 ),
                                 onSelected: (val) {
                                   setModalState(() {
@@ -2749,25 +2776,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               );
                             }).toList(),
                           ),
-                        const SizedBox(height: 14),
-                        _buildInputField(
-                          label: 'Add Extra Member Name (optional)',
-                          controller: customMemberController,
-                          icon: Icons.person_add_alt_1_rounded,
-                        ),
                         const SizedBox(height: 24),
                         TabbyButton(
-                          label: isSubmitting ? 'Creating...' : 'Create Group Tab',
+                          label:
+                              isSubmitting ? 'Creating...' : 'Create Group Tab',
                           isLoading: isSubmitting,
                           onPressed: isSubmitting
                               ? null
                               : () {
                                   final groupName = nameController.text.trim();
                                   if (groupName.isEmpty) {
-                                    ScaffoldMessenger.of(context).clearSnackBars();
+                                    ScaffoldMessenger.of(context)
+                                        .clearSnackBars();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Please enter a group name.'),
+                                        content:
+                                            Text('Please enter a group name.'),
+                                        backgroundColor: TabbyColors.alertRed,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  if (selectedFriendIds.isEmpty) {
+                                    ScaffoldMessenger.of(context)
+                                        .clearSnackBars();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            'Select at least one accepted friend.'),
                                         backgroundColor: TabbyColors.alertRed,
                                       ),
                                     );
@@ -2778,30 +2815,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                                   final memberNames = <String>[];
                                   for (final id in selectedFriendIds) {
-                                    final f = friends.where((x) => x.id == id).firstOrNull;
-                                    if (f != null) memberNames.add(f.displayName);
-                                  }
-
-                                  final custom = customMemberController.text.trim();
-                                  if (custom.isNotEmpty) {
-                                    memberNames.add(custom);
-                                  }
-
-                                  if (memberNames.isEmpty) {
-                                    memberNames.add('Barkada Member');
+                                    final f = friends
+                                        .where((x) => x.id == id)
+                                        .firstOrNull;
+                                    if (f != null) {
+                                      memberNames.add(f.displayName);
+                                    }
                                   }
 
                                   ref.read(tabbyProvider.notifier).addGroupTab(
                                         groupName: groupName,
                                         memberNames: memberNames,
-                                        memberUserIds: selectedFriendIds.toList(),
+                                        memberUserIds:
+                                            selectedFriendIds.toList(),
                                       );
 
                                   Navigator.pop(sheetContext);
-                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                      content: Text('Group "$groupName" created successfully!'),
+                                      content: Text(
+                                          'Group "$groupName" created successfully!'),
                                       backgroundColor: TabbyColors.brandEmerald,
                                     ),
                                   );
@@ -2856,7 +2891,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               group.counterpart.phone.isNotEmpty
                                   ? group.counterpart.phone
                                   : 'Group Tab',
-                              style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: TabbyColors.textSecondary),
                             ),
                           ],
                         ),
@@ -2876,10 +2913,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: TabbyColors.iconBgMint,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.receipt_long_rounded, color: TabbyColors.brandEmerald, size: 20),
+                      child: const Icon(Icons.receipt_long_rounded,
+                          color: TabbyColors.brandEmerald, size: 20),
                     ),
-                    title: const Text('Open Group Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text('View group balance and expenses', style: TextStyle(fontSize: 12)),
+                    title: const Text('Open Group Tab',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text('View group balance and expenses',
+                        style: TextStyle(fontSize: 12)),
                     onTap: () {
                       Navigator.pop(sheetContext);
                       context.go('/tabs/${group.id}');
@@ -2894,13 +2935,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: TabbyColors.iconBgBlue,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.add_circle_outline_rounded, color: TabbyColors.accentBlue, size: 20),
+                      child: const Icon(Icons.add_circle_outline_rounded,
+                          color: TabbyColors.accentBlue, size: 20),
                     ),
-                    title: const Text('Log Group Expense', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text('Add a shared bill or split for this group', style: TextStyle(fontSize: 12)),
+                    title: const Text('Log Group Expense',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14)),
+                    subtitle: const Text(
+                        'Add a shared bill or split for this group',
+                        style: TextStyle(fontSize: 12)),
                     onTap: () {
                       Navigator.pop(sheetContext);
-                      AddExpenseModal.show(context, initialCounterpartId: group.id);
+                      AddExpenseModal.show(context,
+                          initialCounterpartId: group.id);
                     },
                   ),
                   const Divider(height: 1),
@@ -2912,10 +2959,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: const Color(0xFFFEE2E2),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.delete_outline_rounded, color: TabbyColors.alertRed, size: 20),
+                      child: const Icon(Icons.delete_outline_rounded,
+                          color: TabbyColors.alertRed, size: 20),
                     ),
-                    title: const Text('Delete Group Tab', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: TabbyColors.alertRed)),
-                    subtitle: const Text('Remove group tab and associated records', style: TextStyle(fontSize: 12)),
+                    title: const Text('Delete Group Tab',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: TabbyColors.alertRed)),
+                    subtitle: const Text(
+                        'Remove group tab and associated records',
+                        style: TextStyle(fontSize: 12)),
                     onTap: () {
                       Navigator.pop(sheetContext);
                       _showRemoveGroupConfirmation(context, group);
@@ -2937,10 +2991,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
-              Icon(Icons.delete_outline_rounded, color: TabbyColors.alertRed, size: 22),
+              Icon(Icons.delete_outline_rounded,
+                  color: TabbyColors.alertRed, size: 22),
               SizedBox(width: 8),
               Text(
                 'Delete Group Tab',
@@ -2950,12 +3006,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           content: Text(
             'Are you sure you want to delete "$title"? This will remove all associated group records.',
-            style: const TextStyle(fontSize: 14, color: TabbyColors.textSecondary),
+            style:
+                const TextStyle(fontSize: 14, color: TabbyColors.textSecondary),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: TabbyColors.textSecondary)),
+              child: const Text('Cancel',
+                  style: TextStyle(color: TabbyColors.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -2972,7 +3030,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: TabbyColors.alertRed,
                 foregroundColor: TabbyColors.surfaceWhite,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Delete'),
             ),
@@ -2988,7 +3047,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
               Icon(Icons.logout_rounded, color: TabbyColors.alertRed, size: 22),
@@ -3006,7 +3066,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel', style: TextStyle(color: TabbyColors.textSecondary)),
+              child: const Text('Cancel',
+                  style: TextStyle(color: TabbyColors.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -3020,7 +3081,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: TabbyColors.alertRed,
                 foregroundColor: TabbyColors.surfaceWhite,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Log Out'),
             ),
@@ -3051,10 +3113,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+          labelStyle:
+              const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
           prefixIcon: Icon(icon, size: 20, color: TabbyColors.textSecondary),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
     );
@@ -3085,11 +3149,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: TabbyColors.brandDarkTeal),
               ),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 11, color: TabbyColors.textSecondary),
               ),
             ],
           ),
@@ -3102,14 +3170,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           child: Text(
             status,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor),
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: statusColor),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFaqItem({required String question, required String answer, bool initiallyExpanded = false}) {
+  Widget _buildFaqItem(
+      {required String question,
+      required String answer,
+      bool initiallyExpanded = false}) {
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
@@ -3117,14 +3189,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         tilePadding: EdgeInsets.zero,
         title: Text(
           question,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+          style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: TabbyColors.brandDarkTeal),
         ),
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               answer,
-              style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary, height: 1.4),
+              style: const TextStyle(
+                  fontSize: 12, color: TabbyColors.textSecondary, height: 1.4),
             ),
           ),
         ],
@@ -3200,9 +3276,8 @@ class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
       setState(() {
         _isLookingUp = false;
         _foundUser = user;
-        _message = user == null
-            ? 'No Tabby account was found for that ID.'
-            : null;
+        _message =
+            user == null ? 'No Tabby account was found for that ID.' : null;
       });
     } catch (_) {
       if (!mounted || lookupGeneration != _lookupGeneration) return;
@@ -3408,6 +3483,129 @@ class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PinSetupSheet extends ConsumerStatefulWidget {
+  const _PinSetupSheet({required this.hostContext});
+
+  final BuildContext hostContext;
+
+  @override
+  ConsumerState<_PinSetupSheet> createState() => _PinSetupSheetState();
+}
+
+class _PinSetupSheetState extends ConsumerState<_PinSetupSheet> {
+  late final TextEditingController _pinController;
+  late final TextEditingController _confirmController;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pinController = TextEditingController();
+    _confirmController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    _confirmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _savePin() async {
+    if (_pinController.text != _confirmController.text ||
+        !RegExp(r'^\d{4,6}$').hasMatch(_pinController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter matching 4 to 6 digit PINs.')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    final saved = await ref
+        .read(userSettingsProvider.notifier)
+        .setPin(_pinController.text);
+    if (!mounted) return;
+
+    if (saved) {
+      Navigator.of(context).pop();
+      if (widget.hostContext.mounted) {
+        ScaffoldMessenger.of(widget.hostContext).showSnackBar(
+          const SnackBar(content: Text('PIN protection enabled.')),
+        );
+      }
+    } else {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: TabbyColors.surfaceWhite,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            20,
+            24,
+            24 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Configure PIN',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: TabbyColors.brandDarkTeal,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Use a 4 to 6 digit PIN as a device fallback.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: TabbyColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _pinController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  labelText: 'New PIN',
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _confirmController,
+                obscureText: true,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                decoration: const InputDecoration(
+                  labelText: 'Confirm PIN',
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 18),
+              TabbyButton(
+                label: _isSaving ? 'Saving...' : 'Save PIN',
+                onPressed: _isSaving ? null : _savePin,
+              ),
+            ],
           ),
         ),
       ),

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/device_auth_service.dart';
+import '../../../core/services/pin_protection_service.dart';
 import '../data/mock_tabby_repository.dart';
 import '../data/supabase_tabby_repository.dart';
 import '../data/tabby_local_cache.dart';
@@ -12,7 +14,7 @@ import 'tabby_state.dart';
 
 /// Main Tabby Notifier managing bilateral tabs, activity logs, reminders, and mascot state machine
 class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
-  TabbyNotifier()
+  TabbyNotifier({bool loadInitialData = true})
       : super(
           // When Supabase is initialized, start with an empty live state.
           // When running unit tests (Supabase not initialized), use mock data.
@@ -25,10 +27,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
                   reminders: MockTabbyRepository.getInitialReminders(),
                 ),
         ) {
-    _loadTabs();
+    if (loadInitialData) {
+      _loadTabs();
+    }
   }
 
-  Future<void> _loadTabs() async {
+  Future<bool> _loadTabs() async {
     final hasLiveSession =
         SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
     final currentUserId = hasLiveSession
@@ -90,24 +94,24 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
         for (final st in serverTabs) {
           // Find matching local tab by tab id or counterpart id/name
-          final localMatch =
-              localTabsPool.values.cast<BilateralTab?>().firstWhere(
-                    (lt) =>
-                        lt != null &&
-                        (lt.id == st.id ||
-                            (!lt.isGroupTab &&
-                                !st.isGroupTab &&
-                                ((lt.counterpart.id.isNotEmpty &&
-                                        lt.counterpart.id ==
-                                            st.counterpart.id) ||
-                                    lt.counterpart.displayName
-                                            .trim()
-                                            .toLowerCase() ==
-                                        st.counterpart.displayName
-                                            .trim()
-                                            .toLowerCase()))),
-                    orElse: () => null,
-                  );
+          final localMatch = localTabsPool.values
+              .cast<BilateralTab?>()
+              .firstWhere(
+                (lt) =>
+                    lt != null &&
+                    (lt.id == st.id ||
+                        (!lt.isGroupTab &&
+                            !st.isGroupTab &&
+                            ((lt.counterpart.id.isNotEmpty &&
+                                    lt.counterpart.id == st.counterpart.id) ||
+                                lt.counterpart.displayName
+                                        .trim()
+                                        .toLowerCase() ==
+                                    st.counterpart.displayName
+                                        .trim()
+                                        .toLowerCase()))),
+                orElse: () => null,
+              );
 
           if (localMatch != null) {
             processedLocalIds.add(localMatch.id);
@@ -160,14 +164,16 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           mergedTabs,
           userId: hasLiveSession ? currentUserId : null,
         );
+        return true;
       }
     } catch (e) {
       debugPrint('[TabbyNotifier] Live fetch error: $e');
     }
+    return !hasLiveSession;
   }
 
-  Future<void> refreshTabs() async {
-    await _loadTabs();
+  Future<bool> refreshTabs() async {
+    return _loadTabs();
   }
 
   Future<TabbyUser?> findFriendByCode(String friendCode) {
@@ -181,7 +187,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       state = state.copyWith(
         friendRequests: [
           request,
-          ...state.friendRequests.where((existing) => existing.id != request.id),
+          ...state.friendRequests
+              .where((existing) => existing.id != request.id),
         ],
       );
     }
@@ -196,7 +203,9 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       friendshipId: friendshipId,
       accept: accept,
     );
-    if (!mounted || !SupabaseTabbyRepository.instance.isConnected || tabId == null) {
+    if (!mounted ||
+        !SupabaseTabbyRepository.instance.isConnected ||
+        tabId == null) {
       return false;
     }
 
@@ -232,6 +241,9 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required bool paidByMe,
     required bool isEqualSplit,
     bool isConnectedFriend = false,
+    int participantCount = 2,
+    String? payerId,
+    String? payerName,
     DateTime? dueDate,
     String? receiptUrl,
   }) async {
@@ -245,14 +257,21 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
             : MockTabbyRepository.currentUser.displayName;
 
     final now = DateTime.now();
+    final splitParticipantCount = participantCount < 2 ? 2 : participantCount;
+    final effectivePayerId =
+        payerId ?? (paidByMe ? currentUserId : counterpartId);
+    final effectivePayerName =
+        payerName ?? (paidByMe ? currentUserDisplayName : counterpartName);
 
     int myShare;
     int counterpartShare;
 
     if (isEqualSplit) {
-      // 50/50 split with integer centavo division (ADR-001)
-      myShare = totalAmountCentavos ~/ 2;
-      counterpartShare = totalAmountCentavos - myShare;
+      // Equal split with integer centavo division (ADR-001). For a group,
+      // the current user owns one share and the remaining shares belong to
+      // the other participants.
+      myShare = totalAmountCentavos ~/ splitParticipantCount;
+      counterpartShare = paidByMe ? totalAmountCentavos - myShare : 0;
     } else {
       // Full obligation allocation
       if (paidByMe) {
@@ -272,8 +291,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       totalAmountCentavos: totalAmountCentavos,
       myShareCentavos: myShare,
       counterpartShareCentavos: counterpartShare,
-      paidByUserId: paidByMe ? currentUserId : counterpartId,
-      paidByName: paidByMe ? currentUserDisplayName : counterpartName,
+      paidByUserId: effectivePayerId,
+      paidByName: effectivePayerName,
       date: now,
       dueDate: dueDate,
       status: TransactionStatus.acknowledged,
@@ -300,6 +319,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         netBalanceCentavos: newNetBalance,
         itemCount: updatedEntries.length,
         lastUpdated: now,
+        isTabOnlyParticipant: existingTab.isTabOnlyParticipant ||
+            (!existingTab.isGroupTab && !isConnectedFriend),
       );
 
       updatedTabs = List<BilateralTab>.from(state.tabs);
@@ -318,6 +339,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         itemCount: 1,
         entries: [newEntry],
         lastUpdated: now,
+        isTabOnlyParticipant: !isConnectedFriend,
       );
       updatedTabs = [newTab, ...state.tabs];
     }
@@ -431,7 +453,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
             title: title.trim().isEmpty ? category.displayName : title.trim(),
             totalAmountCentavos: totalAmountCentavos,
             category: category,
-            paidByUserId: paidByMe ? currentUserId : resolvedCounterpartId,
+            paidByUserId:
+                paidByMe ? currentUserId : (payerId ?? resolvedCounterpartId),
             myShareCentavos: myShare,
             counterpartShareCentavos: counterpartShare,
             currentUserId: currentUserId,
@@ -648,7 +671,11 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     });
   }
 
-  /// Adds a new friend and creates an initial bilateral tab
+  /// Creates a one-to-one tab for an unregistered person.
+  ///
+  /// Connected Friends enter through the accepted Friendship flow. This
+  /// legacy helper remains for contact-tab creation and never creates a
+  /// Friends-list relationship.
   Future<void> addFriend({
     required String name,
     required String phone,
@@ -707,12 +734,13 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       netBalanceCentavos: 0,
       itemCount: 0,
       lastUpdated: now,
+      isTabOnlyParticipant: true,
     );
 
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
       actorName: 'You',
-      description: 'added $name to your friends list',
+      description: 'created a one-to-one tab for $name',
       amountCentavos: 0,
       timestamp: now,
       iconData: Icons.person_add_rounded,
@@ -742,11 +770,66 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     required List<String> memberNames,
     List<String>? memberUserIds,
   }) {
+    unawaited(createGroupTab(
+      groupName: groupName,
+      memberNames: memberNames,
+      memberUserIds: memberUserIds,
+    ));
+  }
+
+  /// Creates a group tab and returns the local or server-backed tab ID.
+  ///
+  /// The returned ID lets a Create Tab flow append the first expense to the
+  /// same group tab, including when Supabase assigns the real UUID remotely.
+  Future<String?> createGroupTab({
+    required String groupName,
+    required List<String> memberNames,
+    List<String>? memberUserIds,
+  }) async {
     final hasLiveSession =
         SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
     final currentUserId = hasLiveSession
         ? SupabaseConfig.currentUserId!
         : MockTabbyRepository.currentUser.id;
+
+    var eligibleMemberUserIds = filterEligibleGroupMemberIds(
+      requestedIds: memberUserIds ?? const [],
+      friendRequests: state.friendRequests,
+    );
+
+    // Local/mock fixtures represent registered friends with a friend code but
+    // do not always include a Friendship row. Keep those fixtures usable while
+    // the live path remains restricted to accepted Friendship records.
+    if (!hasLiveSession && state.friendRequests.isEmpty) {
+      final registeredFixtureIds = state.tabs
+          .where((tab) =>
+              !tab.isGroupTab &&
+              !tab.isTabOnlyParticipant &&
+              tab.counterpart.friendCode?.trim().isNotEmpty == true)
+          .map((tab) => tab.counterpart.id)
+          .toSet();
+      eligibleMemberUserIds = (memberUserIds ?? const [])
+          .where(registeredFixtureIds.contains)
+          .toList();
+    }
+
+    final acceptedNamesById = <String, String>{
+      for (final request in state.friendRequests
+          .where((request) => request.status == FriendRequestStatus.accepted))
+        request.otherUser.id: request.otherUser.displayName,
+    };
+    final fixtureNamesById = <String, String>{
+      for (final tab in state.tabs)
+        if (!tab.isGroupTab &&
+            tab.counterpart.friendCode?.trim().isNotEmpty == true)
+          tab.counterpart.id: tab.counterpart.displayName,
+    };
+    final eligibleMemberNames = eligibleMemberUserIds
+        .map((id) => acceptedNamesById[id] ?? fixtureNamesById[id])
+        .whereType<String>()
+        .toList();
+    final resolvedMemberNames =
+        eligibleMemberNames.isNotEmpty ? eligibleMemberNames : memberNames;
 
     final now = DateTime.now();
     final groupId =
@@ -757,7 +840,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         id: groupId,
         displayName: groupName,
         email: 'group@tabby.ph',
-        phone: memberNames.join(', '),
+        phone: resolvedMemberNames.join(', '),
       ),
       entries: const [],
       netBalanceCentavos: 0,
@@ -771,7 +854,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       id: 'act-${now.millisecondsSinceEpoch}',
       actorName: 'You',
       description:
-          'created group $groupName with ${memberNames.length} members',
+          'created group $groupName with ${eligibleMemberUserIds.length} members',
       amountCentavos: 0,
       timestamp: now,
       iconData: Icons.group_add_rounded,
@@ -785,31 +868,47 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       activities: updatedActivities,
     );
 
-    TabbyLocalCache.saveTabs(
+    await TabbyLocalCache.saveTabs(
       updatedTabs,
       userId: hasLiveSession ? currentUserId : null,
     );
-    TabbyLocalCache.saveActivities(
+    await TabbyLocalCache.saveActivities(
       updatedActivities,
       userId: hasLiveSession ? currentUserId : null,
     );
 
-    if (SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null) {
-      SupabaseTabbyRepository.instance
-          .createGroupTab(
-        groupName: groupName,
-        currentUserId: SupabaseConfig.currentUserId!,
-        memberUserIds: memberUserIds,
-      )
-          .then((newTabId) {
-        if (newTabId != null) {
-          _loadTabs();
+    if (hasLiveSession) {
+      try {
+        final newTabId = await SupabaseTabbyRepository.instance.createGroupTab(
+          groupName: groupName,
+          currentUserId: SupabaseConfig.currentUserId!,
+          memberUserIds: eligibleMemberUserIds,
+        );
+        if (newTabId != null && newTabId != groupId) {
+          final currentIndex =
+              state.tabs.indexWhere((tab) => tab.id == groupId);
+          if (currentIndex >= 0) {
+            final fixedTabs = List<BilateralTab>.from(state.tabs);
+            fixedTabs[currentIndex] = fixedTabs[currentIndex].copyWith(
+              id: newTabId,
+              counterpart: fixedTabs[currentIndex].counterpart.copyWith(
+                    id: newTabId,
+                  ),
+            );
+            state = state.copyWith(tabs: fixedTabs);
+            await TabbyLocalCache.saveTabs(
+              fixedTabs,
+              userId: currentUserId,
+            );
+          }
+          return newTabId;
         }
-      }).catchError((e) {
+      } catch (e) {
         debugPrint('[TabbyNotifier] createGroupTab warning: $e');
-        return null;
-      });
+      }
     }
+
+    return groupId;
   }
 
   /// Updates details of an existing friend
@@ -849,8 +948,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     );
   }
 
-  /// Removes a friend and their bilateral tab
-  void removeFriend(String friendId) {
+  /// Removes the social Friend relationship while preserving all financial history.
+  Future<void> removeFriend(String friendId) async {
     final hasLiveSession =
         SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
     final currentUserId = hasLiveSession
@@ -863,11 +962,21 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     final friendName = tabToRemove?.counterpart.displayName ?? 'Friend';
     final now = DateTime.now();
 
-    final updatedTabs = state.tabs
-        .where((t) => t.counterpart.id != friendId && t.id != friendId)
-        .toList();
-    final updatedReminders =
-        state.reminders.where((r) => r.tabId != friendId).toList();
+    final updatedTabs = List<BilateralTab>.from(state.tabs);
+    final updatedFriendRequests = state.friendRequests.map((request) {
+      if (request.otherUser.id != friendId) return request;
+      return FriendRequest(
+        id: request.id,
+        requesterId: request.requesterId,
+        addresseeId: request.addresseeId,
+        requester: request.requester,
+        addressee: request.addressee,
+        status: FriendRequestStatus.declined,
+        createdAt: request.createdAt,
+        respondedAt: now,
+        currentUserId: request.currentUserId,
+      );
+    }).toList();
 
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
@@ -883,7 +992,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     state = state.copyWith(
       tabs: updatedTabs,
       activities: updatedActivities,
-      reminders: updatedReminders,
+      friendRequests: updatedFriendRequests,
     );
 
     TabbyLocalCache.saveTabs(
@@ -894,15 +1003,11 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       updatedActivities,
       userId: hasLiveSession ? currentUserId : null,
     );
-    TabbyLocalCache.saveReminders(
-      updatedReminders,
-      userId: hasLiveSession ? currentUserId : null,
-    );
-
     if (SupabaseConfig.isInitialized &&
-        tabToRemove != null &&
-        SupabaseTabbyRepository.isValidUuid(tabToRemove.id)) {
-      SupabaseTabbyRepository.instance.archiveTab(tabToRemove.id);
+        SupabaseTabbyRepository.isValidUuid(friendId)) {
+      await SupabaseTabbyRepository.instance.removeFriend(
+        friendUserId: friendId,
+      );
     }
   }
 
@@ -1195,13 +1300,47 @@ final tabDetailProvider = Provider.family<BilateralTab?, String>((ref, tabId) {
   }
 });
 
-/// Dynamic list of friends derived from active tabs (excluding group tabs)
+/// Dynamic list of registered accepted friends.
+///
+/// Friend visibility is driven by accepted friendship records, not by the
+/// presence of a financial tab. Tab-only unregistered participants therefore
+/// remain visible in My Tabs without leaking into the Friends domain.
 final friendsProvider = Provider<List<TabbyUser>>((ref) {
-  final tabs = ref.watch(tabbyProvider).tabs;
+  final dashboardState = ref.watch(tabbyProvider);
+  final tabs = dashboardState.tabs;
+
+  final acceptedFriends = <String, TabbyUser>{};
+  for (final request in dashboardState.friendRequests) {
+    if (request.status == FriendRequestStatus.accepted) {
+      final friend = request.otherUser;
+      if (friend.id.isNotEmpty) {
+        acceptedFriends[friend.id] = friend;
+      }
+    }
+  }
+
+  // Live sessions must use the server-backed accepted relationship list. The
+  // fallback is only for the repository's local mock mode and existing local
+  // fixtures that represent a registered friend with a shareable Tabby ID.
+  if (dashboardState.friendRequests.isNotEmpty ||
+      SupabaseConfig.isInitialized) {
+    for (final tab in tabs) {
+      if (!tab.isGroupTab &&
+          !tab.isTabOnlyParticipant &&
+          acceptedFriends.containsKey(tab.counterpart.id)) {
+        acceptedFriends[tab.counterpart.id] = tab.counterpart;
+      }
+    }
+    return acceptedFriends.values.toList();
+  }
+
   final seenIds = <String>{};
   final friends = <TabbyUser>[];
   for (final tab in tabs) {
-    if (!tab.isGroupTab && !seenIds.contains(tab.counterpart.id)) {
+    if (!tab.isGroupTab &&
+        !tab.isTabOnlyParticipant &&
+        tab.counterpart.friendCode?.isNotEmpty == true &&
+        !seenIds.contains(tab.counterpart.id)) {
       seenIds.add(tab.counterpart.id);
       friends.add(tab.counterpart);
     }
@@ -1215,7 +1354,9 @@ final groupsProvider = Provider<List<BilateralTab>>((ref) {
   return tabs.where((t) => t.isGroupTab).toList();
 });
 
-/// Persistent user security & notification preferences
+/// Persistent user security, notification, appearance, currency, and locale preferences.
+enum SecurityMethod { none, biometric, pin, biometricAndPin }
+
 @immutable
 class UserSettings {
   final bool biometricsEnabled;
@@ -1224,15 +1365,32 @@ class UserSettings {
   final bool notificationsEnabled;
   final bool paymentAlertsEnabled;
   final bool reminderNudgesEnabled;
+  final String currencyCode;
+  final String languageCode;
+  final bool motionEnabled;
+  final bool darkModeEnabled;
 
   const UserSettings({
-    this.biometricsEnabled = true,
+    this.biometricsEnabled = false,
     this.passcodeEnabled = false,
     this.autoLockEnabled = true,
     this.notificationsEnabled = true,
     this.paymentAlertsEnabled = true,
     this.reminderNudgesEnabled = true,
+    this.currencyCode = 'PHP',
+    this.languageCode = 'en',
+    this.motionEnabled = true,
+    this.darkModeEnabled = false,
   });
+
+  SecurityMethod get securityMethod {
+    if (biometricsEnabled && passcodeEnabled) {
+      return SecurityMethod.biometricAndPin;
+    }
+    if (biometricsEnabled) return SecurityMethod.biometric;
+    if (passcodeEnabled) return SecurityMethod.pin;
+    return SecurityMethod.none;
+  }
 
   UserSettings copyWith({
     bool? biometricsEnabled,
@@ -1241,6 +1399,10 @@ class UserSettings {
     bool? notificationsEnabled,
     bool? paymentAlertsEnabled,
     bool? reminderNudgesEnabled,
+    String? currencyCode,
+    String? languageCode,
+    bool? motionEnabled,
+    bool? darkModeEnabled,
   }) {
     return UserSettings(
       biometricsEnabled: biometricsEnabled ?? this.biometricsEnabled,
@@ -1250,34 +1412,62 @@ class UserSettings {
       paymentAlertsEnabled: paymentAlertsEnabled ?? this.paymentAlertsEnabled,
       reminderNudgesEnabled:
           reminderNudgesEnabled ?? this.reminderNudgesEnabled,
+      currencyCode: currencyCode ?? this.currencyCode,
+      languageCode: languageCode ?? this.languageCode,
+      motionEnabled: motionEnabled ?? this.motionEnabled,
+      darkModeEnabled: darkModeEnabled ?? this.darkModeEnabled,
     );
   }
 }
 
 class UserSettingsNotifier extends StateNotifier<UserSettings> {
-  static const _storage = FlutterSecureStorage();
-  static final _auth = LocalAuthentication();
-
-  UserSettingsNotifier() : super(const UserSettings()) {
+  UserSettingsNotifier({
+    DeviceAuthService? auth,
+    PinProtectionService? pinProtection,
+    String? userId,
+  })  : _auth = auth ?? LocalDeviceAuthService(),
+        _pinProtection = pinProtection ?? PinProtectionService(),
+        _userId = userId ?? 'offline',
+        super(const UserSettings()) {
     _loadPersistedSettings();
+  }
+
+  static const _storage = FlutterSecureStorage();
+  final DeviceAuthService _auth;
+  final PinProtectionService _pinProtection;
+  final String _userId;
+
+  String _key(String name) => 'tabby_${_userId}_$name';
+
+  Future<String?> _read(String name) async {
+    return await _storage.read(key: _key(name)) ??
+        await _storage.read(key: 'tabby_$name');
   }
 
   Future<void> _loadPersistedSettings() async {
     try {
-      final bioStr = await _storage.read(key: 'tabby_biometrics_enabled');
-      final passStr = await _storage.read(key: 'tabby_passcode_enabled');
-      final lockStr = await _storage.read(key: 'tabby_auto_lock_enabled');
-      final notifStr = await _storage.read(key: 'tabby_notifications_enabled');
-      final payStr = await _storage.read(key: 'tabby_payment_alerts_enabled');
-      final remStr = await _storage.read(key: 'tabby_reminder_nudges_enabled');
+      final bioStr = await _read('biometrics_enabled');
+      final passStr = await _read('passcode_enabled');
+      final lockStr = await _read('auto_lock_enabled');
+      final notifStr = await _read('notifications_enabled');
+      final payStr = await _read('payment_alerts_enabled');
+      final remStr = await _read('reminder_nudges_enabled');
+      final currencyStr = await _read('currency_code');
+      final languageStr = await _read('language_code');
+      final motionStr = await _read('motion_enabled');
+      final darkModeStr = await _read('dark_mode_enabled');
 
       state = UserSettings(
-        biometricsEnabled: bioStr != null ? bioStr == 'true' : true,
-        passcodeEnabled: passStr != null ? passStr == 'true' : false,
+        biometricsEnabled: bioStr == 'true',
+        passcodeEnabled: passStr == 'true',
         autoLockEnabled: lockStr != null ? lockStr == 'true' : true,
         notificationsEnabled: notifStr != null ? notifStr == 'true' : true,
         paymentAlertsEnabled: payStr != null ? payStr == 'true' : true,
         reminderNudgesEnabled: remStr != null ? remStr == 'true' : true,
+        currencyCode: currencyStr == 'USD' ? 'USD' : 'PHP',
+        languageCode: languageStr == 'fil' ? 'fil' : 'en',
+        motionEnabled: motionStr != null ? motionStr == 'true' : true,
+        darkModeEnabled: darkModeStr == 'true',
       );
     } catch (e) {
       debugPrint('[UserSettingsNotifier] Error loading settings: $e');
@@ -1286,48 +1476,52 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
 
   Future<bool> toggleBiometrics(bool enable) async {
     if (enable) {
-      try {
-        final canCheck = await _auth.canCheckBiometrics;
-        final isSupported = await _auth.isDeviceSupported();
-        if (!canCheck && !isSupported) {
-          debugPrint(
-              '[UserSettingsNotifier] Biometrics not supported on device');
-          return false;
-        }
-
-        final didAuthenticate = await _auth.authenticate(
-          localizedReason: 'Confirm biometric identity to secure Tabby',
-          options: const AuthenticationOptions(
-              stickyAuth: true, biometricOnly: true),
-        );
-
-        if (!didAuthenticate) {
-          return false;
-        }
-      } catch (e) {
-        debugPrint('[UserSettingsNotifier] Biometric check failed: $e');
-        return false;
-      }
+      if (!await _auth.isSupported()) return false;
+      final didAuthenticate = await _auth.authenticate(
+        reason: 'Confirm your identity to secure Tabby',
+        allowDeviceCredential: false,
+      );
+      if (!didAuthenticate) return false;
     }
 
-    state = state.copyWith(biometricsEnabled: enable);
-    try {
-      await _storage.write(
-          key: 'tabby_biometrics_enabled', value: enable.toString());
-    } catch (e) {
-      debugPrint('[UserSettingsNotifier] Error saving biometrics: $e');
-    }
+    await update(biometricsEnabled: enable);
     return true;
   }
 
-  Future<void> toggleNotifications(bool enable) async {
-    state = state.copyWith(notificationsEnabled: enable);
+  Future<bool> enableBiometric() => toggleBiometrics(true);
+
+  Future<List<BiometricType>> availableAuthMethods() async {
+    return _auth.availableBiometrics();
+  }
+
+  Future<String> biometricLabel() async {
+    final methods = await availableAuthMethods();
+    if (methods.contains(BiometricType.face)) return 'Face ID';
+    if (methods.contains(BiometricType.fingerprint)) return 'Fingerprint';
+    if (methods.isNotEmpty) return 'Device biometrics';
+    return 'No biometric sensor detected';
+  }
+
+  Future<bool> setPin(String pin) async {
     try {
-      await _storage.write(
-          key: 'tabby_notifications_enabled', value: enable.toString());
-    } catch (e) {
-      debugPrint('[UserSettingsNotifier] Error saving notifications: $e');
+      await _pinProtection.setPin(_userId, pin);
+      await update(passcodeEnabled: true);
+      return true;
+    } catch (error) {
+      debugPrint('[UserSettingsNotifier] Error setting PIN: $error');
+      return false;
     }
+  }
+
+  Future<bool> verifyPin(String pin) => _pinProtection.verifyPin(_userId, pin);
+
+  Future<void> clearPin() async {
+    await _pinProtection.clearPin(_userId);
+    await update(passcodeEnabled: false);
+  }
+
+  Future<void> toggleNotifications(bool enable) async {
+    await update(notificationsEnabled: enable);
   }
 
   Future<void> update({
@@ -1337,6 +1531,10 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
     bool? notificationsEnabled,
     bool? paymentAlertsEnabled,
     bool? reminderNudgesEnabled,
+    String? currencyCode,
+    String? languageCode,
+    bool? motionEnabled,
+    bool? darkModeEnabled,
   }) async {
     state = state.copyWith(
       biometricsEnabled: biometricsEnabled,
@@ -1345,36 +1543,29 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
       notificationsEnabled: notificationsEnabled,
       paymentAlertsEnabled: paymentAlertsEnabled,
       reminderNudgesEnabled: reminderNudgesEnabled,
+      currencyCode: currencyCode,
+      languageCode: languageCode,
+      motionEnabled: motionEnabled,
+      darkModeEnabled: darkModeEnabled,
     );
 
     try {
-      if (biometricsEnabled != null) {
-        await _storage.write(
-            key: 'tabby_biometrics_enabled',
-            value: biometricsEnabled.toString());
-      }
-      if (passcodeEnabled != null) {
-        await _storage.write(
-            key: 'tabby_passcode_enabled', value: passcodeEnabled.toString());
-      }
-      if (autoLockEnabled != null) {
-        await _storage.write(
-            key: 'tabby_auto_lock_enabled', value: autoLockEnabled.toString());
-      }
-      if (notificationsEnabled != null) {
-        await _storage.write(
-            key: 'tabby_notifications_enabled',
-            value: notificationsEnabled.toString());
-      }
-      if (paymentAlertsEnabled != null) {
-        await _storage.write(
-            key: 'tabby_payment_alerts_enabled',
-            value: paymentAlertsEnabled.toString());
-      }
-      if (reminderNudgesEnabled != null) {
-        await _storage.write(
-            key: 'tabby_reminder_nudges_enabled',
-            value: reminderNudgesEnabled.toString());
+      final values = <String, String?>{
+        'biometrics_enabled': biometricsEnabled?.toString(),
+        'passcode_enabled': passcodeEnabled?.toString(),
+        'auto_lock_enabled': autoLockEnabled?.toString(),
+        'notifications_enabled': notificationsEnabled?.toString(),
+        'payment_alerts_enabled': paymentAlertsEnabled?.toString(),
+        'reminder_nudges_enabled': reminderNudgesEnabled?.toString(),
+        'currency_code': currencyCode,
+        'language_code': languageCode,
+        'motion_enabled': motionEnabled?.toString(),
+        'dark_mode_enabled': darkModeEnabled?.toString(),
+      };
+      for (final entry in values.entries) {
+        if (entry.value != null) {
+          await _storage.write(key: _key(entry.key), value: entry.value);
+        }
       }
     } catch (e) {
       debugPrint('[UserSettingsNotifier] Error saving settings: $e');
@@ -1384,5 +1575,6 @@ class UserSettingsNotifier extends StateNotifier<UserSettings> {
 
 final userSettingsProvider =
     StateNotifierProvider<UserSettingsNotifier, UserSettings>((ref) {
-  return UserSettingsNotifier();
+  final user = ref.watch(currentUserProvider);
+  return UserSettingsNotifier(userId: user.id);
 });

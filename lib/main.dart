@@ -2,16 +2,20 @@ import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/config/app_state.dart';
 import 'core/config/supabase_config.dart';
+import 'core/localization/app_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/services/tabby_notification_service.dart';
 import 'core/theme/tabby_theme.dart';
+import 'core/widgets/biometric_gate.dart';
 import 'features/app_update/domain/app_update_models.dart';
 import 'features/app_update/presentation/app_update_prompt.dart';
 import 'features/classroom/application/classroom_providers.dart';
 import 'features/classroom/data/classroom_local_cache.dart';
 import 'features/tabs/data/supabase_tabby_repository.dart';
+import 'features/tabs/application/tabby_providers.dart';
 
 Future<void> _refreshProfileCompletionState() async {
   final userId = SupabaseConfig.currentUserId;
@@ -81,7 +85,7 @@ void main() async {
   );
 }
 
-class TabbyApp extends StatelessWidget {
+class TabbyApp extends ConsumerWidget {
   const TabbyApp({
     super.key,
     this.updateChecker,
@@ -92,10 +96,24 @@ class TabbyApp extends StatelessWidget {
   final bool? enableUpdateCheck;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(userSettingsProvider);
     return MaterialApp.router(
       title: 'Tabby',
       theme: TabbyTheme.lightTheme,
+      darkTheme: TabbyTheme.darkTheme,
+      themeMode: settings.darkModeEnabled ? ThemeMode.dark : ThemeMode.light,
+      locale: Locale(settings.languageCode),
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      themeAnimationDuration: settings.motionEnabled
+          ? const Duration(milliseconds: 250)
+          : Duration.zero,
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {
           PointerDeviceKind.touch,
@@ -119,11 +137,18 @@ class TabbyApp extends StatelessWidget {
             ? IPhoneDeviceFrameWrapper(child: content)
             : content;
 
-        return AppUpdatePrompt(
-          checker: updateChecker,
-          enabled: enableUpdateCheck ?? false,
-          navigatorKey: appRouter.routerDelegate.navigatorKey,
-          child: appContent,
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations: !settings.motionEnabled,
+          ),
+          child: BiometricGate(
+            child: AppUpdatePrompt(
+              checker: updateChecker,
+              enabled: enableUpdateCheck ?? false,
+              navigatorKey: appRouter.routerDelegate.navigatorKey,
+              child: appContent,
+            ),
+          ),
         );
       },
     );
@@ -168,7 +193,8 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
   static const double outerCornerRadius = 52.0;
   static const double innerCornerRadius = 44.0;
   static const double screenWidth = frameWidth - (bezelThickness * 2); // 380.0
-  static const double screenHeight = frameHeight - (bezelThickness * 2); // 800.0
+  static const double screenHeight =
+      frameHeight - (bezelThickness * 2); // 800.0
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +268,8 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
               color: const Color(0xFF1A1A1A), // Sleek dark titanium bezel
               borderRadius: BorderRadius.circular(outerCornerRadius),
               border: Border.all(
-                color: const Color(0xFF2C2C2C), // Chamfered metallic rim highlight
+                color:
+                    const Color(0xFF2C2C2C), // Chamfered metallic rim highlight
                 width: 1.5,
               ),
               boxShadow: [
@@ -276,7 +303,8 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
                       data: MediaQuery.of(context).copyWith(
                         size: const Size(screenWidth, screenHeight),
                         padding: const EdgeInsets.only(top: 44.0, bottom: 28.0),
-                        viewPadding: const EdgeInsets.only(top: 44.0, bottom: 28.0),
+                        viewPadding:
+                            const EdgeInsets.only(top: 44.0, bottom: 28.0),
                       ),
                       child: SizedBox(
                         width: screenWidth,

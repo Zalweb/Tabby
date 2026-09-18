@@ -77,7 +77,7 @@ class _UpdateDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Version ${release.version.displayValue} is ready.'),
+            Text('Version ${release.version.fullDisplayValue} is ready.'),
             if (release.releaseNotes.isNotEmpty) ...[
               const SizedBox(height: 12),
               const Text(

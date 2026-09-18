@@ -11,6 +11,7 @@ import '../../../shared/widgets/tabby_mascot_widget.dart';
 import '../application/tabby_providers.dart';
 import '../domain/models.dart';
 import 'add_expense_modal.dart';
+import '../../payment_methods/presentation/payment_method_payment_sheet.dart';
 
 class TabDetailScreen extends ConsumerWidget {
   final String tabId;
@@ -30,8 +31,10 @@ class TabDetailScreen extends ConsumerWidget {
         appBar: AppBar(
           backgroundColor: TabbyColors.brandEmerald,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: TabbyColors.brandDarkTeal),
-            onPressed: () => context.canPop() ? context.pop() : context.go('/tabs'),
+            icon:
+                const Icon(Icons.arrow_back, color: TabbyColors.brandDarkTeal),
+            onPressed: () =>
+                context.canPop() ? context.pop() : context.go('/tabs'),
           ),
         ),
         body: Center(
@@ -82,8 +85,11 @@ class TabDetailScreen extends ConsumerWidget {
                       Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.arrow_back, color: TabbyColors.brandDarkTeal),
-                            onPressed: () => context.canPop() ? context.pop() : context.go('/tabs'),
+                            icon: const Icon(Icons.arrow_back,
+                                color: TabbyColors.brandDarkTeal),
+                            onPressed: () => context.canPop()
+                                ? context.pop()
+                                : context.go('/tabs'),
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -115,8 +121,10 @@ class TabDetailScreen extends ConsumerWidget {
                               ],
                             ),
                             child: IconButton(
-                              icon: const Icon(Icons.qr_code_2_rounded, size: 20, color: TabbyColors.brandDarkTeal),
-                              onPressed: () => _showPaymentInfoSheet(context, tab),
+                              icon: const Icon(Icons.qr_code_2_rounded,
+                                  size: 20, color: TabbyColors.brandDarkTeal),
+                              onPressed: () =>
+                                  PaymentMethodPaymentSheet.show(context, tab),
                               tooltip: 'Payment Info',
                             ),
                           ),
@@ -136,8 +144,10 @@ class TabDetailScreen extends ConsumerWidget {
                               ],
                             ),
                             child: IconButton(
-                              icon: const Icon(Icons.receipt_long_rounded, size: 20, color: TabbyColors.brandDarkTeal),
-                              onPressed: () => _showReceiptsSheet(context, tab, ref),
+                              icon: const Icon(Icons.receipt_long_rounded,
+                                  size: 20, color: TabbyColors.brandDarkTeal),
+                              onPressed: () =>
+                                  _showReceiptsSheet(context, tab, ref),
                               tooltip: 'View Receipts',
                             ),
                           ),
@@ -157,9 +167,11 @@ class TabDetailScreen extends ConsumerWidget {
                               ],
                             ),
                             child: IconButton(
-                              icon: const Icon(Icons.add_rounded, size: 20, color: TabbyColors.brandDarkTeal),
+                              icon: const Icon(Icons.add_rounded,
+                                  size: 20, color: TabbyColors.brandDarkTeal),
                               onPressed: () {
-                                AddExpenseModal.show(context, initialCounterpartId: tab.id);
+                                AddExpenseModal.show(context,
+                                    initialCounterpartId: tab.id);
                               },
                               tooltip: 'Add to Tab',
                             ),
@@ -183,7 +195,8 @@ class TabDetailScreen extends ConsumerWidget {
                                   width: 20,
                                   height: 20,
                                   decoration: BoxDecoration(
-                                    color: TabbyColors.surfaceWhite.withValues(alpha: 0.25),
+                                    color: TabbyColors.surfaceWhite
+                                        .withValues(alpha: 0.25),
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: const Icon(
@@ -212,7 +225,8 @@ class TabDetailScreen extends ConsumerWidget {
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
                               child: Text(
-                                CurrencyFormatter.formatCentavos(tab.netBalanceCentavos.abs()),
+                                CurrencyFormatter.formatCentavos(
+                                    tab.netBalanceCentavos.abs()),
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w900,
@@ -242,7 +256,8 @@ class TabDetailScreen extends ConsumerWidget {
                                   width: 20,
                                   height: 20,
                                   decoration: BoxDecoration(
-                                    color: TabbyColors.surfaceWhite.withValues(alpha: 0.25),
+                                    color: TabbyColors.surfaceWhite
+                                        .withValues(alpha: 0.25),
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: const Icon(
@@ -287,7 +302,11 @@ class TabDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   TabbyMascotWidget(
-                    emotion: isSettled ? MascotEmotion.sleeping : (isTheyOwe ? MascotEmotion.userIsOwed : MascotEmotion.userOwes),
+                    emotion: isSettled
+                        ? MascotEmotion.sleeping
+                        : (isTheyOwe
+                            ? MascotEmotion.userIsOwed
+                            : MascotEmotion.userOwes),
                     size: 48,
                     showBubble: false,
                   ),
@@ -324,7 +343,8 @@ class TabDetailScreen extends ConsumerWidget {
                           ),
                           child: Center(
                             child: Text(
-                              CurrencyFormatter.formatCentavos(tab.netBalanceCentavos.abs()),
+                              CurrencyFormatter.formatCentavos(
+                                  tab.netBalanceCentavos.abs()),
                               style: const TextStyle(
                                 color: TabbyColors.brandDeepForest,
                                 fontWeight: FontWeight.w800,
@@ -367,7 +387,9 @@ class TabDetailScreen extends ConsumerWidget {
                                 tab.isGroupTab
                                     ? 'G'
                                     : (tab.counterpart.displayName.isNotEmpty
-                                        ? tab.counterpart.displayName.substring(0, 1).toUpperCase()
+                                        ? tab.counterpart.displayName
+                                            .substring(0, 1)
+                                            .toUpperCase()
                                         : '?'),
                                 style: TextStyle(
                                   fontSize: 18,
@@ -397,7 +419,8 @@ class TabDetailScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    CurrencyFormatter.formatCentavos(tab.netBalanceCentavos.abs()),
+                                    CurrencyFormatter.formatCentavos(
+                                        tab.netBalanceCentavos.abs()),
                                     style: TextStyle(
                                       fontSize: 26,
                                       fontWeight: FontWeight.w900,
@@ -418,10 +441,14 @@ class TabDetailScreen extends ConsumerWidget {
                             if (isTheyOwe) ...[
                               Expanded(
                                 child: TabbyButton(
-                                  label: 'Remind ${tab.counterpart.displayName}',
+                                  label:
+                                      'Remind ${tab.counterpart.displayName}',
                                   variant: TabbyButtonVariant.secondary,
-                                  icon: const Icon(Icons.send_rounded, size: 16, color: TabbyColors.brandDarkTeal),
-                                  onPressed: () => _showNudgeModal(context, ref, tab),
+                                  icon: const Icon(Icons.send_rounded,
+                                      size: 16,
+                                      color: TabbyColors.brandDarkTeal),
+                                  onPressed: () =>
+                                      _showNudgeModal(context, ref, tab),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -429,7 +456,9 @@ class TabDetailScreen extends ConsumerWidget {
                                 child: TabbyButton(
                                   label: 'Confirm Payment',
                                   variant: TabbyButtonVariant.outline,
-                                  icon: const Icon(Icons.check_circle_outline, size: 16, color: TabbyColors.brandDarkTeal),
+                                  icon: const Icon(Icons.check_circle_outline,
+                                      size: 16,
+                                      color: TabbyColors.brandDarkTeal),
                                   onPressed: () => _showSettlementModal(
                                     context,
                                     ref,
@@ -443,7 +472,9 @@ class TabDetailScreen extends ConsumerWidget {
                                 child: TabbyButton(
                                   label: 'I Paid',
                                   variant: TabbyButtonVariant.primary,
-                                  icon: const Icon(Icons.payment_rounded, size: 16, color: TabbyColors.surfaceWhite),
+                                  icon: const Icon(Icons.payment_rounded,
+                                      size: 16,
+                                      color: TabbyColors.surfaceWhite),
                                   onPressed: () => _showSettlementModal(
                                     context,
                                     ref,
@@ -457,9 +488,12 @@ class TabDetailScreen extends ConsumerWidget {
                                 child: TabbyButton(
                                   label: 'Add to Tab',
                                   variant: TabbyButtonVariant.outline,
-                                  icon: const Icon(Icons.add_rounded, size: 16, color: TabbyColors.brandDarkTeal),
+                                  icon: const Icon(Icons.add_rounded,
+                                      size: 16,
+                                      color: TabbyColors.brandDarkTeal),
                                   onPressed: () {
-                                    AddExpenseModal.show(context, initialCounterpartId: tab.id);
+                                    AddExpenseModal.show(context,
+                                        initialCounterpartId: tab.id);
                                   },
                                 ),
                               ),
@@ -468,9 +502,12 @@ class TabDetailScreen extends ConsumerWidget {
                                 child: TabbyButton(
                                   label: 'Log New Expense',
                                   variant: TabbyButtonVariant.primary,
-                                  icon: const Icon(Icons.add_rounded, size: 16, color: TabbyColors.surfaceWhite),
+                                  icon: const Icon(Icons.add_rounded,
+                                      size: 16,
+                                      color: TabbyColors.surfaceWhite),
                                   onPressed: () {
-                                    AddExpenseModal.show(context, initialCounterpartId: tab.id);
+                                    AddExpenseModal.show(context,
+                                        initialCounterpartId: tab.id);
                                   },
                                 ),
                               ),
@@ -488,7 +525,8 @@ class TabDetailScreen extends ConsumerWidget {
             Expanded(
               child: Material(
                 color: TabbyColors.bgCanvas,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(36)),
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
@@ -520,7 +558,8 @@ class TabDetailScreen extends ConsumerWidget {
                     Expanded(
                       child: tab.entries.isEmpty
                           ? SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 24),
                               child: Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -552,14 +591,20 @@ class TabDetailScreen extends ConsumerWidget {
                                     const SizedBox(height: 16),
                                     ElevatedButton.icon(
                                       onPressed: () {
-                                        AddExpenseModal.show(context, initialCounterpartId: tab.id);
+                                        AddExpenseModal.show(context,
+                                            initialCounterpartId: tab.id);
                                       },
-                                      icon: const Icon(Icons.add_rounded, size: 18),
+                                      icon: const Icon(Icons.add_rounded,
+                                          size: 18),
                                       label: const Text('Log First Expense'),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: TabbyColors.brandEmerald,
-                                        foregroundColor: TabbyColors.surfaceWhite,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                        backgroundColor:
+                                            TabbyColors.brandEmerald,
+                                        foregroundColor:
+                                            TabbyColors.surfaceWhite,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16)),
                                       ),
                                     ),
                                   ],
@@ -571,7 +616,8 @@ class TabDetailScreen extends ConsumerWidget {
                               itemCount: tab.entries.length,
                               itemBuilder: (context, index) {
                                 final entry = tab.entries[index];
-                                return _buildLedgerEntryCard(context, ref, entry);
+                                return _buildLedgerEntryCard(
+                                    context, ref, entry);
                               },
                             ),
                     ),
@@ -585,12 +631,14 @@ class TabDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLedgerEntryCard(BuildContext context, WidgetRef ref, LedgerEntry entry) {
+  Widget _buildLedgerEntryCard(
+      BuildContext context, WidgetRef ref, LedgerEntry entry) {
     final dateFormat = DateFormat('HH:mm - MMM d');
     final currentUser = ref.watch(currentUserProvider);
     final isPayment = entry.isPayment;
     final isMyEntry = entry.paidByUserId == currentUser.id ||
-        (SupabaseConfig.isInitialized && entry.paidByUserId == SupabaseConfig.currentUserId);
+        (SupabaseConfig.isInitialized &&
+            entry.paidByUserId == SupabaseConfig.currentUserId);
     final amountPrefix = isPayment ? '+' : (isMyEntry ? '+' : '-');
     final amountColor = isPayment
         ? TabbyColors.brandEmerald
@@ -610,108 +658,113 @@ class TabDetailScreen extends ConsumerWidget {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-          // Squircle Icon Badge (Figma 40x40)
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: isPayment ? TabbyColors.iconBgMint : TabbyColors.iconBgBlue,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Icon(
-                isPayment
-                    ? (entry.paymentMethod?.iconData ?? Icons.payments_rounded)
-                    : entry.category.icon,
-                size: 20,
-                color: isPayment ? TabbyColors.brandEmerald : TabbyColors.accentLightBlue,
+              // Squircle Icon Badge (Figma 40x40)
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isPayment
+                      ? TabbyColors.iconBgMint
+                      : TabbyColors.iconBgBlue,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Icon(
+                    isPayment
+                        ? (entry.paymentMethod?.iconData ??
+                            Icons.payments_rounded)
+                        : entry.category.icon,
+                    size: 20,
+                    color: isPayment
+                        ? TabbyColors.brandEmerald
+                        : TabbyColors.accentLightBlue,
+                  ),
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Column 1: Title & Time
-          Expanded(
-            flex: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  entry.title,
-                  style: const TextStyle(
+              const SizedBox(width: 12),
+              // Column 1: Title & Time
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.title,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: TabbyColors.brandDarkTeal,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      dateFormat.format(entry.date),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: TabbyColors.accentLightBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Column Divider
+              Container(
+                height: 28,
+                width: 1,
+                color: TabbyColors.borderMint,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              // Column 2: Category / Status Tag
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      isPayment ? 'Payment' : entry.category.displayName,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: TabbyColors.brandDarkTeal,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    _buildStatusBadge(entry.status, isPayment),
+                  ],
+                ),
+              ),
+              // Column Divider
+              Container(
+                height: 28,
+                width: 1,
+                color: TabbyColors.borderMint,
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              // Column 3: Amount
+              Expanded(
+                flex: 3,
+                child: Text(
+                  '$amountPrefix${CurrencyFormatter.formatCentavos(entry.totalAmountCentavos)}',
+                  textAlign: TextAlign.end,
+                  style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: TabbyColors.brandDarkTeal,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  dateFormat.format(entry.date),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: TabbyColors.accentLightBlue,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w800,
+                    color: amountColor,
                   ),
                 ),
-              ],
-            ),
-          ),
-          // Column Divider
-          Container(
-            height: 28,
-            width: 1,
-            color: TabbyColors.borderMint,
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-          ),
-          // Column 2: Category / Status Tag
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  isPayment ? 'Payment' : entry.category.displayName,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: TabbyColors.brandDarkTeal,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                _buildStatusBadge(entry.status, isPayment),
-              ],
-            ),
-          ),
-          // Column Divider
-          Container(
-            height: 28,
-            width: 1,
-            color: TabbyColors.borderMint,
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-          ),
-          // Column 3: Amount
-          Expanded(
-            flex: 3,
-            child: Text(
-              '$amountPrefix${CurrencyFormatter.formatCentavos(entry.totalAmountCentavos)}',
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: amountColor,
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 
   Widget _buildStatusBadge(TransactionStatus status, bool isPayment) {
     Color bg;
@@ -832,20 +885,22 @@ class TabDetailScreen extends ConsumerWidget {
                 TabbyButton(
                   label: 'Share Reminder Link',
                   variant: TabbyButtonVariant.primary,
-                  icon: const Icon(Icons.share_rounded, size: 18, color: TabbyColors.surfaceWhite),
+                  icon: const Icon(Icons.share_rounded,
+                      size: 18, color: TabbyColors.surfaceWhite),
                   onPressed: () {
                     final reminderMsg =
                         'Hey ${tab.counterpart.displayName}! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!';
                     Clipboard.setData(ClipboardData(text: reminderMsg));
                     ref.read(tabbyProvider.notifier).sendGentleNudge(
-                      tabId: tab.id,
-                      friendName: tab.counterpart.displayName,
-                      amountCentavos: tab.netBalanceCentavos,
-                    );
+                          tabId: tab.id,
+                          friendName: tab.counterpart.displayName,
+                          amountCentavos: tab.netBalanceCentavos,
+                        );
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Reminder link copied to clipboard and sent to ${tab.counterpart.displayName}!'),
+                        content: Text(
+                            'Reminder link copied to clipboard and sent to ${tab.counterpart.displayName}!'),
                         backgroundColor: TabbyColors.brandDarkTeal,
                       ),
                     );
@@ -899,7 +954,9 @@ class TabDetailScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            isPayingMe ? 'Confirm Payment Received' : 'Record Settlement',
+                            isPayingMe
+                                ? 'Confirm Payment Received'
+                                : 'Record Settlement',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
@@ -930,12 +987,18 @@ class TabDetailScreen extends ConsumerWidget {
                       children: PaymentMethod.values.map((method) {
                         final isSelected = selectedMethod == method;
                         return ChoiceChip(
-                          avatar: Icon(method.iconData, size: 16, color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal),
+                          avatar: Icon(method.iconData,
+                              size: 16,
+                              color: isSelected
+                                  ? TabbyColors.surfaceWhite
+                                  : TabbyColors.brandDarkTeal),
                           label: Text(method.label),
                           selected: isSelected,
                           selectedColor: TabbyColors.brandEmerald,
                           labelStyle: TextStyle(
-                            color: isSelected ? TabbyColors.surfaceWhite : TabbyColors.brandDarkTeal,
+                            color: isSelected
+                                ? TabbyColors.surfaceWhite
+                                : TabbyColors.brandDarkTeal,
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                           ),
@@ -959,7 +1022,8 @@ class TabDetailScreen extends ConsumerWidget {
                     const SizedBox(height: 6),
                     TextField(
                       controller: amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       decoration: const InputDecoration(
                         prefixText: '₱ ',
                         hintText: '0.00',
@@ -967,18 +1031,22 @@ class TabDetailScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
                     TabbyButton(
-                      label: isPayingMe ? 'Confirm Payment' : 'Submit Payment Proof',
+                      label: isPayingMe
+                          ? 'Confirm Payment'
+                          : 'Submit Payment Proof',
                       variant: TabbyButtonVariant.primary,
                       isLoading: isSubmitting,
                       onPressed: () {
                         if (isSubmitting) return;
 
-                        final centavos = CurrencyFormatter.parseToCentavos(amountController.text);
+                        final centavos = CurrencyFormatter.parseToCentavos(
+                            amountController.text);
                         if (centavos <= 0) {
                           ScaffoldMessenger.of(context).clearSnackBars();
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Please enter an amount greater than ₱0.00'),
+                              content: Text(
+                                  'Please enter an amount greater than ₱0.00'),
                               backgroundColor: TabbyColors.alertRed,
                             ),
                           );
@@ -988,11 +1056,11 @@ class TabDetailScreen extends ConsumerWidget {
                         setModalState(() => isSubmitting = true);
 
                         ref.read(tabbyProvider.notifier).settleTab(
-                          tabId: tab.id,
-                          amountCentavos: centavos,
-                          method: selectedMethod,
-                          isPayingMe: isPayingMe,
-                        );
+                              tabId: tab.id,
+                              amountCentavos: centavos,
+                              method: selectedMethod,
+                              isPayingMe: isPayingMe,
+                            );
 
                         Navigator.pop(context);
 
@@ -1015,148 +1083,8 @@ class TabDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _showPaymentInfoSheet(BuildContext context, BilateralTab tab) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Material(
-          color: TabbyColors.surfaceWhite,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${tab.counterpart.displayName}\'s Payment Info',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: TabbyColors.brandDarkTeal,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, color: TabbyColors.brandDarkTeal),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: () => _showQrCodePreviewModal(context, tab),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  width: 170,
-                  height: 170,
-                  decoration: BoxDecoration(
-                    color: TabbyColors.brandMintAccent,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: TabbyColors.borderMint),
-                  ),
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.qr_code_2_rounded, size: 72, color: TabbyColors.brandDarkTeal),
-                        SizedBox(height: 8),
-                        Text(
-                          'QR Ph Code',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                        ),
-                        SizedBox(height: 4),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.zoom_in_rounded, size: 14, color: TabbyColors.brandEmerald),
-                            SizedBox(width: 4),
-                            Text(
-                              'Tap to enlarge',
-                              style: TextStyle(fontSize: 10, color: TabbyColors.brandEmerald, fontWeight: FontWeight.w700),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: TabbyColors.iconBgBlue,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.account_balance_wallet_rounded, color: TabbyColors.accentBlue, size: 20),
-                ),
-                title: const Text('GCash', style: TextStyle(fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal)),
-                subtitle: Text(tab.counterpart.gcashNumber.isNotEmpty
-                    ? tab.counterpart.gcashNumber
-                    : '0917-XXX-XXXX'),
-                trailing: const Icon(Icons.copy_rounded, size: 18, color: TabbyColors.textSecondary),
-                onTap: () {
-                  final num = tab.counterpart.gcashNumber.isNotEmpty
-                      ? tab.counterpart.gcashNumber
-                      : '0917-888-1234';
-                  Clipboard.setData(ClipboardData(text: num));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('GCash number $num copied to clipboard!')),
-                  );
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: TabbyColors.brandMintAccent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.credit_card_rounded, color: TabbyColors.brandEmerald, size: 20),
-                ),
-                title: const Text('Maya', style: TextStyle(fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal)),
-                subtitle: Text(tab.counterpart.mayaNumber.isNotEmpty
-                    ? tab.counterpart.mayaNumber
-                    : '0917-XXX-XXXX'),
-                trailing: const Icon(Icons.copy_rounded, size: 18, color: TabbyColors.textSecondary),
-                onTap: () {
-                  final num = tab.counterpart.mayaNumber.isNotEmpty
-                      ? tab.counterpart.mayaNumber
-                      : '0917-888-1234';
-                  Clipboard.setData(ClipboardData(text: num));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Maya number $num copied to clipboard!')),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              TabbyButton(
-                label: 'Close',
-                variant: TabbyButtonVariant.outline,
-                onPressed: () => Navigator.pop(context),
-              ),
-              ],
-            ),
-          ),
-        ),
-      );
-      },
-    );
-  }
-
-  void _showEntryDetailsSheet(BuildContext context, WidgetRef ref, LedgerEntry entry) {
+  void _showEntryDetailsSheet(
+      BuildContext context, WidgetRef ref, LedgerEntry entry) {
     final dateFormat = DateFormat('MMMM d, yyyy • h:mm a');
     showModalBottomSheet(
       context: context,
@@ -1177,249 +1105,314 @@ class TabDetailScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      entry.isPayment ? 'Payment Details' : 'Expense Details',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: TabbyColors.brandDarkTeal,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    onPressed: () => Navigator.pop(sheetContext),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: entry.isPayment ? TabbyColors.iconBgMint : TabbyColors.iconBgBlue,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        entry.isPayment
-                            ? (entry.paymentMethod?.iconData ?? Icons.payments_rounded)
-                            : entry.category.icon,
-                        color: entry.isPayment ? TabbyColors.brandEmerald : TabbyColors.accentLightBlue,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          dateFormat.format(entry.date),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: TabbyColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: TabbyColors.brandMintAccent,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Column(
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Total Amount', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
-                        Text(
-                          CurrencyFormatter.formatCentavos(entry.totalAmountCentavos),
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: TabbyColors.brandDarkTeal),
+                    Expanded(
+                      child: Text(
+                        entry.isPayment ? 'Payment Details' : 'Expense Details',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: TabbyColors.brandDarkTeal,
                         ),
-                      ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Paid By', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
-                        Text(
-                          entry.paidByName,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                        ),
-                      ],
-                    ),
-                    if (!entry.isPayment) ...[
-                      const Divider(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Your Share', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
-                          Text(
-                            CurrencyFormatter.formatCentavos(entry.myShareCentavos),
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Their Share', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
-                          Text(
-                            CurrencyFormatter.formatCentavos(entry.counterpartShareCentavos),
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (entry.paymentMethod != null) ...[
-                      const Divider(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Payment Rail', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
-                          Text(
-                            entry.paymentMethod!.label,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandEmerald),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (entry.dueDate != null) ...[
-                      const Divider(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Due Date', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
-                          Text(
-                            DateFormat('MMMM d, yyyy').format(entry.dueDate!),
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const Divider(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Expanded(
-                          child: Text('Receipt / Attachment', style: TextStyle(fontSize: 13, color: TabbyColors.textSecondary)),
-                        ),
-                        Text(
-                          entry.receiptUrl != null && entry.receiptUrl!.isNotEmpty ? 'Attached' : 'None',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: entry.receiptUrl != null && entry.receiptUrl!.isNotEmpty
-                                ? TabbyColors.brandEmerald
-                                : TabbyColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.pop(sheetContext),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 14),
-              if (entry.receiptUrl == null || entry.receiptUrl!.isEmpty)
-                OutlinedButton.icon(
-                  onPressed: () {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final receiptId = 'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
-                    ref.read(tabbyProvider.notifier).attachReceiptToEntry(
-                          tabId: entry.tabId,
-                          entryId: entry.id,
-                          receiptUrl: receiptId,
-                        );
-                    Navigator.pop(sheetContext);
-                    messenger.clearSnackBars();
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Receipt image attached to transaction successfully!'),
-                        backgroundColor: TabbyColors.brandEmerald,
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
-                  label: const Text('Attach Receipt Photo'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: TabbyColors.brandDarkTeal,
-                    minimumSize: const Size(double.infinity, 44),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                )
-              else
-                SizedBox(
-                  width: double.infinity,
-                  child: InkWell(
-                    onTap: () => _showReceiptPreviewSheet(context, entry),
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        color: TabbyColors.surfaceWhite,
+                        color: entry.isPayment
+                            ? TabbyColors.iconBgMint
+                            : TabbyColors.iconBgBlue,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: TabbyColors.brandEmerald.withValues(alpha: 0.3)),
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Center(
+                        child: Icon(
+                          entry.isPayment
+                              ? (entry.paymentMethod?.iconData ??
+                                  Icons.payments_rounded)
+                              : entry.category.icon,
+                          color: entry.isPayment
+                              ? TabbyColors.brandEmerald
+                              : TabbyColors.accentLightBlue,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.image_outlined, color: TabbyColors.brandEmerald, size: 20),
-                          SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              'Verified Bill/Receipt Attached (Tap to view)',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: TabbyColors.brandEmerald),
-                              overflow: TextOverflow.ellipsis,
+                          Text(
+                            entry.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: TabbyColors.brandDarkTeal,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            dateFormat.format(entry.date),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: TabbyColors.textSecondary,
                             ),
                           ),
                         ],
                       ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: TabbyColors.brandMintAccent,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Amount',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: TabbyColors.textSecondary)),
+                          Text(
+                            CurrencyFormatter.formatCentavos(
+                                entry.totalAmountCentavos),
+                            style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: TabbyColors.brandDarkTeal),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Paid By',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: TabbyColors.textSecondary)),
+                          Text(
+                            entry.paidByName,
+                            style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: TabbyColors.brandDarkTeal),
+                          ),
+                        ],
+                      ),
+                      if (!entry.isPayment) ...[
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Your Share',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: TabbyColors.textSecondary)),
+                            Text(
+                              CurrencyFormatter.formatCentavos(
+                                  entry.myShareCentavos),
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandDarkTeal),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Their Share',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: TabbyColors.textSecondary)),
+                            Text(
+                              CurrencyFormatter.formatCentavos(
+                                  entry.counterpartShareCentavos),
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandDarkTeal),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (entry.paymentMethod != null) ...[
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Payment Rail',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: TabbyColors.textSecondary)),
+                            Text(
+                              entry.paymentMethod!.label,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandEmerald),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (entry.dueDate != null) ...[
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Due Date',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: TabbyColors.textSecondary)),
+                            Text(
+                              DateFormat('MMMM d, yyyy').format(entry.dueDate!),
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandDarkTeal),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Expanded(
+                            child: Text('Receipt / Attachment',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: TabbyColors.textSecondary)),
+                          ),
+                          Text(
+                            entry.receiptUrl != null &&
+                                    entry.receiptUrl!.isNotEmpty
+                                ? 'Attached'
+                                : 'None',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: entry.receiptUrl != null &&
+                                      entry.receiptUrl!.isNotEmpty
+                                  ? TabbyColors.brandEmerald
+                                  : TabbyColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              const SizedBox(height: 16),
-              TabbyButton(
-                label: 'Close',
-                variant: TabbyButtonVariant.outline,
-                onPressed: () => Navigator.pop(sheetContext),
-              ),
-            ],
+                const SizedBox(height: 14),
+                if (entry.receiptUrl == null || entry.receiptUrl!.isEmpty)
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final receiptId =
+                          'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
+                      ref.read(tabbyProvider.notifier).attachReceiptToEntry(
+                            tabId: entry.tabId,
+                            entryId: entry.id,
+                            receiptUrl: receiptId,
+                          );
+                      Navigator.pop(sheetContext);
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Receipt image attached to transaction successfully!'),
+                          backgroundColor: TabbyColors.brandEmerald,
+                        ),
+                      );
+                    },
+                    icon:
+                        const Icon(Icons.add_photo_alternate_rounded, size: 18),
+                    label: const Text('Attach Receipt Photo'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: TabbyColors.brandDarkTeal,
+                      minimumSize: const Size(double.infinity, 44),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: InkWell(
+                      onTap: () => _showReceiptPreviewSheet(context, entry),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.surfaceWhite,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: TabbyColors.brandEmerald
+                                  .withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.image_outlined,
+                                color: TabbyColors.brandEmerald, size: 20),
+                            SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Verified Bill/Receipt Attached (Tap to view)',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: TabbyColors.brandEmerald),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                TabbyButton(
+                  label: 'Close',
+                  variant: TabbyButtonVariant.outline,
+                  onPressed: () => Navigator.pop(sheetContext),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
+        );
+      },
     );
   }
 
-  void _showReceiptsSheet(BuildContext context, BilateralTab tab, WidgetRef ref) {
-    final entriesWithReceipts = tab.entries.where((e) => e.receiptUrl != null && e.receiptUrl!.isNotEmpty).toList();
+  void _showReceiptsSheet(
+      BuildContext context, BilateralTab tab, WidgetRef ref) {
+    final entriesWithReceipts = tab.entries
+        .where((e) => e.receiptUrl != null && e.receiptUrl!.isNotEmpty)
+        .toList();
 
     showModalBottomSheet(
       context: context,
@@ -1463,7 +1456,8 @@ class TabDetailScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 'Receipts and payment proofs for ${tab.counterpart.displayName}\'s tab',
-                style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 12, color: TabbyColors.textSecondary),
               ),
               const SizedBox(height: 16),
               if (entriesWithReceipts.isEmpty)
@@ -1476,17 +1470,22 @@ class TabDetailScreen extends ConsumerWidget {
                   ),
                   child: Column(
                     children: [
-                      const Icon(Icons.receipt_long_outlined, size: 48, color: TabbyColors.textSecondary),
+                      const Icon(Icons.receipt_long_outlined,
+                          size: 48, color: TabbyColors.textSecondary),
                       const SizedBox(height: 10),
                       const Text(
                         'No Receipts Attached Yet',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                        style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyColors.brandDarkTeal),
                       ),
                       const SizedBox(height: 4),
                       const Text(
                         'Attach bill photos, receipts, or payment screenshots to keep proof organized.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                        style: TextStyle(
+                            fontSize: 12, color: TabbyColors.textSecondary),
                       ),
                       const SizedBox(height: 16),
                       if (tab.entries.isNotEmpty)
@@ -1494,8 +1493,11 @@ class TabDetailScreen extends ConsumerWidget {
                           onPressed: () {
                             final messenger = ScaffoldMessenger.of(context);
                             final latest = tab.entries.first;
-                            final receiptId = 'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
-                            ref.read(tabbyProvider.notifier).attachReceiptToEntry(
+                            final receiptId =
+                                'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
+                            ref
+                                .read(tabbyProvider.notifier)
+                                .attachReceiptToEntry(
                                   tabId: tab.id,
                                   entryId: latest.id,
                                   receiptUrl: receiptId,
@@ -1503,17 +1505,20 @@ class TabDetailScreen extends ConsumerWidget {
                             Navigator.pop(context);
                             messenger.showSnackBar(
                               SnackBar(
-                                content: Text('Receipt attached to "${latest.title}"!'),
+                                content: Text(
+                                    'Receipt attached to "${latest.title}"!'),
                                 backgroundColor: TabbyColors.brandEmerald,
                               ),
                             );
                           },
-                          icon: const Icon(Icons.add_a_photo_outlined, size: 16),
+                          icon:
+                              const Icon(Icons.add_a_photo_outlined, size: 16),
                           label: const Text('Attach to Latest Transaction'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: TabbyColors.brandEmerald,
                             foregroundColor: TabbyColors.surfaceWhite,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14)),
                           ),
                         ),
                     ],
@@ -1542,7 +1547,8 @@ class TabDetailScreen extends ConsumerWidget {
                                 color: TabbyColors.brandMintAccent,
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(Icons.receipt_rounded, color: TabbyColors.brandEmerald, size: 24),
+                              child: const Icon(Icons.receipt_rounded,
+                                  color: TabbyColors.brandEmerald, size: 24),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1551,21 +1557,28 @@ class TabDetailScreen extends ConsumerWidget {
                                 children: [
                                   Text(
                                     item.title,
-                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: TabbyColors.brandDarkTeal),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                        color: TabbyColors.brandDarkTeal),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
                                     '${DateFormat('MMM d, yyyy').format(item.date)} • ${CurrencyFormatter.formatCentavos(item.totalAmountCentavos)}',
-                                    style: const TextStyle(fontSize: 11, color: TabbyColors.textSecondary),
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: TabbyColors.textSecondary),
                                   ),
                                 ],
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.visibility_outlined, color: TabbyColors.brandEmerald, size: 20),
+                              icon: const Icon(Icons.visibility_outlined,
+                                  color: TabbyColors.brandEmerald, size: 20),
                               tooltip: 'View Receipt',
-                              onPressed: () => _showReceiptPreviewSheet(context, item),
+                              onPressed: () =>
+                                  _showReceiptPreviewSheet(context, item),
                             ),
                           ],
                         ),
@@ -1623,7 +1636,8 @@ class TabDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 2),
                         Text(
                           entry.title,
-                          style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 12, color: TabbyColors.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1664,7 +1678,8 @@ class TabDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        CurrencyFormatter.formatCentavos(entry.totalAmountCentavos),
+                        CurrencyFormatter.formatCentavos(
+                            entry.totalAmountCentavos),
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
@@ -1674,11 +1689,13 @@ class TabDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 6),
                       Text(
                         DateFormat('MMMM d, yyyy • h:mm a').format(entry.date),
-                        style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 12, color: TabbyColors.textSecondary),
                       ),
                       const SizedBox(height: 16),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: TabbyColors.brandMintAccent,
                           borderRadius: BorderRadius.circular(12),
@@ -1686,12 +1703,16 @@ class TabDetailScreen extends ConsumerWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.verified_rounded, size: 16, color: TabbyColors.brandEmerald),
+                            const Icon(Icons.verified_rounded,
+                                size: 16, color: TabbyColors.brandEmerald),
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
                                 'Verified Proof: ${entry.receiptUrl ?? "receipt_proof.png"}',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: TabbyColors.brandDarkTeal),
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: TabbyColors.brandDarkTeal),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -1709,7 +1730,8 @@ class TabDetailScreen extends ConsumerWidget {
                     child: TabbyButton(
                       label: 'Save Image',
                       variant: TabbyButtonVariant.outline,
-                      icon: const Icon(Icons.download_rounded, size: 16, color: TabbyColors.brandDarkTeal),
+                      icon: const Icon(Icons.download_rounded,
+                          size: 16, color: TabbyColors.brandDarkTeal),
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -1731,124 +1753,6 @@ class TabDetailScreen extends ConsumerWidget {
                 ],
               ),
             ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showQrCodePreviewModal(BuildContext context, BilateralTab tab) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: TabbyColors.surfaceWhite,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${tab.counterpart.displayName}\'s QR Ph',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: TabbyColors.brandDarkTeal,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: 220,
-                  height: 220,
-                  decoration: BoxDecoration(
-                    color: TabbyColors.brandMintAccent,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: TabbyColors.borderMint),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.qr_code_2_rounded, size: 120, color: TabbyColors.brandDarkTeal),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: TabbyColors.brandEmerald,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'QR Ph Official',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: TabbyColors.surfaceWhite),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Scan using GCash, Maya, or any Philippine banking app to settle up with ${tab.counterpart.displayName}.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TabbyButton(
-                        label: 'Copy QR String',
-                        variant: TabbyButtonVariant.outline,
-                        icon: const Icon(Icons.copy_rounded, size: 16, color: TabbyColors.brandDarkTeal),
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(
-                            text: '00020101021226580009PH.PAYMAYA0111${tab.counterpart.phone.replaceAll(RegExp(r'[^0-9]'), '')}5204601453036085802PH5912${tab.counterpart.displayName}',
-                          ));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('QR Ph payload copied to clipboard!'),
-                              backgroundColor: TabbyColors.brandEmerald,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TabbyButton(
-                        label: 'Save QR Image',
-                        variant: TabbyButtonVariant.primary,
-                        icon: const Icon(Icons.download_rounded, size: 16, color: TabbyColors.surfaceWhite),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('QR code image saved to gallery!'),
-                              backgroundColor: TabbyColors.brandEmerald,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
           ),
         );
       },

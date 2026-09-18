@@ -31,6 +31,9 @@ class AppVersion {
 
   String get displayValue => '$major.$minor.$patch';
 
+  String get fullDisplayValue =>
+      build > 0 ? '$displayValue+$build' : displayValue;
+
   bool isNewerThan(AppVersion other) => compareTo(other) > 0;
 
   int compareTo(AppVersion other) {
@@ -141,6 +144,18 @@ class AppUpdateInfo {
 
   final AppVersion currentVersion;
   final AppUpdateRelease release;
+}
+
+enum AppUpdateStatus { checking, upToDate, updateAvailable, unavailable }
+
+class AppUpdateCheckResult {
+  const AppUpdateCheckResult({
+    required this.status,
+    this.update,
+  });
+
+  final AppUpdateStatus status;
+  final AppUpdateInfo? update;
 }
 
 abstract interface class AppUpdateChecker {

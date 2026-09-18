@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/config/supabase_config.dart';
 import '../domain/models.dart';
+import '../../payment_methods/domain/payment_method.dart' as payment_models;
 import 'mock_tabby_repository.dart';
 import 'tabby_local_cache.dart';
 
@@ -192,6 +194,23 @@ class SupabaseTabbyRepository {
     }
   }
 
+  /// Removes an accepted social friendship without touching any financial tab.
+  Future<bool> removeFriend({required String friendUserId}) async {
+    if (!isConnected || !_isValidUuid(friendUserId)) return false;
+
+    try {
+      final response = await SupabaseConfig.client.rpc(
+        'remove_friend',
+        params: {'p_friend_user_id': friendUserId},
+      );
+      if (response is bool) return response;
+      if (response is Map) return response['removed'] as bool? ?? false;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] removeFriend error: $e');
+    }
+    return false;
+  }
+
   // ---------------------------------------------------------------------------
   // Category mapping helpers (DB uses snake_case)
   // ---------------------------------------------------------------------------
@@ -366,6 +385,11 @@ class SupabaseTabbyRepository {
 
     if (counterpartMember == null && !isGroup) return null;
 
+    final isTabOnlyParticipant = !isGroup &&
+        counterpartMember?['contact_id'] is String &&
+        (counterpartMember?['contact_id'] as String).isNotEmpty &&
+        counterpartMember?['user_id'] == null;
+
     final TabbyUser counterpart;
     if (isGroup) {
       final groupId = tabRow['group_id'] as String? ?? tabId;
@@ -521,6 +545,7 @@ class SupabaseTabbyRepository {
           : DateTime.now(),
       isGroupTab: isGroup,
       groupName: isGroup ? groupName : null,
+      isTabOnlyParticipant: isTabOnlyParticipant,
     );
   }
 
@@ -642,6 +667,232 @@ class SupabaseTabbyRepository {
       debugPrint('[SupabaseTabbyRepository] updateUserProfile error: $e');
       return false;
     }
+  }
+
+  /// Loads the signed-in user's saved payment methods.
+  Future<List<payment_models.PaymentMethod>> fetchPaymentMethods(
+      String ownerUserId) async {
+    if (!isConnected || !_isValidUuid(ownerUserId)) return const [];
+
+    try {
+      final rows = await SupabaseConfig.client
+          .from(SupabaseConfig.tablePaymentMethods)
+          .select('*')
+          .eq('owner_user_id', ownerUserId);
+      return _signedPaymentMethods(
+        (rows as List)
+            .whereType<Map>()
+            .map((row) => payment_models.PaymentMethod.fromMap(
+                Map<String, dynamic>.from(row)))
+            .toList(),
+      );
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] fetchPaymentMethods error: $e');
+      return const [];
+    }
+  }
+
+  /// Creates a saved payment method and optionally makes it preferred.
+  Future<payment_models.PaymentMethod?> createPaymentMethod({
+    required String ownerUserId,
+    required payment_models.PaymentMethodDraft draft,
+    required bool makeDefault,
+  }) async {
+    if (!isConnected || !_isValidUuid(ownerUserId) || !draft.isValid) {
+      return null;
+    }
+
+    final id = const Uuid().v4();
+    String? qrStoragePath;
+    try {
+      if (draft.hasQr) {
+        final extension = (draft.qrExtension ?? 'png').replaceAll('.', '');
+        qrStoragePath = '$ownerUserId/$id.$extension';
+        await SupabaseConfig.paymentMethodsBucket.uploadBinary(
+          qrStoragePath,
+          draft.qrBytes!,
+          fileOptions: FileOptions(
+            contentType: draft.qrMimeType ?? 'image/png',
+            upsert: false,
+          ),
+        );
+      }
+
+      if (makeDefault) {
+        await _clearPaymentMethodDefault(ownerUserId);
+      }
+
+      final row = await SupabaseConfig.client
+          .from(SupabaseConfig.tablePaymentMethods)
+          .insert({
+            'id': id,
+            'owner_user_id': ownerUserId,
+            'provider': draft.provider.trim(),
+            'display_name': draft.displayName.trim(),
+            'account_label': draft.accountLabel.trim(),
+            'qr_storage_path': qrStoragePath,
+            'is_default': makeDefault,
+          })
+          .select('*')
+          .single();
+      final signedMethods = await _signedPaymentMethods([
+        payment_models.PaymentMethod.fromMap(row),
+      ]);
+      return signedMethods.first;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] createPaymentMethod error: $e');
+      if (qrStoragePath != null) {
+        try {
+          await SupabaseConfig.paymentMethodsBucket.remove([qrStoragePath]);
+        } catch (_) {}
+      }
+      return null;
+    }
+  }
+
+  Future<bool> updatePaymentMethod({
+    required String methodId,
+    required payment_models.PaymentMethodDraft draft,
+  }) async {
+    if (!isConnected || !_isValidUuid(methodId) || !draft.isValid) {
+      return false;
+    }
+
+    try {
+      await SupabaseConfig.client
+          .from(SupabaseConfig.tablePaymentMethods)
+          .update({
+            'provider': draft.provider.trim(),
+            'display_name': draft.displayName.trim(),
+            'account_label': draft.accountLabel.trim(),
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', methodId)
+          .eq('owner_user_id', SupabaseConfig.currentUserId ?? '');
+      return true;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] updatePaymentMethod error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> setPreferredPaymentMethod(String methodId) async {
+    final ownerUserId = SupabaseConfig.currentUserId;
+    if (!isConnected || ownerUserId == null || !_isValidUuid(methodId)) {
+      return false;
+    }
+
+    try {
+      await _clearPaymentMethodDefault(ownerUserId);
+      await SupabaseConfig.client
+          .from(SupabaseConfig.tablePaymentMethods)
+          .update({
+            'is_default': true,
+            'updated_at': DateTime.now().toIso8601String()
+          })
+          .eq('id', methodId)
+          .eq('owner_user_id', ownerUserId);
+      return true;
+    } catch (e) {
+      debugPrint(
+          '[SupabaseTabbyRepository] setPreferredPaymentMethod error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deletePaymentMethod(String methodId) async {
+    final ownerUserId = SupabaseConfig.currentUserId;
+    if (!isConnected || ownerUserId == null || !_isValidUuid(methodId)) {
+      return false;
+    }
+
+    try {
+      final row = await SupabaseConfig.client
+          .from(SupabaseConfig.tablePaymentMethods)
+          .select('qr_storage_path')
+          .eq('id', methodId)
+          .eq('owner_user_id', ownerUserId)
+          .maybeSingle();
+      await SupabaseConfig.client
+          .from(SupabaseConfig.tablePaymentMethods)
+          .delete()
+          .eq('id', methodId)
+          .eq('owner_user_id', ownerUserId);
+      final path = row?['qr_storage_path'] as String?;
+      if (path != null && !path.startsWith('http')) {
+        try {
+          await SupabaseConfig.paymentMethodsBucket.remove([path]);
+        } catch (_) {}
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] deletePaymentMethod error: $e');
+      return false;
+    }
+  }
+
+  /// Returns only methods the authenticated caller is authorized to use in a tab.
+  Future<List<payment_models.PaymentMethod>> fetchPaymentMethodsForTab({
+    required String tabId,
+    required String payeeUserId,
+  }) async {
+    if (!isConnected ||
+        !_isValidUuid(tabId) ||
+        !_isValidUuid(payeeUserId) ||
+        SupabaseConfig.currentUserId == payeeUserId) {
+      return const [];
+    }
+
+    try {
+      final rows = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcListPaymentMethodsForTab,
+        params: {'p_tab_id': tabId, 'p_payee_user_id': payeeUserId},
+      );
+      if (rows is! List) return const [];
+      return _signedPaymentMethods(
+        rows
+            .whereType<Map>()
+            .map((row) => payment_models.PaymentMethod.fromMap(
+                Map<String, dynamic>.from(row)))
+            .toList(),
+      );
+    } catch (e) {
+      debugPrint(
+          '[SupabaseTabbyRepository] fetchPaymentMethodsForTab error: $e');
+      return const [];
+    }
+  }
+
+  Future<void> _clearPaymentMethodDefault(String ownerUserId) async {
+    await SupabaseConfig.client
+        .from(SupabaseConfig.tablePaymentMethods)
+        .update({
+          'is_default': false,
+          'updated_at': DateTime.now().toIso8601String()
+        })
+        .eq('owner_user_id', ownerUserId)
+        .eq('is_default', true);
+  }
+
+  Future<List<payment_models.PaymentMethod>> _signedPaymentMethods(
+      List<payment_models.PaymentMethod> methods) async {
+    final signed = <payment_models.PaymentMethod>[];
+    for (final method in payment_models.PaymentMethod.defaultFirst(methods)) {
+      final path = method.qrStoragePath;
+      String? qrUrl = method.qrUrl;
+      if (qrUrl == null && path != null && path.isNotEmpty) {
+        if (path.startsWith('http')) {
+          qrUrl = path;
+        } else {
+          try {
+            qrUrl = await SupabaseConfig.paymentMethodsBucket
+                .createSignedUrl(path, 600);
+          } catch (_) {}
+        }
+      }
+      signed.add(method.copyWith(qrUrl: qrUrl));
+    }
+    return signed;
   }
 
   /// Signs in with a Tabby email/password account.
@@ -1258,6 +1509,125 @@ class SupabaseTabbyRepository {
           .update({'receipt_url': receiptUrl}).eq('id', transactionId);
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] attachReceipt error: $e');
+    }
+  }
+
+  // ─── Notifications (public.notifications table) ─────────────────────────
+
+  /// Fetches all notifications for the current user, most recent first.
+  /// Returns empty list on error or when not connected.
+  Future<List<AppNotification>> fetchNotifications(String userId) async {
+    if (!isConnected || !_isValidUuid(userId)) return [];
+    try {
+      final rows = await SupabaseConfig.client
+          .from('notifications')
+          .select(
+            'id, recipient_user_id, notification_type, related_tab_id, '
+            'related_transaction_id, related_payment_id, related_group_id, '
+            'title, body, is_read, created_at, read_at',
+          )
+          .eq('recipient_user_id', userId)
+          .order('created_at', ascending: false)
+          .limit(50);
+
+      return (rows as List)
+          .whereType<Map<String, dynamic>>()
+          .map(AppNotification.fromSupabaseRow)
+          .whereType<AppNotification>()
+          .toList();
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] fetchNotifications error: $e');
+      return [];
+    }
+  }
+
+  /// Marks a single notification as read in the database.
+  Future<void> markNotificationRead(String notificationId) async {
+    if (!isConnected || !_isValidUuid(notificationId)) return;
+    try {
+      await SupabaseConfig.client.from('notifications').update({
+        'is_read': true,
+        'read_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', notificationId);
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] markNotificationRead error: $e');
+    }
+  }
+
+  /// Marks ALL notifications for a user as read.
+  Future<void> markAllNotificationsRead(String userId) async {
+    if (!isConnected || !_isValidUuid(userId)) return;
+    try {
+      await SupabaseConfig.client
+          .from('notifications')
+          .update({
+            'is_read': true,
+            'read_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('recipient_user_id', userId)
+          .eq('is_read', false);
+    } catch (e) {
+      debugPrint(
+          '[SupabaseTabbyRepository] markAllNotificationsRead error: $e');
+    }
+  }
+
+  /// Inserts a manual nudge notification row for the recipient user.
+  /// Called when the current user taps "Remind" on a tab —
+  /// the recipient sees this in their Notification Center next time they open the app.
+  Future<void> insertNudgeNotification({
+    required String recipientUserId,
+    required String senderName,
+    required String relatedTabId,
+    required String description,
+    required String formattedAmount,
+  }) async {
+    if (!isConnected ||
+        !_isValidUuid(recipientUserId) ||
+        !_isValidUuid(relatedTabId)) {
+      return;
+    }
+    try {
+      await SupabaseConfig.client.from('notifications').insert({
+        'recipient_user_id': recipientUserId,
+        'notification_type': 'manual_nudge',
+        'related_tab_id': relatedTabId,
+        'title': '$senderName sent you a friendly reminder',
+        'body':
+            'You have a pending balance of $formattedAmount for "$description". '
+                'Tap to settle up.',
+        'is_read': false,
+      });
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] insertNudgeNotification error: $e');
+    }
+  }
+
+  /// Inserts a payment-confirmed notification for the payee.
+  Future<void> insertPaymentConfirmedNotification({
+    required String recipientUserId,
+    required String senderName,
+    required String relatedTabId,
+    required String formattedAmount,
+  }) async {
+    if (!isConnected ||
+        !_isValidUuid(recipientUserId) ||
+        !_isValidUuid(relatedTabId)) {
+      return;
+    }
+    try {
+      await SupabaseConfig.client.from('notifications').insert({
+        'recipient_user_id': recipientUserId,
+        'notification_type': 'payment_confirmed',
+        'related_tab_id': relatedTabId,
+        'title': 'Payment confirmed',
+        'body':
+            '$senderName confirmed your $formattedAmount payment. Tab updated.',
+        'is_read': false,
+      });
+    } catch (e) {
+      debugPrint(
+          '[SupabaseTabbyRepository] insertPaymentConfirmedNotification error: $e');
     }
   }
 }

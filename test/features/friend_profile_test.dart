@@ -33,7 +33,9 @@ void main() {
     expect(find.text('ID: USER-ME'), findsNothing);
     expect(find.text('Connect by Tabby ID'), findsWidgets);
 
-    await tester.tap(find.text('Connect by Tabby ID').first);
+    final connectById = find.text('Connect by Tabby ID').first;
+    await tester.ensureVisible(connectById);
+    await tester.tap(connectById);
     await tester.pumpAndSettle();
 
     expect(find.text('Connect with a Friend'), findsOneWidget);
@@ -60,7 +62,7 @@ void main() {
     expect(find.text('Friend\'s Full Name'), findsNothing);
   });
 
-  testWidgets('Quick Log Expense labels connected friends and preserves their ID',
+  testWidgets('Create Tab labels connected friends and preserves their ID',
       (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.0;
@@ -96,18 +98,23 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(FloatingActionButton));
+    final createTabButton = find.text('Create a Tab');
+    await tester.ensureVisible(createTabButton);
+    await tester.tap(createTabButton);
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(ChoiceChip, 'Alex'), findsOneWidget);
+    expect(find.widgetWithText(CheckboxListTile, 'Alex'), findsOneWidget);
     expect(find.text('Connected'), findsOneWidget);
-
-    final amountField = find.widgetWithText(TextField, '0.00');
-    await tester.enterText(amountField, '100.00');
-    final saveButton = find.text('Save Tab');
-    await tester.ensureVisible(saveButton);
-    await tester.tap(saveButton);
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'Alex'));
+    await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
+
+    final amountField = find.byKey(const ValueKey('create-tab-amount'));
+    await tester.enterText(amountField, '100.00');
+    final createButton = find.widgetWithText(ElevatedButton, 'Create Tab');
+    await tester.ensureVisible(createButton);
+    await tester.tap(createButton);
+    await tester.pump(const Duration(seconds: 4));
 
     expect(notifier.state.tabs.single.counterpart.id, friend.id);
     expect(notifier.state.tabs.single.entries.single.tabId, friend.id);
@@ -122,7 +129,9 @@ void main() {
     appRouter.go('/profile');
     await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Connect by Tabby ID').first);
+    final connectById = find.text('Connect by Tabby ID').first;
+    await tester.ensureVisible(connectById);
+    await tester.tap(connectById);
     await tester.pumpAndSettle();
 
     final idField = find.widgetWithText(TextField, 'TAB-7K4P2M');

@@ -56,7 +56,8 @@ class TabbyTheme {
         modalBackgroundColor: TabbyColors.surfaceWhite,
         constraints: BoxConstraints(maxWidth: 430),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(sheetRadius)),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(sheetRadius)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -106,7 +107,8 @@ class TabbyTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: TabbyColors.brandMintAccent,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
@@ -117,7 +119,8 @@ class TabbyTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: TabbyColors.brandEmerald, width: 1.5),
+          borderSide:
+              const BorderSide(color: TabbyColors.brandEmerald, width: 1.5),
         ),
         hintStyle: const TextStyle(
           color: TabbyColors.textSecondary,
@@ -128,8 +131,10 @@ class TabbyTheme {
         backgroundColor: Color(0xFFE8F8EE),
         selectedItemColor: TabbyColors.brandDarkTeal,
         unselectedItemColor: TabbyColors.textSecondary,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+        selectedLabelStyle:
+            TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+        unselectedLabelStyle:
+            TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
@@ -137,6 +142,37 @@ class TabbyTheme {
         color: TabbyColors.borderMint,
         thickness: 1,
         space: 1,
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    return lightTheme.copyWith(
+      scaffoldBackgroundColor: const Color(0xFF102D2A),
+      colorScheme: const ColorScheme.dark(
+        primary: TabbyColors.brandEmerald,
+        secondary: TabbyColors.brandMintAccent,
+        surface: Color(0xFF173B37),
+        error: TabbyColors.alertRed,
+        onPrimary: TabbyColors.brandDarkTeal,
+        onSecondary: TabbyColors.brandDarkTeal,
+        onSurface: Colors.white,
+      ),
+      appBarTheme: lightTheme.appBarTheme.copyWith(
+        backgroundColor: const Color(0xFF102D2A),
+        foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+      ),
+      cardTheme: lightTheme.cardTheme.copyWith(
+        color: const Color(0xFF173B37),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(kpiCardRadius)),
+          side: BorderSide(color: Color(0xFF2B5B54), width: 1),
+        ),
+      ),
+      bottomNavigationBarTheme: lightTheme.bottomNavigationBarTheme.copyWith(
+        backgroundColor: const Color(0xFF173B37),
+        unselectedItemColor: Colors.white70,
       ),
     );
   }

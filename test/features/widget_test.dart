@@ -5,7 +5,8 @@ import 'package:tabby/main.dart';
 import 'package:tabby/core/config/app_state.dart';
 
 void main() {
-  testWidgets('TabbyApp boots up, displays dashboard, and navigates tabs', (tester) async {
+  testWidgets('TabbyApp boots up, displays dashboard, and navigates tabs',
+      (tester) async {
     AppState.isAuthenticated.value = true;
     await tester.pumpWidget(
       const ProviderScope(
@@ -20,7 +21,7 @@ void main() {
     expect(find.text('Frienzal'), findsOneWidget);
     expect(find.text('YOU OWE'), findsOneWidget);
     expect(find.text("YOU'RE OWED"), findsOneWidget);
-    expect(find.text('Log Expense'), findsOneWidget);
+    expect(find.text('Create a Tab'), findsOneWidget);
 
     // Tap on 'My Tabs' navigation item
     await tester.tap(find.text('My Tabs'));
@@ -36,7 +37,7 @@ void main() {
 
     // Verify Profile screen elements
     expect(find.text('Profile & Settings'), findsOneWidget);
-    expect(find.text('My Payment QR Ph'), findsOneWidget);
+    expect(find.text('Payment Methods'), findsOneWidget);
     expect(find.text('No friends added yet'), findsOneWidget);
     expect(find.text('Currency Precision'), findsOneWidget);
   });

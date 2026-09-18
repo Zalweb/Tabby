@@ -181,28 +181,30 @@ class TabbyUser {
   }
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'displayName': displayName,
-    'email': email,
-    'phone': phone,
-    'avatarUrl': avatarUrl,
-    'gcashNumber': gcashNumber,
-    'mayaNumber': mayaNumber,
-    'qrCodeUrl': qrCodeUrl,
-    'friendCode': friendCode,
-  };
+        'id': id,
+        'displayName': displayName,
+        'email': email,
+        'phone': phone,
+        'avatarUrl': avatarUrl,
+        'gcashNumber': gcashNumber,
+        'mayaNumber': mayaNumber,
+        'qrCodeUrl': qrCodeUrl,
+        'friendCode': friendCode,
+      };
 
   factory TabbyUser.fromMap(Map<String, dynamic> map) => TabbyUser(
-    id: map['id'] as String? ?? '',
-    displayName: (map['displayName'] ?? map['display_name']) as String? ?? '',
-    email: map['email'] as String? ?? '',
-    phone: map['phone'] as String? ?? '',
-    avatarUrl: (map['avatarUrl'] ?? map['avatar_url']) as String?,
-    gcashNumber: (map['gcashNumber'] ?? map['gcash_number']) as String? ?? '',
-    mayaNumber: (map['mayaNumber'] ?? map['maya_number']) as String? ?? '',
-    qrCodeUrl: (map['qrCodeUrl'] ?? map['qr_code_url']) as String?,
-    friendCode: (map['friendCode'] ?? map['friend_code']) as String?,
-  );
+        id: map['id'] as String? ?? '',
+        displayName:
+            (map['displayName'] ?? map['display_name']) as String? ?? '',
+        email: map['email'] as String? ?? '',
+        phone: map['phone'] as String? ?? '',
+        avatarUrl: (map['avatarUrl'] ?? map['avatar_url']) as String?,
+        gcashNumber:
+            (map['gcashNumber'] ?? map['gcash_number']) as String? ?? '',
+        mayaNumber: (map['mayaNumber'] ?? map['maya_number']) as String? ?? '',
+        qrCodeUrl: (map['qrCodeUrl'] ?? map['qr_code_url']) as String?,
+        friendCode: (map['friendCode'] ?? map['friend_code']) as String?,
+      );
 }
 
 /// Normalizes a copied or typed Tabby ID without exposing a database UUID.
@@ -292,8 +294,10 @@ class FriendRequest {
 
     return FriendRequest(
       id: map['id'] as String? ?? '',
-      requesterId: map['requester_id'] as String? ?? requesterMap['id'] as String? ?? '',
-      addresseeId: map['addressee_id'] as String? ?? addresseeMap['id'] as String? ?? '',
+      requesterId:
+          map['requester_id'] as String? ?? requesterMap['id'] as String? ?? '',
+      addresseeId:
+          map['addressee_id'] as String? ?? addresseeMap['id'] as String? ?? '',
       requester: TabbyUser.fromMap(requesterMap),
       addressee: TabbyUser.fromMap(addresseeMap),
       status: FriendRequestStatus.fromValue(map['status']),
@@ -304,6 +308,26 @@ class FriendRequest {
       currentUserId: currentUserId,
     );
   }
+}
+
+/// Returns the registered user IDs that are eligible for group membership.
+/// Only accepted Friendship records qualify; pending and declined requests do
+/// not grant group access.
+Set<String> acceptedFriendUserIds(Iterable<FriendRequest> friendRequests) {
+  return friendRequests
+      .where((request) => request.status == FriendRequestStatus.accepted)
+      .map((request) => request.otherUser.id)
+      .where((id) => id.isNotEmpty)
+      .toSet();
+}
+
+/// Filters requested group members to accepted registered Friends only.
+List<String> filterEligibleGroupMemberIds({
+  required Iterable<String> requestedIds,
+  required Iterable<FriendRequest> friendRequests,
+}) {
+  final eligibleIds = acceptedFriendUserIds(friendRequests);
+  return requestedIds.where(eligibleIds.contains).toList();
 }
 
 /// Participant in a split transaction
@@ -340,20 +364,21 @@ class ParticipantShare {
   }
 
   Map<String, dynamic> toMap() => {
-    'userId': userId,
-    'name': name,
-    'shareAmountCentavos': shareAmountCentavos,
-    'isPayer': isPayer,
-    'acknowledged': acknowledged,
-  };
+        'userId': userId,
+        'name': name,
+        'shareAmountCentavos': shareAmountCentavos,
+        'isPayer': isPayer,
+        'acknowledged': acknowledged,
+      };
 
-  factory ParticipantShare.fromMap(Map<String, dynamic> map) => ParticipantShare(
-    userId: map['userId'] as String? ?? '',
-    name: map['name'] as String? ?? '',
-    shareAmountCentavos: (map['shareAmountCentavos'] as num?)?.toInt() ?? 0,
-    isPayer: map['isPayer'] as bool? ?? false,
-    acknowledged: map['acknowledged'] as bool? ?? false,
-  );
+  factory ParticipantShare.fromMap(Map<String, dynamic> map) =>
+      ParticipantShare(
+        userId: map['userId'] as String? ?? '',
+        name: map['name'] as String? ?? '',
+        shareAmountCentavos: (map['shareAmountCentavos'] as num?)?.toInt() ?? 0,
+        isPayer: map['isPayer'] as bool? ?? false,
+        acknowledged: map['acknowledged'] as bool? ?? false,
+      );
 }
 
 /// Ledger item (Transaction or Payment) in a Tab
@@ -420,7 +445,8 @@ class LedgerEntry {
       category: category ?? this.category,
       totalAmountCentavos: totalAmountCentavos ?? this.totalAmountCentavos,
       myShareCentavos: myShareCentavos ?? this.myShareCentavos,
-      counterpartShareCentavos: counterpartShareCentavos ?? this.counterpartShareCentavos,
+      counterpartShareCentavos:
+          counterpartShareCentavos ?? this.counterpartShareCentavos,
       paidByUserId: paidByUserId ?? this.paidByUserId,
       paidByName: paidByName ?? this.paidByName,
       date: date ?? this.date,
@@ -434,23 +460,23 @@ class LedgerEntry {
   }
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'tabId': tabId,
-    'title': title,
-    'category': category.name,
-    'totalAmountCentavos': totalAmountCentavos,
-    'myShareCentavos': myShareCentavos,
-    'counterpartShareCentavos': counterpartShareCentavos,
-    'paidByUserId': paidByUserId,
-    'paidByName': paidByName,
-    'date': date.toIso8601String(),
-    'dueDate': dueDate?.toIso8601String(),
-    'status': status.name,
-    'isPayment': isPayment,
-    'paymentMethod': paymentMethod?.name,
-    'note': note,
-    'receiptUrl': receiptUrl,
-  };
+        'id': id,
+        'tabId': tabId,
+        'title': title,
+        'category': category.name,
+        'totalAmountCentavos': totalAmountCentavos,
+        'myShareCentavos': myShareCentavos,
+        'counterpartShareCentavos': counterpartShareCentavos,
+        'paidByUserId': paidByUserId,
+        'paidByName': paidByName,
+        'date': date.toIso8601String(),
+        'dueDate': dueDate?.toIso8601String(),
+        'status': status.name,
+        'isPayment': isPayment,
+        'paymentMethod': paymentMethod?.name,
+        'note': note,
+        'receiptUrl': receiptUrl,
+      };
 
   factory LedgerEntry.fromMap(Map<String, dynamic> map) {
     ExpenseCategory cat = ExpenseCategory.other;
@@ -493,13 +519,16 @@ class LedgerEntry {
       category: cat,
       totalAmountCentavos: (map['totalAmountCentavos'] as num?)?.toInt() ?? 0,
       myShareCentavos: (map['myShareCentavos'] as num?)?.toInt() ?? 0,
-      counterpartShareCentavos: (map['counterpartShareCentavos'] as num?)?.toInt() ?? 0,
+      counterpartShareCentavos:
+          (map['counterpartShareCentavos'] as num?)?.toInt() ?? 0,
       paidByUserId: map['paidByUserId'] as String? ?? '',
       paidByName: map['paidByName'] as String? ?? '',
       date: map['date'] != null
           ? (DateTime.tryParse(map['date'] as String) ?? DateTime.now())
           : DateTime.now(),
-      dueDate: map['dueDate'] != null ? DateTime.tryParse(map['dueDate'] as String) : null,
+      dueDate: map['dueDate'] != null
+          ? DateTime.tryParse(map['dueDate'] as String)
+          : null,
       status: st,
       isPayment: map['isPayment'] as bool? ?? false,
       paymentMethod: pm,
@@ -514,12 +543,16 @@ class LedgerEntry {
 class BilateralTab {
   final String id;
   final TabbyUser counterpart;
-  final int netBalanceCentavos; // > 0: Counterpart owes user; < 0: User owes counterpart; 0: settled
+  final int
+      netBalanceCentavos; // > 0: Counterpart owes user; < 0: User owes counterpart; 0: settled
   final int itemCount;
   final List<LedgerEntry> entries;
   final DateTime lastUpdated;
   final bool isGroupTab;
   final String? groupName;
+
+  /// True when this tab tracks an unregistered person without creating a Friend relationship.
+  final bool isTabOnlyParticipant;
 
   const BilateralTab({
     required this.id,
@@ -530,6 +563,7 @@ class BilateralTab {
     required this.lastUpdated,
     this.isGroupTab = false,
     this.groupName,
+    this.isTabOnlyParticipant = false,
   });
 
   BilateralTab copyWith({
@@ -541,6 +575,7 @@ class BilateralTab {
     DateTime? lastUpdated,
     bool? isGroupTab,
     String? groupName,
+    bool? isTabOnlyParticipant,
   }) {
     return BilateralTab(
       id: id ?? this.id,
@@ -551,39 +586,47 @@ class BilateralTab {
       lastUpdated: lastUpdated ?? this.lastUpdated,
       isGroupTab: isGroupTab ?? this.isGroupTab,
       groupName: groupName ?? this.groupName,
+      isTabOnlyParticipant: isTabOnlyParticipant ?? this.isTabOnlyParticipant,
     );
   }
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'counterpart': counterpart.toMap(),
-    'netBalanceCentavos': netBalanceCentavos,
-    'itemCount': itemCount,
-    'entries': entries.map((e) => e.toMap()).toList(),
-    'lastUpdated': lastUpdated.toIso8601String(),
-    'isGroupTab': isGroupTab,
-    'groupName': groupName,
-  };
+        'id': id,
+        'counterpart': counterpart.toMap(),
+        'netBalanceCentavos': netBalanceCentavos,
+        'itemCount': itemCount,
+        'entries': entries.map((e) => e.toMap()).toList(),
+        'lastUpdated': lastUpdated.toIso8601String(),
+        'isGroupTab': isGroupTab,
+        'groupName': groupName,
+        'isTabOnlyParticipant': isTabOnlyParticipant,
+      };
 
   factory BilateralTab.fromMap(Map<String, dynamic> map) => BilateralTab(
-    id: map['id'] as String? ?? '',
-    counterpart: map['counterpart'] is Map<String, dynamic>
-        ? TabbyUser.fromMap(map['counterpart'] as Map<String, dynamic>)
-        : TabbyUser(id: map['id'] as String? ?? '', displayName: 'Friend', email: '', phone: ''),
-    netBalanceCentavos: (map['netBalanceCentavos'] as num?)?.toInt() ?? 0,
-    itemCount: (map['itemCount'] as num?)?.toInt() ??
-        (map['entries'] as List<dynamic>?)?.length ??
-        0,
-    entries: (map['entries'] as List<dynamic>?)
-            ?.map((e) => LedgerEntry.fromMap(e as Map<String, dynamic>))
-            .toList() ??
-        const [],
-    lastUpdated: map['lastUpdated'] != null
-        ? (DateTime.tryParse(map['lastUpdated'] as String) ?? DateTime.now())
-        : DateTime.now(),
-    isGroupTab: map['isGroupTab'] as bool? ?? false,
-    groupName: map['groupName'] as String?,
-  );
+        id: map['id'] as String? ?? '',
+        counterpart: map['counterpart'] is Map<String, dynamic>
+            ? TabbyUser.fromMap(map['counterpart'] as Map<String, dynamic>)
+            : TabbyUser(
+                id: map['id'] as String? ?? '',
+                displayName: 'Friend',
+                email: '',
+                phone: ''),
+        netBalanceCentavos: (map['netBalanceCentavos'] as num?)?.toInt() ?? 0,
+        itemCount: (map['itemCount'] as num?)?.toInt() ??
+            (map['entries'] as List<dynamic>?)?.length ??
+            0,
+        entries: (map['entries'] as List<dynamic>?)
+                ?.map((e) => LedgerEntry.fromMap(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
+        lastUpdated: map['lastUpdated'] != null
+            ? (DateTime.tryParse(map['lastUpdated'] as String) ??
+                DateTime.now())
+            : DateTime.now(),
+        isGroupTab: map['isGroupTab'] as bool? ?? false,
+        groupName: map['groupName'] as String?,
+        isTabOnlyParticipant: map['isTabOnlyParticipant'] as bool? ?? false,
+      );
 }
 
 /// Recent activity item for the feed
@@ -608,24 +651,24 @@ class TabbyActivity {
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'actorName': actorName,
-    'description': description,
-    'amountCentavos': amountCentavos,
-    'timestamp': timestamp.toIso8601String(),
-    'icon': icon,
-  };
+        'id': id,
+        'actorName': actorName,
+        'description': description,
+        'amountCentavos': amountCentavos,
+        'timestamp': timestamp.toIso8601String(),
+        'icon': icon,
+      };
 
   factory TabbyActivity.fromMap(Map<String, dynamic> map) => TabbyActivity(
-    id: map['id'] as String? ?? '',
-    actorName: map['actorName'] as String? ?? '',
-    description: map['description'] as String? ?? '',
-    amountCentavos: (map['amountCentavos'] as num?)?.toInt() ?? 0,
-    timestamp: map['timestamp'] != null
-        ? (DateTime.tryParse(map['timestamp'] as String) ?? DateTime.now())
-        : DateTime.now(),
-    icon: map['icon'] as String? ?? '',
-  );
+        id: map['id'] as String? ?? '',
+        actorName: map['actorName'] as String? ?? '',
+        description: map['description'] as String? ?? '',
+        amountCentavos: (map['amountCentavos'] as num?)?.toInt() ?? 0,
+        timestamp: map['timestamp'] != null
+            ? (DateTime.tryParse(map['timestamp'] as String) ?? DateTime.now())
+            : DateTime.now(),
+        icon: map['icon'] as String? ?? '',
+      );
 }
 
 /// Upcoming reminder item
@@ -637,7 +680,8 @@ class UpcomingReminder {
   final String description;
   final int amountCentavos;
   final DateTime dueDate;
-  final bool isIWhoOwe; // true if current user owes; false if friend owes current user
+  final bool
+      isIWhoOwe; // true if current user owes; false if friend owes current user
 
   const UpcomingReminder({
     required this.id,
@@ -650,24 +694,107 @@ class UpcomingReminder {
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'tabId': tabId,
-    'friendName': friendName,
-    'description': description,
-    'amountCentavos': amountCentavos,
-    'dueDate': dueDate.toIso8601String(),
-    'isIWhoOwe': isIWhoOwe,
-  };
+        'id': id,
+        'tabId': tabId,
+        'friendName': friendName,
+        'description': description,
+        'amountCentavos': amountCentavos,
+        'dueDate': dueDate.toIso8601String(),
+        'isIWhoOwe': isIWhoOwe,
+      };
 
-  factory UpcomingReminder.fromMap(Map<String, dynamic> map) => UpcomingReminder(
-    id: map['id'] as String? ?? '',
-    tabId: map['tabId'] as String? ?? '',
-    friendName: map['friendName'] as String? ?? '',
-    description: map['description'] as String? ?? '',
-    amountCentavos: (map['amountCentavos'] as num?)?.toInt() ?? 0,
-    dueDate: map['dueDate'] != null
-        ? (DateTime.tryParse(map['dueDate'] as String) ?? DateTime.now())
-        : DateTime.now(),
-    isIWhoOwe: map['isIWhoOwe'] as bool? ?? false,
-  );
+  factory UpcomingReminder.fromMap(Map<String, dynamic> map) =>
+      UpcomingReminder(
+        id: map['id'] as String? ?? '',
+        tabId: map['tabId'] as String? ?? '',
+        friendName: map['friendName'] as String? ?? '',
+        description: map['description'] as String? ?? '',
+        amountCentavos: (map['amountCentavos'] as num?)?.toInt() ?? 0,
+        dueDate: map['dueDate'] != null
+            ? (DateTime.tryParse(map['dueDate'] as String) ?? DateTime.now())
+            : DateTime.now(),
+        isIWhoOwe: map['isIWhoOwe'] as bool? ?? false,
+      );
+}
+
+// ─── AppNotification ──────────────────────────────────────────────────────────
+
+/// Represents a row from public.notifications in Supabase.
+/// Used for the Notification Center — real DB-backed, not just local state.
+@immutable
+class AppNotification {
+  final String id;
+  final String recipientUserId;
+  final String type; // maps to notification_type check constraint
+  final String? relatedTabId;
+  final String? relatedTransactionId;
+  final String? relatedPaymentId;
+  final String? relatedGroupId;
+  final String title;
+  final String body;
+  final bool isRead;
+  final DateTime createdAt;
+  final DateTime? readAt;
+
+  const AppNotification({
+    required this.id,
+    required this.recipientUserId,
+    required this.type,
+    this.relatedTabId,
+    this.relatedTransactionId,
+    this.relatedPaymentId,
+    this.relatedGroupId,
+    required this.title,
+    required this.body,
+    required this.isRead,
+    required this.createdAt,
+    this.readAt,
+  });
+
+  /// Factory constructor from Supabase PostgREST row JSON.
+  static AppNotification? fromSupabaseRow(Map<String, dynamic> row) {
+    final id = row['id'];
+    final recipientUserId = row['recipient_user_id'];
+    final title = row['title'];
+    final body = row['body'];
+    final createdAtRaw = row['created_at'];
+    if (id is! String ||
+        recipientUserId is! String ||
+        title is! String ||
+        body is! String ||
+        createdAtRaw is! String) {
+      return null;
+    }
+    return AppNotification(
+      id: id,
+      recipientUserId: recipientUserId,
+      type: row['notification_type'] as String? ?? 'manual_nudge',
+      relatedTabId: row['related_tab_id'] as String?,
+      relatedTransactionId: row['related_transaction_id'] as String?,
+      relatedPaymentId: row['related_payment_id'] as String?,
+      relatedGroupId: row['related_group_id'] as String?,
+      title: title,
+      body: body,
+      isRead: row['is_read'] as bool? ?? false,
+      createdAt: DateTime.tryParse(createdAtRaw) ?? DateTime.now(),
+      readAt: row['read_at'] != null
+          ? DateTime.tryParse(row['read_at'] as String)
+          : null,
+    );
+  }
+
+  AppNotification copyWith({bool? isRead, DateTime? readAt}) => AppNotification(
+        id: id,
+        recipientUserId: recipientUserId,
+        type: type,
+        relatedTabId: relatedTabId,
+        relatedTransactionId: relatedTransactionId,
+        relatedPaymentId: relatedPaymentId,
+        relatedGroupId: relatedGroupId,
+        title: title,
+        body: body,
+        isRead: isRead ?? this.isRead,
+        createdAt: createdAt,
+        readAt: readAt ?? this.readAt,
+      );
 }

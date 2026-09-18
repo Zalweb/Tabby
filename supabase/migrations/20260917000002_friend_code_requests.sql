@@ -337,6 +337,7 @@ GRANT EXECUTE ON FUNCTION public.respond_friend_request(UUID, BOOLEAN) TO authen
 
 -- Pending friendships must not make private user rows visible through SELECT.
 DROP POLICY IF EXISTS "Users can view their own profile and connected parties" ON public.users;
+DROP POLICY IF EXISTS "Users can view their own profile and accepted connections" ON public.users;
 CREATE POLICY "Users can view their own profile and accepted connections"
     ON public.users FOR SELECT
     TO authenticated
@@ -375,6 +376,7 @@ CREATE POLICY "Users can view their own profile and accepted connections"
 -- rewrite friendship status or identities.
 DROP POLICY IF EXISTS "Users can respond or modify their friendships" ON public.friendships;
 DROP POLICY IF EXISTS "Users can delete their friendships" ON public.friendships;
+DROP POLICY IF EXISTS "Requesters can cancel pending friendships" ON public.friendships;
 CREATE POLICY "Requesters can cancel pending friendships"
     ON public.friendships FOR DELETE
     TO authenticated

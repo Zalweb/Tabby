@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:tabby/features/app_update/data/app_update_service.dart';
 import 'package:tabby/features/app_update/domain/app_update_models.dart';
 import 'package:tabby/features/app_update/presentation/app_update_prompt.dart';
+import 'package:tabby/core/widgets/app_version_footer.dart';
 
 void main() {
   group('AppVersion', () {
@@ -14,6 +16,7 @@ void main() {
 
       expect(version, const AppVersion(1, 2, 3, 4));
       expect(version!.displayValue, '1.2.3');
+      expect(version.fullDisplayValue, '1.2.3+4');
     });
 
     test('treats a newer build or semantic version as newer', () {
@@ -128,7 +131,7 @@ void main() {
   testWidgets('shows the update dialog and allows the user to defer it',
       (tester) async {
     final release = AppUpdateRelease(
-      version: const AppVersion(1, 1, 0),
+      version: const AppVersion(1, 1, 0, 2),
       releaseNotes: 'Fresh fixes',
       releaseUrl: Uri.parse('https://example.test/release'),
     );
@@ -151,7 +154,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('A new version of Tabby is available'), findsOneWidget);
-    expect(find.text('Version 1.1.0 is ready.'), findsOneWidget);
+    expect(find.text('Version 1.1.0+2 is ready.'), findsOneWidget);
 
     await tester.tap(find.text('Later'));
     await tester.pumpAndSettle();
@@ -175,6 +178,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(checker.calls, 0);
+  });
+
+  testWidgets('shows the installed version and build number in the footer',
+      (tester) async {
+    final packageInfo = PackageInfo(
+      appName: 'Tabby',
+      packageName: 'com.zalweb.tabby',
+      version: '1.0.1',
+      buildNumber: '2',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppVersionFooter(
+            packageInfoLoader: () async => packageInfo,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Version 1.0.1+2'), findsOneWidget);
   });
 }
 

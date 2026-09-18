@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
   # Backend BaaS & Realtime
   supabase_flutter: ^2.8.0
@@ -48,13 +50,16 @@ dependencies:
   local_auth: ^2.3.0
 
   # Utility & Localization
-  intl: ^0.19.0
+  intl: ^0.20.2
   uuid: ^4.5.1
+  crypto: ^3.0.6
 
   # Release update prompts
   http: ^1.2.2
   package_info_plus: ^8.3.0
   url_launcher: ^6.3.1
+  flutter_local_notifications: ^22.3.1
+  timezone: ^0.11.1
 
 dev_dependencies:
   flutter_test:

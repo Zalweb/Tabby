@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -25,8 +26,7 @@ class AppUpdateService implements AppUpdateChecker {
   final InstalledVersionLoader _installedVersionLoader;
   final Uri _endpoint;
 
-  @override
-  Future<AppUpdateInfo?> checkForUpdate() async {
+  Future<AppUpdateCheckResult> checkStatus() async {
     try {
       final currentVersion = await _installedVersionLoader();
       final response = await _client.get(
@@ -37,26 +37,44 @@ class AppUpdateService implements AppUpdateChecker {
         },
       ).timeout(const Duration(seconds: 4));
 
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        return const AppUpdateCheckResult(status: AppUpdateStatus.unavailable);
+      }
 
       final decoded = jsonDecode(response.body);
-      if (decoded is! Map) return null;
+      if (decoded is! Map) {
+        return const AppUpdateCheckResult(status: AppUpdateStatus.unavailable);
+      }
 
       final release = AppUpdateRelease.fromJson(
         Map<String, dynamic>.from(decoded),
       );
-      if (release == null || !release.version.isNewerThan(currentVersion)) {
-        return null;
+      if (release == null) {
+        return const AppUpdateCheckResult(status: AppUpdateStatus.unavailable);
       }
 
-      return AppUpdateInfo(
-        currentVersion: currentVersion,
-        release: release,
+      if (!release.version.isNewerThan(currentVersion)) {
+        return const AppUpdateCheckResult(status: AppUpdateStatus.upToDate);
+      }
+
+      return AppUpdateCheckResult(
+        status: AppUpdateStatus.updateAvailable,
+        update: AppUpdateInfo(currentVersion: currentVersion, release: release),
       );
     } catch (_) {
-      // An update check must never prevent the app from starting.
-      return null;
+      return const AppUpdateCheckResult(status: AppUpdateStatus.unavailable);
     }
+  }
+
+  @override
+  Future<AppUpdateInfo?> checkForUpdate() async {
+    final result = await checkStatus();
+    if (result.status != AppUpdateStatus.updateAvailable) return null;
+    debugPrint(
+      '[AppUpdate] Installed ${result.update!.currentVersion.fullDisplayValue}; '
+      'latest ${result.update!.release.version.fullDisplayValue}; newer=true',
+    );
+    return result.update;
   }
 
   static Future<AppVersion> _loadInstalledVersion() async {

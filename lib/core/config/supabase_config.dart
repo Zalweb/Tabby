@@ -22,6 +22,7 @@ class SupabaseConfig {
   );
 
   static const String storageBucketName = 'payment-proofs';
+  static const String paymentMethodsBucketName = 'payment-methods';
 
   // --------------------------------------------------------------------------
   // Table Constants (All 17 Relational Entities from AGENTS.md Section 7)
@@ -39,6 +40,7 @@ class SupabaseConfig {
   static const String tableTransactionParticipants = 'transaction_participants';
   static const String tablePayments = 'payments';
   static const String tablePaymentProofs = 'payment_proofs';
+  static const String tablePaymentMethods = 'payment_methods';
   static const String tableReminders = 'reminders';
   static const String tableNotifications = 'notifications';
   static const String tableReports = 'reports';
@@ -50,13 +52,17 @@ class SupabaseConfig {
   static const String rpcGetNetBalance = 'get_net_balance';
   static const String rpcGetTabSummary = 'get_tab_summary';
   static const String rpcGetUserDashboardSummary = 'get_user_dashboard_summary';
-  static const String rpcGetOrCreateBilateralTab = 'get_or_create_bilateral_tab';
+  static const String rpcGetOrCreateBilateralTab =
+      'get_or_create_bilateral_tab';
   static const String rpcClaimContact = 'claim_contact';
-  static const String rpcValidateTransactionSplit = 'validate_transaction_split';
+  static const String rpcValidateTransactionSplit =
+      'validate_transaction_split';
   static const String rpcFindUserByFriendCode = 'find_user_by_friend_code';
   static const String rpcSendFriendRequest = 'send_friend_request';
   static const String rpcListFriendRequests = 'list_friend_requests';
   static const String rpcRespondFriendRequest = 'respond_friend_request';
+  static const String rpcListPaymentMethodsForTab =
+      'list_payment_methods_for_tab';
 
   // --------------------------------------------------------------------------
   // State & Initialization
@@ -100,7 +106,8 @@ class SupabaseConfig {
         debug: debug,
       );
       _initialized = true;
-      debugPrint('[SupabaseConfig] Initialized successfully with: $effectiveUrl');
+      debugPrint(
+          '[SupabaseConfig] Initialized successfully with: $effectiveUrl');
     } catch (e, stackTrace) {
       debugPrint('[SupabaseConfig] Initialization failed: $e\n$stackTrace');
       rethrow;
@@ -131,7 +138,12 @@ class SupabaseConfig {
   static SupabaseStorageClient get storage => client.storage;
 
   /// Direct handle to the private payment proofs bucket.
-  static StorageFileApi get paymentProofsBucket => storage.from(storageBucketName);
+  static StorageFileApi get paymentProofsBucket =>
+      storage.from(storageBucketName);
+
+  /// Direct handle to the private payment methods bucket.
+  static StorageFileApi get paymentMethodsBucket =>
+      storage.from(paymentMethodsBucketName);
 
   /// Current authenticated user (or null if unauthenticated).
   static User? get currentUser => auth.currentUser;

@@ -5,6 +5,7 @@ import '../config/supabase_config.dart';
 import '../../features/home/presentation/home_dashboard_screen.dart';
 import '../../features/navigation/presentation/main_scaffold.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/connections/presentation/connections_screen.dart';
 import '../../features/tabs/presentation/my_tabs_screen.dart';
 import '../../features/tabs/presentation/tab_detail_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
@@ -194,13 +195,19 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
 
-        // 3. Profile Branch
+        // 4. Profile Branch
         StatefulShellBranch(
           navigatorKey: _profileNavigatorKey,
           routes: [
             GoRoute(
               path: '/profile',
               builder: (context, state) => const ProfileScreen(),
+              routes: [
+                GoRoute(
+                  path: 'connections',
+                  builder: (context, state) => const ConnectionsScreen(),
+                ),
+              ],
             ),
           ],
         ),

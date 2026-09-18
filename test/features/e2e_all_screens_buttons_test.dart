@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tabby/main.dart';
@@ -8,10 +9,10 @@ import 'package:tabby/features/tabs/presentation/add_expense_modal.dart';
 import 'package:tabby/features/profile/presentation/profile_screen.dart';
 import 'package:tabby/shared/widgets/notification_center_sheet.dart';
 import 'package:tabby/shared/widgets/tabby_button.dart';
-import 'package:tabby/shared/widgets/tabby_mascot_widget.dart';
 
 void main() {
   setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
     AppState.isAuthenticated.value = true;
     AppState.hasSeenOnboarding.value = true;
     AppState.profileCompletionRequired.value = false;
@@ -46,9 +47,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Notifications'), findsNothing);
 
-      // 2. Tabby Mascot Speech Bubble / Avatar Tap
-      final mascotFinder = find.byType(TabbyMascotWidget).first;
-      await tester.tap(mascotFinder);
+      // 2. Split-with-friends promo CTA
+      final createTabButton = find.text('Create a Tab');
+      await tester.ensureVisible(createTabButton);
+      await tester.tap(createTabButton);
+      await tester.pumpAndSettle();
+      expect(find.text('Create Tab'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
 
       // 3. Segmented Filter Buttons (Daily, Weekly, Monthly)
@@ -89,20 +94,20 @@ void main() {
       appRouter.go('/home');
       await tester.pumpAndSettle();
 
-      // 6. FAB "Log Expense" button
-      final fab = find.byType(FloatingActionButton);
-      expect(fab, findsOneWidget);
-      await tester.tap(fab);
+      // 6. Split-with-friends promo CTA
+      final createTabButtonAgain = find.text('Create a Tab');
+      await tester.ensureVisible(createTabButtonAgain);
+      await tester.tap(createTabButtonAgain);
       await tester.pumpAndSettle();
-      expect(find.text('Quick Log Expense'), findsOneWidget);
+      expect(find.text('Create Tab'), findsOneWidget);
 
       // Close modal
-      await tester.tap(find.byIcon(Icons.close));
+      await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
     });
 
     testWidgets(
-        'Add Expense Modal: Presets, Categories, Payer/Split toggles, Date picker, and Validations',
+        'Create Tab wizard: Presets, Categories, Payer/Split toggles, Date picker, and Validations',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
@@ -119,34 +124,36 @@ void main() {
       await tester.pumpAndSettle();
 
       // Open Add Expense modal
-      final fab = find.byType(FloatingActionButton);
-      await tester.tap(fab);
+      final createTabButton = find.text('Create a Tab');
+      await tester.ensureVisible(createTabButton);
+      await tester.tap(createTabButton);
       await tester.pumpAndSettle();
 
-      // 1. Validation: Clear name and tap Save Tab with empty fields
-      final nameField = find.widgetWithText(
-          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
-      await tester.ensureVisible(nameField);
-      await tester.enterText(nameField, '');
+      // 1. Validation: continue without selecting or adding a participant
+      final nextBtn = find.text('Next');
+      await tester.ensureVisible(nextBtn);
+      await tester.tap(nextBtn);
       await tester.pumpAndSettle();
-
-      final saveBtn1 = find.text('Save Tab');
-      await tester.ensureVisible(saveBtn1);
-      await tester.tap(saveBtn1);
-      await tester.pumpAndSettle();
-      expect(find.text('Please enter a friend or group name'), findsOneWidget);
+      expect(
+        find.text('Choose at least one friend or add an unregistered person.'),
+        findsOneWidget,
+      );
       ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal)))
           .clearSnackBars();
       await tester.pumpAndSettle();
 
-      // Enter Name
-      await tester.enterText(nameField, 'Samantha Perez');
+      // Add an unregistered participant, then continue to details.
+      final unregisteredField =
+          find.byKey(const ValueKey('create-tab-unregistered-name'));
+      await tester.enterText(unregisteredField, 'Samantha Perez');
+      await tester.tap(find.text('Add Person'));
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
 
-      // 2. Validation: Tap Save Tab with 0.00 amount
-      final saveBtn2 = find.text('Save Tab');
-      await tester.ensureVisible(saveBtn2);
-      await tester.tap(saveBtn2);
+      // 2. Validation: create with a 0.00 amount
+      final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
+      await tester.ensureVisible(createBtn);
+      await tester.tap(createBtn);
       await tester.pumpAndSettle();
       expect(find.text('Please enter an amount greater than PHP 0.00'),
           findsOneWidget);
@@ -154,7 +161,7 @@ void main() {
           .clearSnackBars();
       await tester.pumpAndSettle();
 
-      // Test Quick Amount Preset Chips (+₱500, +₱250)
+      // Test quick amount preset chips (+₱500, +₱250).
       final preset500 = find.text('+₱500');
       await tester.ensureVisible(preset500);
       await tester.tap(preset500);
@@ -179,47 +186,40 @@ void main() {
       await tester.pumpAndSettle();
 
       // 4. Description and Note inputs
-      final descField = find.descendant(
-        of: find.byType(BottomSheet),
-        matching:
-            find.widgetWithText(TextField, 'Dinner, Grocery run, Taxi fare'),
-      );
+      final descField = find.byKey(const ValueKey('create-tab-expense-title'));
       await tester.ensureVisible(descField);
       await tester.enterText(descField, 'Supermarket run');
       await tester.pumpAndSettle();
 
-      final noteField = find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.widgetWithText(TextField, 'Enter Message or notes...'),
-      );
+      final noteField = find.byKey(const ValueKey('create-tab-notes'));
       await tester.ensureVisible(noteField);
       await tester.enterText(noteField, 'Puregold supplies');
       await tester.pumpAndSettle();
 
-      // 5. Payer toggle: "They paid" then back to "You paid"
+      // 5. Payer toggle: "They paid" then back to "I paid"
       final theyPaidBtn = find.text('They paid');
       await tester.ensureVisible(theyPaidBtn);
       await tester.tap(theyPaidBtn);
       await tester.pumpAndSettle();
 
-      final youPaidBtn = find.text('You paid');
+      final youPaidBtn = find.text('I paid');
       await tester.ensureVisible(youPaidBtn);
       await tester.tap(youPaidBtn);
       await tester.pumpAndSettle();
 
-      // 6. Split mode toggle: "Full Share" then back to "50/50 Split"
-      final fullShareBtn = find.text('Full Share');
+      // 6. Split mode toggle: "Full share" then back to "Equal"
+      final fullShareBtn = find.text('Full share');
       await tester.ensureVisible(fullShareBtn);
       await tester.tap(fullShareBtn);
       await tester.pumpAndSettle();
 
-      final split5050Btn = find.text('50/50 Split');
+      final split5050Btn = find.text('Equal');
       await tester.ensureVisible(split5050Btn);
       await tester.tap(split5050Btn);
       await tester.pumpAndSettle();
 
       // 7. Due Date picker
-      final setDateBtn = find.text('Set Date');
+      final setDateBtn = find.text('Set date');
       await tester.ensureVisible(setDateBtn);
       await tester.tap(setDateBtn);
       await tester.pumpAndSettle();
@@ -232,21 +232,20 @@ void main() {
       await tester.ensureVisible(attachBtn);
       await tester.tap(attachBtn);
       await tester.pumpAndSettle();
-      expect(find.text('Receipt: Attached'), findsOneWidget);
+      expect(find.text('Receipt attached'), findsOneWidget);
       expect(find.text('Remove'), findsOneWidget);
       ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal)))
           .clearSnackBars();
       await tester.pumpAndSettle();
 
-      // 9. Save Tab successfully
-      final saveBtn3 = find.text('Save Tab');
-      await tester.ensureVisible(saveBtn3);
-      await tester.tap(saveBtn3);
+      // 9. Create the tab successfully.
+      final createBtn3 = find.widgetWithText(TabbyButton, 'Create Tab');
+      await tester.ensureVisible(createBtn3);
+      await tester.tap(createBtn3);
+      await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
-
-      expect(find.textContaining('Logged ₱750.00 with Samantha Perez!'),
-          findsOneWidget);
-      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('Tab created'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
       await tester.pumpAndSettle();
     });
 
@@ -268,31 +267,30 @@ void main() {
       await tester.pumpAndSettle();
 
       // Create a tab with Mateo
-      final fab = find.byType(FloatingActionButton);
-      await tester.tap(fab);
+      final createTabButton = find.text('Create a Tab');
+      await tester.ensureVisible(createTabButton);
+      await tester.tap(createTabButton);
       await tester.pumpAndSettle();
 
-      final nameField = find.widgetWithText(
-          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
-      await tester.enterText(nameField, 'Mateo Cruz');
+      final unregisteredField =
+          find.byKey(const ValueKey('create-tab-unregistered-name'));
+      await tester.enterText(unregisteredField, 'Mateo Cruz');
+      await tester.tap(find.text('Add Person'));
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
 
-      final amountField = find.widgetWithText(TextField, '0.00');
+      final amountField = find.byKey(const ValueKey('create-tab-amount'));
       await tester.enterText(amountField, '1000.00');
       await tester.pumpAndSettle();
 
-      final descField = find.descendant(
-        of: find.byType(BottomSheet),
-        matching:
-            find.widgetWithText(TextField, 'Dinner, Grocery run, Taxi fare'),
-      );
+      final descField = find.byKey(const ValueKey('create-tab-expense-title'));
       await tester.enterText(descField, 'Samgyupsal Feast');
       await tester.pumpAndSettle();
 
-      // Save tab (50/50 split -> Mateo owes ₱500.00)
-      final saveBtn = find.text('Save Tab');
-      await tester.ensureVisible(saveBtn);
-      await tester.tap(saveBtn);
+      // Create tab (equal split -> Mateo owes ₱500.00)
+      final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
+      await tester.ensureVisible(createBtn);
+      await tester.tap(createBtn);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
 
@@ -324,48 +322,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Payment Info'), findsOneWidget);
-      // Copy GCash number
-      final gcashTile = find.text('GCash');
-      await tester.tap(gcashTile);
-      await tester.pumpAndSettle();
-      expect(find.textContaining('copied to clipboard'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-
-      // Copy Maya number
-      final mayaTile = find.text('Maya');
-      await tester.tap(mayaTile);
-      await tester.pumpAndSettle();
-      expect(find.textContaining('copied to clipboard'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-
-      // Enlarge QR code modal
-      await tester.tap(find.text('Tap to enlarge'));
-      await tester.pumpAndSettle();
-      expect(find.text('QR Ph Official'), findsOneWidget);
-
-      // Copy QR string
-      await tester.tap(find.text('Copy QR String'));
-      await tester.pumpAndSettle();
-      expect(find.text('QR Ph payload copied to clipboard!'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-
-      // Save QR Image button
-      await tester.tap(find.text('Save QR Image'));
-      await tester.pumpAndSettle();
-      expect(find.text('QR code image saved to gallery!'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-
-      // Close QR enlargement sheet
-      await tester.tap(find.byIcon(Icons.close_rounded).last);
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.pumpAndSettle();
-
-      // Close Payment Info sheet using the Close button
-      await tester.tap(find.text('Close'));
+      expect(find.text('Preferred'), findsOneWidget);
+      expect(find.text('GCash'), findsOneWidget);
+      await tester.tap(find.text('Close').last);
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pumpAndSettle();
 
@@ -454,22 +413,26 @@ void main() {
       final addTabHeaderBtn = find.byIcon(Icons.add_rounded).first;
       await tester.tap(addTabHeaderBtn);
       await tester.pumpAndSettle();
-      expect(find.text('Quick Log Expense'), findsOneWidget);
+      expect(find.text('Create Tab'), findsNWidgets(2));
 
-      // Log a quick tab with "Jessica"
-      final nameField = find.widgetWithText(
-          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
-      await tester.enterText(nameField, 'Jessica Tan');
+      // Add an unregistered participant and create a tab with "Jessica".
+      final unregisteredField =
+          find.byKey(const ValueKey('create-tab-unregistered-name'));
+      await tester.enterText(unregisteredField, 'Jessica Tan');
+      await tester.tap(find.text('Add Person'));
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
 
-      final amountField = find.widgetWithText(TextField, '0.00');
+      final amountField = find.byKey(const ValueKey('create-tab-amount'));
       await tester.enterText(amountField, '300.00');
       await tester.pumpAndSettle();
 
-      final saveBtn = find.text('Save Tab');
-      await tester.ensureVisible(saveBtn);
-      await tester.tap(saveBtn);
+      final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
+      await tester.ensureVisible(createBtn);
+      await tester.tap(createBtn);
       await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
       await tester.pumpAndSettle();
 
       // Verify Jessica Tan exists in My Tabs
@@ -603,8 +566,7 @@ void main() {
       }
     });
 
-    testWidgets(
-        'Add Expense Modal: Duplicate expense warning dialog and Preset chips',
+    testWidgets('Create Tab wizard: Duplicate warning dialog and Preset chips',
         (tester) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
@@ -621,8 +583,17 @@ void main() {
       await tester.pumpAndSettle();
 
       // 1. Open Add Expense Modal
-      final fab = find.byType(FloatingActionButton);
-      await tester.tap(fab);
+      final createTabButton = find.text('Create a Tab');
+      await tester.ensureVisible(createTabButton);
+      await tester.tap(createTabButton);
+      await tester.pumpAndSettle();
+
+      // Add the unregistered participant before entering details.
+      final unregisteredField =
+          find.byKey(const ValueKey('create-tab-unregistered-name'));
+      await tester.enterText(unregisteredField, 'Duplicate Test Friend');
+      await tester.tap(find.text('Add Person'));
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
 
       // Test preset chips: +₱100, +₱1000, +₱2000
@@ -644,46 +615,47 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, '3100.00'), findsOneWidget);
 
-      // Enter friend and description
-      final nameField = find.widgetWithText(
-          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
-      await tester.enterText(nameField, 'Duplicate Test Friend');
-      await tester.pumpAndSettle();
-
       // Set amount to 450.00
-      final amountField = find.widgetWithText(TextField, '3100.00');
+      final amountField = find.byKey(const ValueKey('create-tab-amount'));
       await tester.enterText(amountField, '450.00');
       await tester.pumpAndSettle();
 
-      // Save initial expense
-      final saveBtn1 = find.text('Save Tab');
-      await tester.ensureVisible(saveBtn1);
-      await tester.tap(saveBtn1);
+      // Create the initial expense.
+      final createBtn1 = find.widgetWithText(TabbyButton, 'Create Tab');
+      await tester.ensureVisible(createBtn1);
+      await tester.tap(createBtn1);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
+      expect(find.text('Tab created'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+      await tester.pumpAndSettle();
 
-      // Clear SnackBars so it doesn't obstruct FAB tap
+      // Clear SnackBars so it doesn't obstruct the promo CTA
       ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
           .clearSnackBars();
       await tester.pumpAndSettle();
 
       // 2. Open Add Expense Modal again to log the EXACT SAME amount with same friend
-      await tester.tap(fab);
+      final createTabButtonAgain = find.text('Create a Tab');
+      await tester.ensureVisible(createTabButtonAgain);
+      await tester.tap(createTabButtonAgain);
       await tester.pumpAndSettle();
 
-      final nameField2 = find.widgetWithText(
-          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
-      await tester.enterText(nameField2, 'Duplicate Test Friend');
+      final unregisteredField2 =
+          find.byKey(const ValueKey('create-tab-unregistered-name'));
+      await tester.enterText(unregisteredField2, 'Duplicate Test Friend');
+      await tester.tap(find.text('Add Person'));
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
 
-      final amountField2 = find.widgetWithText(TextField, '0.00');
+      final amountField2 = find.byKey(const ValueKey('create-tab-amount'));
       await tester.enterText(amountField2, '450.00');
       await tester.pumpAndSettle();
 
-      // Tap Save Tab -> should trigger _showDuplicateWarning
-      final saveBtn2 = find.text('Save Tab');
-      await tester.ensureVisible(saveBtn2);
-      await tester.tap(saveBtn2);
+      // Tap Create Tab -> should trigger the duplicate warning.
+      final createBtn2 = find.widgetWithText(TabbyButton, 'Create Tab');
+      await tester.ensureVisible(createBtn2);
+      await tester.tap(createBtn2);
       await tester.pumpAndSettle();
 
       // Verify Duplicate Dialog appears
@@ -695,10 +667,11 @@ void main() {
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect(find.text('Possible Duplicate'), findsNothing);
-      expect(find.text('Quick Log Expense'), findsOneWidget);
+      expect(find.widgetWithText(TabbyButton, 'Create Tab'), findsOneWidget);
 
-      // Tap Save Tab again -> dialog reappears
-      await tester.tap(saveBtn2);
+      // Tap Create Tab again -> dialog reappears
+      await tester.ensureVisible(createBtn2);
+      await tester.tap(createBtn2);
       await tester.pumpAndSettle();
       expect(find.text('Possible Duplicate'), findsOneWidget);
 
@@ -707,7 +680,9 @@ void main() {
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
 
-      expect(find.text('Quick Log Expense'), findsNothing);
+      expect(find.text('Tab created'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+      await tester.pumpAndSettle();
     });
 
     testWidgets(
@@ -727,17 +702,20 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Log an expense where "They paid" so current user owes counterpart
-      final fab = find.byType(FloatingActionButton);
-      await tester.tap(fab);
+      // Log an expense where "They paid" so current user owes counterpart.
+      final createTabButton = find.text('Create a Tab');
+      await tester.ensureVisible(createTabButton);
+      await tester.tap(createTabButton);
       await tester.pumpAndSettle();
 
-      final nameField = find.widgetWithText(
-          TextField, 'Enter name (e.g. Alex, Maria, Weekend Group)');
-      await tester.enterText(nameField, 'Carlos Dalisay');
+      final unregisteredField =
+          find.byKey(const ValueKey('create-tab-unregistered-name'));
+      await tester.enterText(unregisteredField, 'Carlos Dalisay');
+      await tester.tap(find.text('Add Person'));
+      await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
 
-      final amountField = find.widgetWithText(TextField, '0.00');
+      final amountField = find.byKey(const ValueKey('create-tab-amount'));
       await tester.enterText(amountField, '800.00');
       await tester.pumpAndSettle();
 
@@ -747,10 +725,12 @@ void main() {
       await tester.tap(theyPaidBtn);
       await tester.pumpAndSettle();
 
-      final saveBtn = find.text('Save Tab');
-      await tester.ensureVisible(saveBtn);
-      await tester.tap(saveBtn);
+      final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
+      await tester.ensureVisible(createBtn);
+      await tester.tap(createBtn);
       await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
       await tester.pumpAndSettle();
 
       // Navigate to My Tabs
@@ -790,10 +770,10 @@ void main() {
       // 2. Tap Log New Expense -> opens AddExpenseModal
       await tester.tap(find.text('Log New Expense'));
       await tester.pumpAndSettle();
-      expect(find.text('Quick Log Expense'), findsOneWidget);
+      expect(find.text('Create Tab'), findsOneWidget);
 
       // Close modal
-      await tester.tap(find.byIcon(Icons.close));
+      await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
 
       // 3. Tap on a ledger entry without receipt -> test "Attach Receipt Photo"
@@ -853,6 +833,16 @@ void main() {
       final passcodeSwitch =
           find.widgetWithText(SwitchListTile, 'Passcode Protection');
       await tester.tap(passcodeSwitch);
+      await tester.pumpAndSettle();
+
+      // Enabling passcode opens the PIN setup sheet before security settings
+      // can be closed.
+      expect(find.text('Configure PIN'), findsOneWidget);
+      final pinFields = find.byType(TextField);
+      await tester.enterText(
+          pinFields.at(pinFields.evaluate().length - 2), '1234');
+      await tester.enterText(pinFields.last, '1234');
+      await tester.tap(find.widgetWithText(TabbyButton, 'Save PIN'));
       await tester.pumpAndSettle();
 
       // Tap Done
