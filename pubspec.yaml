@@ -1,7 +1,7 @@
 name: tabby
 description: "Keep tabs. Settle up. Filipino peer-to-peer financial relationship tracker."
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
