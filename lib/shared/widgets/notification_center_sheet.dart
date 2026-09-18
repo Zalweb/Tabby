@@ -24,6 +24,8 @@ class NotificationCenterSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardState = ref.watch(tabbyProvider);
     final notifier = ref.read(tabbyProvider.notifier);
+    final notifications = dashboardState.notifications;
+    final unreadCount = dashboardState.unreadNotificationCount;
     final reminders = dashboardState.reminders;
     final seenActivityKeys = <String>{};
     final uniqueActivities = <TabbyActivity>[];
@@ -38,7 +40,9 @@ class NotificationCenterSheet extends ConsumerWidget {
     }
     final activities = uniqueActivities.take(6).toList();
 
-    final hasNotifications = reminders.isNotEmpty || activities.isNotEmpty;
+    final hasNotifications = notifications.isNotEmpty ||
+        reminders.isNotEmpty ||
+        activities.isNotEmpty;
 
     return Container(
       constraints: BoxConstraints(
@@ -69,51 +73,86 @@ class NotificationCenterSheet extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: TabbyColors.iconBgMint,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.notifications_rounded,
+                        color: TabbyColors.brandEmerald,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Notifications',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: TabbyColors.brandDarkTeal,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Text(
+                            unreadCount > 0
+                                ? '$unreadCount unread notification${unreadCount > 1 ? 's' : ''}'
+                                : (reminders.isNotEmpty
+                                    ? '${reminders.length} pending reminder${reminders.length > 1 ? 's' : ''}'
+                                    : 'All caught up'),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: TabbyColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: TabbyColors.iconBgMint,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.notifications_rounded,
-                      color: TabbyColors.brandEmerald,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Notifications',
+                  if (unreadCount > 0) ...[
+                    TextButton(
+                      onPressed: () => notifier.markAllNotificationsAsRead(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: TabbyColors.brandEmerald,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Mark all read',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: TabbyColors.brandDarkTeal,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      Text(
-                        reminders.isNotEmpty
-                            ? '${reminders.length} pending reminder${reminders.length > 1 ? 's' : ''}'
-                            : 'All caught up',
-                        style: const TextStyle(
                           fontSize: 11,
-                          color: TabbyColors.textSecondary,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ],
+                    ),
+                    const SizedBox(width: 2),
+                  ],
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded,
+                        color: TabbyColors.brandDarkTeal),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.close_rounded, color: TabbyColors.brandDarkTeal),
-                onPressed: () => Navigator.pop(context),
               ),
             ],
           ),
@@ -155,6 +194,178 @@ class NotificationCenterSheet extends ConsumerWidget {
                   )
                 : ListView(
                     children: [
+                      if (notifications.isNotEmpty) ...[
+                        const Text(
+                          'ALERTS & NOTIFICATIONS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyColors.brandDarkTeal,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...notifications.map((notif) {
+                          IconData iconData;
+                          Color iconColor = TabbyColors.brandEmerald;
+                          Color iconBg = TabbyColors.iconBgMint;
+
+                          if (notif.type == 'payment_confirmed' ||
+                              notif.type == 'payment_submitted') {
+                            iconData = Icons.payments_rounded;
+                          } else if (notif.type == 'debt_created' ||
+                              notif.type == 'expense_added') {
+                            iconData = Icons.receipt_long_rounded;
+                          } else if (notif.type == 'friend_request') {
+                            iconData = Icons.person_add_rounded;
+                            iconColor = TabbyColors.accentLightBlue;
+                            iconBg = TabbyColors.iconBgBlue;
+                          } else {
+                            iconData = Icons.notifications_active_rounded;
+                          }
+
+                          final hasTab = notif.relatedTabId != null &&
+                              notif.relatedTabId!.isNotEmpty;
+
+                          return InkWell(
+                            onTap: () {
+                              if (!notif.isRead) {
+                                notifier.markNotificationAsRead(notif.id);
+                              }
+                              if (hasTab) {
+                                Navigator.pop(context);
+                                context.push('/tabs/${notif.relatedTabId}');
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: notif.isRead
+                                    ? TabbyColors.surfaceWhite
+                                    : TabbyColors.brandMintAccent
+                                        .withValues(alpha: 0.45),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: notif.isRead
+                                      ? TabbyColors.borderMint
+                                      : TabbyColors.brandEmerald
+                                          .withValues(alpha: 0.5),
+                                  width: notif.isRead ? 1 : 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: iconBg,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      iconData,
+                                      color: iconColor,
+                                      size: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                notif.title,
+                                                style: TextStyle(
+                                                  fontWeight: notif.isRead
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w800,
+                                                  fontSize: 13,
+                                                  color: TabbyColors
+                                                      .brandDarkTeal,
+                                                ),
+                                              ),
+                                            ),
+                                            if (!notif.isRead)
+                                              Container(
+                                                width: 7,
+                                                height: 7,
+                                                margin: const EdgeInsets.only(
+                                                    left: 6),
+                                                decoration: const BoxDecoration(
+                                                  color: TabbyColors.alertRed,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          notif.body,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: TabbyColors.textSecondary,
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _formatTimeAgo(notif.createdAt),
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: TabbyColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (hasTab) ...[
+                                    const SizedBox(width: 8),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: TextButton(
+                                        onPressed: () {
+                                          if (!notif.isRead) {
+                                            notifier.markNotificationAsRead(
+                                                notif.id);
+                                          }
+                                          Navigator.pop(context);
+                                          context.push(
+                                              '/tabs/${notif.relatedTabId}');
+                                        },
+                                        style: TextButton.styleFrom(
+                                          foregroundColor:
+                                              TabbyColors.brandEmerald,
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize
+                                              .shrinkWrap,
+                                        ),
+                                        child: const Text(
+                                          'View',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                      ],
                       if (reminders.isNotEmpty) ...[
                         const Text(
                           'UPCOMING & OVERDUE DUES',
@@ -232,7 +443,7 @@ class NotificationCenterSheet extends ConsumerWidget {
                                   ElevatedButton(
                                     onPressed: () {
                                       Navigator.pop(context);
-                                      context.go('/tabs/${reminder.tabId}');
+                                      context.push('/tabs/${reminder.tabId}');
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: TabbyColors.brandEmerald,
@@ -352,5 +563,14 @@ class NotificationCenterSheet extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static String _formatTimeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${dt.month}/${dt.day}/${dt.year}';
   }
 }

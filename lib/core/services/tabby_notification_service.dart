@@ -6,6 +6,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../features/classroom/domain/classroom_models.dart';
+import '../router/app_router.dart';
 
 /// Singleton notification service.
 /// Wraps flutter_local_notifications for on-device reminder and payment-alert delivery.
@@ -195,6 +196,61 @@ class TabbyNotificationService {
       channelId: _channelIdPayments,
       channelName: 'Payment Alerts',
       payload: 'tab:$tabId',
+    );
+  }
+
+  /// Shows an immediate notification when a new tab is created with the user.
+  Future<void> showNewTabCreated({
+    required String title,
+    required String body,
+    String? tabId,
+  }) async {
+    if (!_initialized) return;
+    await _show(
+      id: ('tab_${tabId ?? DateTime.now().millisecondsSinceEpoch}').hashCode &
+          0x7FFFFFFF,
+      title: title,
+      body: body,
+      channelId: _channelIdReminders,
+      channelName: 'Tab Updates',
+      payload: tabId != null ? 'tab:$tabId' : null,
+    );
+  }
+
+  /// Shows an immediate notification when an expense is added to a tab.
+  Future<void> showExpenseAdded({
+    required String title,
+    required String body,
+    String? tabId,
+  }) async {
+    if (!_initialized) return;
+    await _show(
+      id: ('expense_${tabId ?? DateTime.now().millisecondsSinceEpoch}')
+              .hashCode &
+          0x7FFFFFFF,
+      title: title,
+      body: body,
+      channelId: _channelIdReminders,
+      channelName: 'Tab Updates',
+      payload: tabId != null ? 'tab:$tabId' : null,
+    );
+  }
+
+  /// Shows an immediate payment alert notification.
+  Future<void> showPaymentAlert({
+    required String title,
+    required String body,
+    String? tabId,
+  }) async {
+    if (!_initialized) return;
+    await _show(
+      id: ('pay_${tabId ?? DateTime.now().millisecondsSinceEpoch}').hashCode &
+          0x7FFFFFFF,
+      title: title,
+      body: body,
+      channelId: _channelIdPayments,
+      channelName: 'Payment Alerts',
+      payload: tabId != null ? 'tab:$tabId' : null,
     );
   }
 
@@ -471,10 +527,14 @@ class TabbyNotificationService {
   }
 
   void _onNotificationTapped(NotificationResponse response) {
-    // payload format: 'tab:<tabId>' or 'nudge' etc.
     final payload = response.payload;
     if (payload == null) return;
     debugPrint('[TabbyNotificationService] Notification tapped: $payload');
-    // Navigation is handled by the NotificationRouteListener widget in app_router
+    if (payload.startsWith('tab:')) {
+      final tabId = payload.substring(4).trim();
+      if (tabId.isNotEmpty) {
+        appRouter.push('/tabs/$tabId');
+      }
+    }
   }
 }

@@ -137,12 +137,41 @@ class TabbyLocalCache {
     }
   }
 
+  /// Saves notifications to local secure cache
+  static Future<void> saveNotifications(List<AppNotification> notifications,
+      {String? userId}) async {
+    try {
+      final jsonList = notifications.map((n) => n.toMap()).toList();
+      final jsonStr = jsonEncode(jsonList);
+      await _storage.write(key: _key('notifications', userId), value: jsonStr);
+    } catch (e) {
+      debugPrint('[TabbyLocalCache] saveNotifications warning: $e');
+    }
+  }
+
+  /// Loads cached notifications from local secure cache.
+  static Future<List<AppNotification>?> loadNotifications(
+      {String? userId}) async {
+    try {
+      final raw = await _storage.read(key: _key('notifications', userId));
+      if (raw == null || raw.isEmpty) return null;
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((item) => AppNotification.fromMap(item as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('[TabbyLocalCache] loadNotifications warning: $e');
+      return null;
+    }
+  }
+
   /// Clears all local cache (e.g., on logout)
   static Future<void> clearCache({String? userId}) async {
     try {
       await _storage.delete(key: _key('tabs', userId));
       await _storage.delete(key: _key('activities', userId));
       await _storage.delete(key: _key('reminders', userId));
+      await _storage.delete(key: _key('notifications', userId));
       await _storage.delete(key: 'tabby_pending_ops_${_scope(userId)}');
 
       // Remove cache written by versions before account scoping was added.

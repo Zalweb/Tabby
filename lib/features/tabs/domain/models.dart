@@ -797,4 +797,38 @@ class AppNotification {
         createdAt: createdAt,
         readAt: readAt ?? this.readAt,
       );
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'recipientUserId': recipientUserId,
+        'type': type,
+        'relatedTabId': relatedTabId,
+        'relatedTransactionId': relatedTransactionId,
+        'relatedPaymentId': relatedPaymentId,
+        'relatedGroupId': relatedGroupId,
+        'title': title,
+        'body': body,
+        'isRead': isRead,
+        'createdAt': createdAt.toIso8601String(),
+        'readAt': readAt?.toIso8601String(),
+      };
+
+  factory AppNotification.fromMap(Map<String, dynamic> map) => AppNotification(
+        id: map['id'] as String? ?? '',
+        recipientUserId: map['recipientUserId'] as String? ?? '',
+        type: map['type'] as String? ?? 'general',
+        relatedTabId: map['relatedTabId'] as String?,
+        relatedTransactionId: map['relatedTransactionId'] as String?,
+        relatedPaymentId: map['relatedPaymentId'] as String?,
+        relatedGroupId: map['relatedGroupId'] as String?,
+        title: map['title'] as String? ?? '',
+        body: map['body'] as String? ?? '',
+        isRead: map['isRead'] as bool? ?? false,
+        createdAt: map['createdAt'] != null
+            ? (DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now())
+            : DateTime.now(),
+        readAt: map['readAt'] != null
+            ? DateTime.tryParse(map['readAt'] as String)
+            : null,
+      );
 }

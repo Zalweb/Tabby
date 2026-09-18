@@ -7,6 +7,7 @@ class TabbyDashboardState {
   final List<TabbyActivity> activities;
   final List<UpcomingReminder> reminders;
   final List<FriendRequest> friendRequests;
+  final List<AppNotification> notifications;
   final MascotEmotion? emotionOverride;
   final String? emotionCustomMessage;
 
@@ -15,9 +16,14 @@ class TabbyDashboardState {
     required this.activities,
     required this.reminders,
     this.friendRequests = const [],
+    this.notifications = const [],
     this.emotionOverride,
     this.emotionCustomMessage,
   });
+
+  /// Total count of unread real-time notifications
+  int get unreadNotificationCount =>
+      notifications.where((n) => !n.isRead).length;
 
   /// Total centavos you owe others across all tabs
   int get youOweCentavos {
@@ -99,6 +105,7 @@ class TabbyDashboardState {
     List<TabbyActivity>? activities,
     List<UpcomingReminder>? reminders,
     List<FriendRequest>? friendRequests,
+    List<AppNotification>? notifications,
     MascotEmotion? emotionOverride,
     bool clearOverride = false,
     String? emotionCustomMessage,
@@ -108,6 +115,7 @@ class TabbyDashboardState {
       activities: activities ?? this.activities,
       reminders: reminders ?? this.reminders,
       friendRequests: friendRequests ?? this.friendRequests,
+      notifications: notifications ?? this.notifications,
       emotionOverride: clearOverride ? null : (emotionOverride ?? this.emotionOverride),
       emotionCustomMessage: clearOverride ? null : (emotionCustomMessage ?? this.emotionCustomMessage),
     );

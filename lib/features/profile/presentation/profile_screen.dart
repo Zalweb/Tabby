@@ -427,10 +427,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
             child: IconButton(
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                size: 22,
-                color: TabbyColors.brandDarkTeal,
+              icon: Badge(
+                isLabelVisible:
+                    ref.watch(tabbyProvider).unreadNotificationCount > 0,
+                backgroundColor: TabbyColors.alertRed,
+                label: Text(
+                  ref.watch(tabbyProvider).unreadNotificationCount > 9
+                      ? '9+'
+                      : '${ref.watch(tabbyProvider).unreadNotificationCount}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: TabbyColors.surfaceWhite,
+                  ),
+                ),
+                child: Icon(
+                  ref.watch(tabbyProvider).unreadNotificationCount > 0
+                      ? Icons.notifications_active_rounded
+                      : Icons.notifications_none_rounded,
+                  size: 22,
+                  color: TabbyColors.brandDarkTeal,
+                ),
               ),
               onPressed: () => NotificationCenterSheet.show(context),
               tooltip: 'Notifications',

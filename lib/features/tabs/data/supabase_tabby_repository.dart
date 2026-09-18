@@ -1630,4 +1630,11 @@ class SupabaseTabbyRepository {
           '[SupabaseTabbyRepository] insertPaymentConfirmedNotification error: $e');
     }
   }
+
+  /// Alias for markNotificationRead
+  Future<void> markNotificationAsRead(String id) => markNotificationRead(id);
+
+  /// Alias for markAllNotificationsRead
+  Future<void> markAllNotificationsAsRead(String userId) =>
+      markAllNotificationsRead(userId);
 }

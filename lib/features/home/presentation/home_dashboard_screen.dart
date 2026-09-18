@@ -117,10 +117,27 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                               ],
                             ),
                             child: IconButton(
-                              icon: const Icon(
-                                Icons.notifications_none_rounded,
-                                color: TabbyColors.brandDarkTeal,
-                                size: 22,
+                              icon: Badge(
+                                isLabelVisible:
+                                    dashboardState.unreadNotificationCount > 0,
+                                backgroundColor: TabbyColors.alertRed,
+                                label: Text(
+                                  dashboardState.unreadNotificationCount > 9
+                                      ? '9+'
+                                      : '${dashboardState.unreadNotificationCount}',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: TabbyColors.surfaceWhite,
+                                  ),
+                                ),
+                                child: Icon(
+                                  dashboardState.unreadNotificationCount > 0
+                                      ? Icons.notifications_active_rounded
+                                      : Icons.notifications_none_rounded,
+                                  color: TabbyColors.brandDarkTeal,
+                                  size: 22,
+                                ),
                               ),
                               onPressed: () =>
                                   NotificationCenterSheet.show(context),

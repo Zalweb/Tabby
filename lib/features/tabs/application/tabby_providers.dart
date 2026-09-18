@@ -9,6 +9,9 @@ import 'package:supabase_flutter/supabase_flutter.dart'
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/device_auth_service.dart';
 import '../../../core/services/pin_protection_service.dart';
+import '../../../core/services/tabby_notification_banner.dart';
+import '../../../core/services/tabby_notification_service.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../data/mock_tabby_repository.dart';
 import '../data/supabase_tabby_repository.dart';
 import '../data/tabby_local_cache.dart';
@@ -112,15 +115,20 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       final cachedReminders = await TabbyLocalCache.loadReminders(
         userId: hasLiveSession ? currentUserId : null,
       );
+      final cachedNotifications = await TabbyLocalCache.loadNotifications(
+        userId: hasLiveSession ? currentUserId : null,
+      );
       if (mounted &&
           (cachedTabs != null ||
               cachedActivities != null ||
-              cachedReminders != null)) {
+              cachedReminders != null ||
+              cachedNotifications != null)) {
         state = state.copyWith(
           tabs: cachedTabs ?? state.tabs,
           activities: _deduplicateActivities(
               cachedActivities ?? state.activities),
           reminders: cachedReminders ?? state.reminders,
+          notifications: cachedNotifications ?? state.notifications,
         );
       }
     } catch (e) {
@@ -287,6 +295,31 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           allReminders,
           userId: hasLiveSession ? currentUserId : null,
         );
+
+        if (hasLiveSession) {
+          try {
+            final remoteNotifs = await SupabaseTabbyRepository.instance
+                .fetchNotifications(currentUserId);
+            if (remoteNotifs.isNotEmpty && mounted) {
+              final seen = <String>{};
+              final mergedNotifs = <AppNotification>[];
+              for (final n in [...remoteNotifs, ...state.notifications]) {
+                if (n.id.isNotEmpty && seen.add(n.id)) {
+                  mergedNotifs.add(n);
+                }
+              }
+              mergedNotifs.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              state = state.copyWith(notifications: mergedNotifs);
+              await TabbyLocalCache.saveNotifications(
+                mergedNotifs,
+                userId: currentUserId,
+              );
+            }
+          } catch (e) {
+            debugPrint('[TabbyNotifier] Remote notifications fetch warning: $e');
+          }
+        }
+
         return true;
       }
     } catch (e) {
@@ -346,12 +379,279 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   void reset() {
     _stopRealtimeSubscription();
     state = SupabaseConfig.isInitialized
-        ? const TabbyDashboardState(tabs: [], activities: [], reminders: [])
+        ? const TabbyDashboardState(
+            tabs: [],
+            activities: [],
+            reminders: [],
+            notifications: [],
+          )
         : TabbyDashboardState(
             tabs: MockTabbyRepository.getInitialTabs(),
             activities: MockTabbyRepository.getInitialActivities(),
             reminders: MockTabbyRepository.getInitialReminders(),
+            notifications: const [],
           );
+  }
+
+  /// Marks all notifications as read in state, local cache, and Supabase.
+  Future<void> markAllNotificationsAsRead() async {
+    final updated = state.notifications
+        .map((n) => n.copyWith(isRead: true, readAt: DateTime.now()))
+        .toList();
+    state = state.copyWith(notifications: updated);
+    final userId = SupabaseConfig.currentUserId;
+    if (userId != null) {
+      unawaited(TabbyLocalCache.saveNotifications(updated, userId: userId));
+      unawaited(
+          SupabaseTabbyRepository.instance.markAllNotificationsAsRead(userId));
+    }
+  }
+
+  /// Marks a specific notification as read in state, local cache, and Supabase.
+  Future<void> markNotificationAsRead(String id) async {
+    final updated = state.notifications.map((n) {
+      if (n.id == id) {
+        return n.copyWith(isRead: true, readAt: DateTime.now());
+      }
+      return n;
+    }).toList();
+    state = state.copyWith(notifications: updated);
+    final userId = SupabaseConfig.currentUserId;
+    if (userId != null) {
+      unawaited(TabbyLocalCache.saveNotifications(updated, userId: userId));
+      unawaited(SupabaseTabbyRepository.instance.markNotificationAsRead(id));
+    }
+  }
+
+  void _recordAndDispatchNotification(AppNotification notif,
+      {IconData? icon}) {
+    if (!mounted) return;
+    if (state.notifications.any((n) => n.id == notif.id)) return;
+    final updated = [notif, ...state.notifications];
+    state = state.copyWith(notifications: updated);
+
+    final userId = SupabaseConfig.currentUserId;
+    if (userId != null) {
+      unawaited(TabbyLocalCache.saveNotifications(updated, userId: userId));
+    }
+
+    TabbyNotificationBanner.show(
+      title: notif.title,
+      body: notif.body,
+      tabId: notif.relatedTabId,
+      icon: icon ?? Icons.notifications_active_rounded,
+    );
+
+    if (notif.type == 'payment_submitted' ||
+        notif.type == 'payment_confirmed') {
+      unawaited(TabbyNotificationService.instance.showPaymentAlert(
+        title: notif.title,
+        body: notif.body,
+        tabId: notif.relatedTabId,
+      ));
+    } else if (notif.type == 'expense_added' ||
+        notif.type == 'debt_created') {
+      unawaited(TabbyNotificationService.instance.showExpenseAdded(
+        title: notif.title,
+        body: notif.body,
+        tabId: notif.relatedTabId,
+      ));
+    } else {
+      unawaited(TabbyNotificationService.instance.showNewTabCreated(
+        title: notif.title,
+        body: notif.body,
+        tabId: notif.relatedTabId,
+      ));
+    }
+  }
+
+  void _handleRealtimePayload(PostgresChangePayload payload) {
+    final currentUserId = SupabaseConfig.currentUserId;
+    if (currentUserId == null) return;
+
+    final table = payload.table;
+    final newRec = payload.newRecord;
+    final oldRec = payload.oldRecord;
+
+    try {
+      if (table == SupabaseConfig.tableNotifications) {
+        if (payload.eventType == PostgresChangeEvent.insert &&
+            newRec.isNotEmpty) {
+          final recipient = newRec['recipient_user_id'] as String?;
+          if (recipient == currentUserId) {
+            final notif = AppNotification.fromSupabaseRow(newRec);
+            if (notif != null) {
+              _recordAndDispatchNotification(notif);
+            }
+          }
+        }
+      } else if (table == SupabaseConfig.tableTransactions) {
+        if (payload.eventType == PostgresChangeEvent.insert &&
+            newRec.isNotEmpty) {
+          final createdBy = newRec['created_by'] as String?;
+          if (createdBy != null && createdBy != currentUserId) {
+            final title = (newRec['title'] as String?)?.trim();
+            final safeTitle =
+                (title != null && title.isNotEmpty) ? title : 'New expense';
+            final amountCentavos =
+                (newRec['total_amount_centavos'] as num?)?.toInt() ?? 0;
+            final tabId = newRec['tab_id'] as String?;
+            final formatted =
+                CurrencyFormatter.formatCentavos(amountCentavos);
+            final notif = AppNotification(
+              id: 'tx_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+              recipientUserId: currentUserId,
+              type: 'expense_added',
+              relatedTabId: tabId,
+              relatedTransactionId: newRec['id'] as String?,
+              title: 'New Expense Added',
+              body: '$safeTitle ($formatted) was added to your tab.',
+              isRead: false,
+              createdAt: DateTime.now(),
+            );
+            _recordAndDispatchNotification(notif,
+                icon: Icons.receipt_long_rounded);
+          }
+        }
+      } else if (table == SupabaseConfig.tablePayments) {
+        if (newRec.isNotEmpty) {
+          final payerId = newRec['payer_id'] as String?;
+          final receiverId = newRec['receiver_id'] as String?;
+          final submittedBy = newRec['submitted_by'] as String?;
+          final confirmedBy = newRec['confirmed_by'] as String?;
+          final status = newRec['status'] as String? ?? 'confirmed';
+          final oldStatus = oldRec['status'] as String?;
+          final tabId = newRec['tab_id'] as String?;
+          final amountCentavos =
+              (newRec['amount_centavos'] as num?)?.toInt() ?? 0;
+          final formatted =
+              CurrencyFormatter.formatCentavos(amountCentavos);
+
+          if (payload.eventType == PostgresChangeEvent.insert) {
+            if (submittedBy != currentUserId &&
+                (payerId != currentUserId || receiverId == currentUserId)) {
+              final notif = AppNotification(
+                id: 'pay_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+                recipientUserId: currentUserId,
+                type: 'payment_submitted',
+                relatedTabId: tabId,
+                relatedPaymentId: newRec['id'] as String?,
+                title: 'Payment Received',
+                body: 'A payment of $formatted was recorded on your tab.',
+                isRead: false,
+                createdAt: DateTime.now(),
+              );
+              _recordAndDispatchNotification(notif,
+                  icon: Icons.payments_rounded);
+            }
+          } else if (payload.eventType == PostgresChangeEvent.update) {
+            if (status == 'confirmed' && oldStatus != 'confirmed') {
+              if (payerId == currentUserId &&
+                  confirmedBy != currentUserId) {
+                final notif = AppNotification(
+                  id: 'conf_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+                  recipientUserId: currentUserId,
+                  type: 'payment_confirmed',
+                  relatedTabId: tabId,
+                  relatedPaymentId: newRec['id'] as String?,
+                  title: 'Payment Confirmed',
+                  body: 'Your payment of $formatted was confirmed.',
+                  isRead: false,
+                  createdAt: DateTime.now(),
+                );
+                _recordAndDispatchNotification(notif,
+                    icon: Icons.check_circle_rounded);
+              }
+            }
+          }
+        }
+      } else if (table == SupabaseConfig.tableTabs) {
+        if (payload.eventType == PostgresChangeEvent.insert &&
+            newRec.isNotEmpty) {
+          final createdBy = newRec['created_by'] as String?;
+          if (createdBy != null && createdBy != currentUserId) {
+            final tabId = newRec['id'] as String?;
+            final tabTitle = (newRec['title'] as String?) ??
+                (newRec['name'] as String?) ??
+                'A tab';
+            final notif = AppNotification(
+              id: 'tab_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+              recipientUserId: currentUserId,
+              type: 'debt_created',
+              relatedTabId: tabId,
+              title: 'New Tab Opened',
+              body: '$tabTitle was opened with you.',
+              isRead: false,
+              createdAt: DateTime.now(),
+            );
+            _recordAndDispatchNotification(notif,
+                icon: Icons.bookmark_add_rounded);
+          }
+        }
+      } else if (table == SupabaseConfig.tableTabMembers) {
+        if (payload.eventType == PostgresChangeEvent.insert &&
+            newRec.isNotEmpty) {
+          final memberUserId = newRec['user_id'] as String?;
+          final createdBy = newRec['created_by'] as String?;
+          if (memberUserId == currentUserId &&
+              createdBy != null &&
+              createdBy != currentUserId) {
+            final tabId = newRec['tab_id'] as String?;
+            final notif = AppNotification(
+              id: 'member_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+              recipientUserId: currentUserId,
+              type: 'debt_created',
+              relatedTabId: tabId,
+              title: 'Added to Tab',
+              body: 'You were added to a new shared tab.',
+              isRead: false,
+              createdAt: DateTime.now(),
+            );
+            _recordAndDispatchNotification(notif,
+                icon: Icons.group_add_rounded);
+          }
+        }
+      } else if (table == SupabaseConfig.tableFriendships) {
+        if (newRec.isNotEmpty) {
+          final user1 = newRec['user_id_1'] as String?;
+          final user2 = newRec['user_id_2'] as String?;
+          final actionUserId = newRec['action_user_id'] as String?;
+          final status = newRec['status'] as String?;
+
+          if ((user1 == currentUserId || user2 == currentUserId) &&
+              actionUserId != null &&
+              actionUserId != currentUserId) {
+            if (status == 'pending') {
+              final notif = AppNotification(
+                id: 'fr_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+                recipientUserId: currentUserId,
+                type: 'friend_request',
+                title: 'New Friend Request',
+                body: 'You received a new friend request.',
+                isRead: false,
+                createdAt: DateTime.now(),
+              );
+              _recordAndDispatchNotification(notif,
+                  icon: Icons.person_add_rounded);
+            } else if (status == 'accepted') {
+              final notif = AppNotification(
+                id: 'fa_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+                recipientUserId: currentUserId,
+                type: 'friend_request',
+                title: 'Friend Request Accepted',
+                body: 'Your friend request was accepted.',
+                isRead: false,
+                createdAt: DateTime.now(),
+              );
+              _recordAndDispatchNotification(notif,
+                  icon: Icons.how_to_reg_rounded);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[TabbyNotifier] _handleRealtimePayload error: $e');
+    }
   }
 
   Timer? _emotionTimer;
@@ -373,6 +673,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       void onPostgresChange(PostgresChangePayload payload) {
         debugPrint(
             '[TabbyNotifier] Realtime Postgres change on ${payload.table} (${payload.eventType})');
+        _handleRealtimePayload(payload);
         _realtimeDebounceTimer?.cancel();
         _realtimeDebounceTimer = Timer(const Duration(milliseconds: 350), () {
           if (mounted) {
@@ -389,6 +690,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         SupabaseConfig.tablePayments,
         SupabaseConfig.tablePaymentProofs,
         SupabaseConfig.tableFriendships,
+        SupabaseConfig.tableNotifications,
         SupabaseConfig.tableActivityLogs,
         SupabaseConfig.tableGroups,
         SupabaseConfig.tableGroupMembers,

@@ -118,6 +118,7 @@ class TabbyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(userSettingsProvider);
     return MaterialApp.router(
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       title: 'Tabby',
       theme: TabbyTheme.lightTheme,
       darkTheme: TabbyTheme.darkTheme,

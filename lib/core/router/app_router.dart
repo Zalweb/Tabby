@@ -28,6 +28,8 @@ final GlobalKey<NavigatorState> _profileNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'profile');
 final GlobalKey<NavigatorState> _classroomNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'classroom');
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>(debugLabel: 'scaffoldMessenger');
 
 bool _hasAuthenticatedSession() {
   // Always trust the in-memory AppState flag as the single source of truth.
