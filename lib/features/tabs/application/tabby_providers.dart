@@ -158,6 +158,15 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   static List<TabbyActivity> _deduplicateActivities(List<TabbyActivity> list) =>
       deduplicateActivities(list);
 
+  static List<LedgerEntry> deduplicateLedgerEntries(List<LedgerEntry> list) =>
+      MockTabbyRepository.deduplicateLedgerEntries(list);
+
+  static List<BilateralTab> deduplicateTabs(
+    List<BilateralTab> tabs, {
+    String? currentUserId,
+  }) =>
+      MockTabbyRepository.deduplicateTabs(tabs, currentUserId: currentUserId);
+
   Future<bool> _loadTabs() async {
     final hasLiveSession =
         SupabaseConfig.isInitialized && SupabaseConfig.currentUserId != null;
@@ -186,9 +195,13 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     // 1. Offline resilience: load from local cache first to prevent blank screens
     List<BilateralTab>? cachedTabs;
     try {
-      cachedTabs = await TabbyLocalCache.loadTabs(
+      final rawCachedTabs = await TabbyLocalCache.loadTabs(
         userId: hasLiveSession ? currentUserId : null,
       );
+      if (rawCachedTabs != null) {
+        cachedTabs =
+            deduplicateTabs(rawCachedTabs, currentUserId: currentUserId);
+      }
       final cachedActivities = await TabbyLocalCache.loadActivities(
         userId: hasLiveSession ? currentUserId : null,
       );
@@ -235,76 +248,43 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         final processedLocalIds = <String>{};
 
         for (final st in serverTabs) {
-          // Find matching local tab by tab id or counterpart id/name
-          final localMatch = localTabsPool.values
-              .cast<BilateralTab?>()
-              .firstWhere(
-                (lt) =>
-                    lt != null &&
-                    (lt.id == st.id ||
-                        (!lt.isGroupTab &&
-                            !st.isGroupTab &&
-                            ((lt.counterpart.id.isNotEmpty &&
-                                    lt.counterpart.id == st.counterpart.id) ||
-                                lt.counterpart.displayName
-                                        .trim()
-                                        .toLowerCase() ==
-                                    st.counterpart.displayName
-                                        .trim()
-                                        .toLowerCase()))),
-                orElse: () => null,
-              );
+          // Find all matching local tabs by tab id or counterpart id/name
+          final localMatches = localTabsPool.values
+              .where((lt) =>
+                  lt.id == st.id ||
+                  (!lt.isGroupTab &&
+                      !st.isGroupTab &&
+                      ((lt.counterpart.id.isNotEmpty &&
+                              lt.counterpart.id == st.counterpart.id) ||
+                          lt.counterpart.displayName
+                                  .trim()
+                                  .toLowerCase() ==
+                              st.counterpart.displayName
+                                  .trim()
+                                  .toLowerCase())))
+              .toList();
 
-          if (localMatch != null) {
-            processedLocalIds.add(localMatch.id);
-            // Merge entries: combine server entries and any local entries that haven't synced yet
-            final unconsumedServerEntries = List<LedgerEntry>.from(st.entries);
-            final combinedEntries = <LedgerEntry>[...st.entries];
-
-            for (final le in localMatch.entries) {
-              final matchIndex = unconsumedServerEntries.indexWhere((se) {
-                if (se.id == le.id) return true;
-                final sameAmount =
-                    se.totalAmountCentavos == le.totalAmountCentavos;
-                final sameType = se.isPayment == le.isPayment;
-                if (sameAmount && sameType) {
-                  final timeDiffSeconds =
-                      se.date.difference(le.date).abs().inSeconds;
-                  if (timeDiffSeconds < 600) {
-                    if (se.isPayment) return true;
-                    final normSeTitle = se.title.trim().toLowerCase();
-                    final normLeTitle = le.title.trim().toLowerCase();
-                    if (normSeTitle == normLeTitle ||
-                        normSeTitle.contains(normLeTitle) ||
-                        normLeTitle.contains(normSeTitle)) {
-                      return true;
-                    }
-                  }
-                }
-                return false;
-              });
-
-              if (matchIndex != -1) {
-                unconsumedServerEntries.removeAt(matchIndex);
-              } else {
-                combinedEntries.add(le);
-              }
-            }
-            combinedEntries.sort((a, b) => b.date.compareTo(a.date));
-
-            final effectiveBalance = MockTabbyRepository.calculateNetBalance(
-              combinedEntries,
-              currentUserId,
-            );
-
-            mergedTabs.add(st.copyWith(
-              entries: combinedEntries,
-              itemCount: combinedEntries.length,
-              netBalanceCentavos: effectiveBalance,
-            ));
-          } else {
-            mergedTabs.add(st);
+          for (final lm in localMatches) {
+            processedLocalIds.add(lm.id);
           }
+
+          // Combine entries: server entries take priority, merged with any unsynced local entries
+          final candidateEntries = <LedgerEntry>[...st.entries];
+          for (final lm in localMatches) {
+            candidateEntries.addAll(lm.entries);
+          }
+
+          final cleanEntries = deduplicateLedgerEntries(candidateEntries);
+          final effectiveBalance = MockTabbyRepository.calculateNetBalance(
+            cleanEntries,
+            currentUserId,
+          );
+
+          mergedTabs.add(st.copyWith(
+            entries: cleanEntries,
+            itemCount: cleanEntries.length,
+            netBalanceCentavos: effectiveBalance,
+          ));
         }
 
         // Add remaining local tabs that were not on server
@@ -321,14 +301,28 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
                                 .trim()
                                 .toLowerCase())));
             if (!alreadyInMerged) {
-              mergedTabs.add(entry.value);
+              final cleanLocalEntries =
+                  deduplicateLedgerEntries(entry.value.entries);
+              final effectiveBalance = MockTabbyRepository.calculateNetBalance(
+                cleanLocalEntries,
+                currentUserId,
+              );
+              mergedTabs.add(entry.value.copyWith(
+                entries: cleanLocalEntries,
+                itemCount: cleanLocalEntries.length,
+                netBalanceCentavos: effectiveBalance,
+              ));
             }
           }
         }
 
+        // Final deduplication across all merged tabs to guarantee zero duplicate tabs
+        final finalMergedTabs =
+            deduplicateTabs(mergedTabs, currentUserId: currentUserId);
+
         // Synthesize activities from all entries across merged tabs
         final serverActivities = <TabbyActivity>[];
-        for (final tab in mergedTabs) {
+        for (final tab in finalMergedTabs) {
           for (final entry in tab.entries) {
             serverActivities.add(TabbyActivity(
               id: entry.id,
@@ -361,7 +355,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
         // Synthesize upcoming reminders for entries with due dates
         final serverReminders = <UpcomingReminder>[];
-        for (final tab in mergedTabs) {
+        for (final tab in finalMergedTabs) {
           for (final entry in tab.entries) {
             if (entry.dueDate != null) {
               final isIWhoOwe = entry.paidByUserId != currentUserId;
@@ -388,12 +382,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         }
 
         state = state.copyWith(
-          tabs: mergedTabs,
+          tabs: finalMergedTabs,
           activities: allActivities,
           reminders: allReminders,
         );
         await TabbyLocalCache.saveTabs(
-          mergedTabs,
+          finalMergedTabs,
           userId: hasLiveSession ? currentUserId : null,
         );
         await TabbyLocalCache.saveActivities(
@@ -917,7 +911,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
     if (existingTabIndex >= 0) {
       final existingTab = state.tabs[existingTabIndex];
-      final updatedEntries = [newEntry, ...existingTab.entries];
+      final updatedEntries =
+          deduplicateLedgerEntries([newEntry, ...existingTab.entries]);
       final newNetBalance = MockTabbyRepository.calculateNetBalance(
         updatedEntries,
         currentUserId,
@@ -1160,7 +1155,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       note: note,
     );
 
-    final updatedEntries = [paymentEntry, ...tab.entries];
+    final updatedEntries =
+        deduplicateLedgerEntries([paymentEntry, ...tab.entries]);
     final newNetBalance = MockTabbyRepository.calculateNetBalance(
       updatedEntries,
       currentUserId,
@@ -2197,7 +2193,13 @@ final filteredTabsProvider = Provider<List<BilateralTab>>((ref) {
 final tabDetailProvider = Provider.family<BilateralTab?, String>((ref, tabId) {
   final tabs = ref.watch(tabbyProvider).tabs;
   try {
-    return tabs.firstWhere((t) => t.id == tabId || t.counterpart.id == tabId);
+    final tab =
+        tabs.firstWhere((t) => t.id == tabId || t.counterpart.id == tabId);
+    final cleanEntries = TabbyNotifier.deduplicateLedgerEntries(tab.entries);
+    return tab.copyWith(
+      entries: cleanEntries,
+      itemCount: cleanEntries.length,
+    );
   } catch (_) {
     return null;
   }

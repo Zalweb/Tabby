@@ -1479,5 +1479,149 @@ void main() {
           TabbyNotifier.deduplicateActivities([nudge1, nudge2]);
       expect(nudgeDeduped.length, equals(1));
     });
+
+    test(
+        'deduplicateLedgerEntries merges semantic duplicates and prioritizes server UUIDs',
+        () {
+      final now = DateTime.now();
+
+      // Gagno scenario: Server-confirmed transaction and optimistic local entry
+      final serverEntry = LedgerEntry(
+        id: '84003d99-472f-424a-94cd-d4d2a357c661',
+        tabId: 'f1b8bf25-04fc-47cf-a156-43ae2d5672e9',
+        title: 'utang nabilin',
+        category: ExpenseCategory.food,
+        totalAmountCentavos: 5400,
+        myShareCentavos: 0,
+        counterpartShareCentavos: 5400,
+        paidByUserId: '7e744c3a-7273-471a-847e-b7e1246d87ef',
+        paidByName: 'Jana Crizzia Gagno',
+        date: now,
+        status: TransactionStatus.acknowledged,
+      );
+
+      final localOptimisticEntry = LedgerEntry(
+        id: 'entry-1726712345678',
+        tabId: 'f1b8bf25-04fc-47cf-a156-43ae2d5672e9',
+        title: 'utang nabilin',
+        category: ExpenseCategory.food,
+        totalAmountCentavos: 5400,
+        myShareCentavos: 0,
+        counterpartShareCentavos: 5400,
+        paidByUserId: '7e744c3a-7273-471a-847e-b7e1246d87ef',
+        paidByName: 'Jana Crizzia Gagno',
+        date: now.add(const Duration(seconds: 2)),
+        status: TransactionStatus.acknowledged,
+      );
+
+      final deduped = TabbyNotifier.deduplicateLedgerEntries(
+          [serverEntry, localOptimisticEntry]);
+
+      expect(deduped.length, equals(1));
+      expect(deduped.first.id, equals('84003d99-472f-424a-94cd-d4d2a357c661'));
+      expect(deduped.first.title, equals('utang nabilin'));
+      expect(deduped.first.totalAmountCentavos, equals(5400));
+
+      // Test reverse order: local entry before server entry
+      final dedupedReverse = TabbyNotifier.deduplicateLedgerEntries(
+          [localOptimisticEntry, serverEntry]);
+      expect(dedupedReverse.length, equals(1));
+      expect(dedupedReverse.first.id,
+          equals('84003d99-472f-424a-94cd-d4d2a357c661'));
+
+      // Test duplicate exact ID
+      final exactDuplicate = serverEntry.copyWith(date: now.add(const Duration(hours: 1)));
+      final exactDeduped = TabbyNotifier.deduplicateLedgerEntries(
+          [serverEntry, exactDuplicate]);
+      expect(exactDeduped.length, equals(1));
+
+      // Test distinct expenses with same title at different days
+      final dayOldEntry = serverEntry.copyWith(
+        id: '99003d99-472f-424a-94cd-d4d2a357c662',
+        date: now.subtract(const Duration(days: 3)),
+      );
+      final separateDeduped = TabbyNotifier.deduplicateLedgerEntries(
+          [serverEntry, dayOldEntry]);
+      expect(separateDeduped.length, equals(2));
+    });
+
+    test(
+        'deduplicateTabs collapses multiple tabs for same counterpart and combines entries',
+        () {
+      final now = DateTime.now();
+      const currentUserId = 'c1976734-0398-4c72-8874-15364cd627d5';
+      const gagnoUserId = '7e744c3a-7273-471a-847e-b7e1246d87ef';
+
+      final serverTab = BilateralTab(
+        id: 'f1b8bf25-04fc-47cf-a156-43ae2d5672e9',
+        counterpart: const TabbyUser(
+          id: gagnoUserId,
+          displayName: 'Jana Crizzia Gagno',
+          email: 'gagno.janacrizzia@gmail.com',
+          phone: '',
+        ),
+        netBalanceCentavos: -5400,
+        itemCount: 1,
+        entries: [
+          LedgerEntry(
+            id: '84003d99-472f-424a-94cd-d4d2a357c661',
+            tabId: 'f1b8bf25-04fc-47cf-a156-43ae2d5672e9',
+            title: 'utang nabilin',
+            category: ExpenseCategory.food,
+            totalAmountCentavos: 5400,
+            myShareCentavos: 5400,
+            counterpartShareCentavos: 0,
+            paidByUserId: gagnoUserId,
+            paidByName: 'Jana Crizzia Gagno',
+            date: now,
+            status: TransactionStatus.acknowledged,
+          ),
+        ],
+        lastUpdated: now,
+      );
+
+      final localContactTab = BilateralTab(
+        id: 'contact-7e744c3a',
+        counterpart: const TabbyUser(
+          id: gagnoUserId,
+          displayName: 'Jana Crizzia Gagno',
+          email: '',
+          phone: '',
+        ),
+        netBalanceCentavos: -5400,
+        itemCount: 1,
+        entries: [
+          LedgerEntry(
+            id: 'entry-local-12345',
+            tabId: 'contact-7e744c3a',
+            title: 'utang nabilin',
+            category: ExpenseCategory.food,
+            totalAmountCentavos: 5400,
+            myShareCentavos: 5400,
+            counterpartShareCentavos: 0,
+            paidByUserId: gagnoUserId,
+            paidByName: 'Jana Crizzia Gagno',
+            date: now,
+            status: TransactionStatus.acknowledged,
+          ),
+        ],
+        lastUpdated: now,
+      );
+
+      final dedupedTabs = TabbyNotifier.deduplicateTabs(
+        [serverTab, localContactTab],
+        currentUserId: currentUserId,
+      );
+
+      expect(dedupedTabs.length, equals(1));
+      final unifiedTab = dedupedTabs.first;
+      expect(unifiedTab.id, equals('f1b8bf25-04fc-47cf-a156-43ae2d5672e9'));
+      expect(unifiedTab.counterpart.displayName, equals('Jana Crizzia Gagno'));
+      expect(unifiedTab.entries.length, equals(1));
+      expect(unifiedTab.entries.first.id,
+          equals('84003d99-472f-424a-94cd-d4d2a357c661'));
+      expect(unifiedTab.itemCount, equals(1));
+      expect(unifiedTab.netBalanceCentavos, equals(-5400));
+    });
   });
 }

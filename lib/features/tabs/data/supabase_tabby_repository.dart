@@ -525,21 +525,21 @@ class SupabaseTabbyRepository {
       ));
     }
 
-    // Sort entries newest-first
-    entries.sort((a, b) => b.date.compareTo(a.date));
+    // Deduplicate entries newest-first
+    final cleanEntries = MockTabbyRepository.deduplicateLedgerEntries(entries);
 
     final lastUpdatedStr =
         tabRow['updated_at'] as String? ?? tabRow['created_at'] as String?;
 
     final effectiveNetBalance = netBalance ??
-        MockTabbyRepository.calculateNetBalance(entries, currentUserId);
+        MockTabbyRepository.calculateNetBalance(cleanEntries, currentUserId);
 
     return BilateralTab(
       id: tabId,
       counterpart: counterpart,
       netBalanceCentavos: effectiveNetBalance,
-      itemCount: entries.length,
-      entries: entries,
+      itemCount: cleanEntries.length,
+      entries: cleanEntries,
       lastUpdated: lastUpdatedStr != null
           ? DateTime.tryParse(lastUpdatedStr) ?? DateTime.now()
           : DateTime.now(),

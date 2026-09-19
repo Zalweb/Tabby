@@ -71,7 +71,7 @@
    * Update all DOM elements with fresh release data
    */
   function applyReleaseData(release) {
-    const tagName = release.tag_name || 'v1.0.2';
+    const tagName = release.tag_name || 'v1.0.3+4';
     const publishedAt = formatDate(release.published_at);
     const notes = release.body || '';
 

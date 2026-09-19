@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/config/supabase_config.dart';
 import '../domain/models.dart';
+import 'mock_tabby_repository.dart';
 
 /// Local offline cache manager for Tabby.
 ///
@@ -34,11 +35,13 @@ class TabbyLocalCache {
   static String _key(String layer, [String? userId]) =>
       'tabby_cached_${layer}_${_scope(userId)}';
 
-  /// Saves tabs to local secure cache
+  /// Saves tabs to local secure cache, enforcing deduplication before persistence.
   static Future<void> saveTabs(List<BilateralTab> tabs,
       {String? userId}) async {
     try {
-      final jsonList = tabs.map((t) => t.toMap()).toList();
+      final deduped =
+          MockTabbyRepository.deduplicateTabs(tabs, currentUserId: userId);
+      final jsonList = deduped.map((t) => t.toMap()).toList();
       final jsonStr = jsonEncode(jsonList);
       await _storage.write(key: _key('tabs', userId), value: jsonStr);
     } catch (e) {
@@ -53,9 +56,11 @@ class TabbyLocalCache {
       final raw = await _storage.read(key: _key('tabs', userId));
       if (raw == null || raw.isEmpty) return null;
       final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded
+      final parsed = decoded
           .map((item) => BilateralTab.fromMap(item as Map<String, dynamic>))
           .toList();
+      return MockTabbyRepository.deduplicateTabs(parsed,
+          currentUserId: userId);
     } catch (e) {
       debugPrint('[TabbyLocalCache] loadTabs warning: $e');
       return null;

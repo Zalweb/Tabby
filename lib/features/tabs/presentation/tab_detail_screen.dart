@@ -23,9 +23,9 @@ class TabDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tab = ref.watch(tabDetailProvider(tabId));
+    final rawTab = ref.watch(tabDetailProvider(tabId));
 
-    if (tab == null) {
+    if (rawTab == null) {
       return Scaffold(
         backgroundColor: TabbyColors.bgCanvas,
         appBar: AppBar(
@@ -59,6 +59,12 @@ class TabDetailScreen extends ConsumerWidget {
         ),
       );
     }
+
+    final entries = TabbyNotifier.deduplicateLedgerEntries(rawTab.entries);
+    final tab = rawTab.copyWith(
+      entries: entries,
+      itemCount: entries.length,
+    );
 
     final isTheyOwe = tab.netBalanceCentavos > 0;
     final isSettled = tab.netBalanceCentavos == 0;

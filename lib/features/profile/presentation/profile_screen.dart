@@ -848,7 +848,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 ? (pkg.buildNumber.isEmpty
                                     ? pkg.version
                                     : '${pkg.version}+${pkg.buildNumber}')
-                                : '1.0.2+3';
+                                : '1.0.3+4';
                             return Text(
                               'Version $displayVer',
                               style: const TextStyle(fontWeight: FontWeight.w700),
