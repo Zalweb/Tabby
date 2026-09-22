@@ -50,11 +50,8 @@ class SupabaseConfig {
   // Stored Function / RPC Names (AGENTS.md Section 8)
   // --------------------------------------------------------------------------
   static const String rpcGetNetBalance = 'get_net_balance';
-  static const String rpcGetTabSummary = 'get_tab_summary';
-  static const String rpcGetUserDashboardSummary = 'get_user_dashboard_summary';
   static const String rpcGetOrCreateBilateralTab =
       'get_or_create_bilateral_tab';
-  static const String rpcClaimContact = 'claim_contact';
   static const String rpcValidateTransactionSplit =
       'validate_transaction_split';
   static const String rpcFindUserByFriendCode = 'find_user_by_friend_code';
@@ -179,42 +176,6 @@ class SupabaseConfig {
     return int.tryParse(response.toString()) ?? 0;
   }
 
-  /// Retrieves the rich tab summary breakdown and mascot emotion state.
-  static Future<Map<String, dynamic>> getTabSummary({
-    required String tabId,
-    required String userId,
-  }) async {
-    final response = await client.rpc(
-      rpcGetTabSummary,
-      params: {
-        'p_tab_id': tabId,
-        'p_user_id': userId,
-      },
-    );
-
-    if (response is Map<String, dynamic>) {
-      return response;
-    }
-    return Map<String, dynamic>.from(response as Map);
-  }
-
-  /// Retrieves the aggregate dashboard summary ("You owe" / "You're owed" centavos).
-  static Future<Map<String, dynamic>> getUserDashboardSummary({
-    required String userId,
-  }) async {
-    final response = await client.rpc(
-      rpcGetUserDashboardSummary,
-      params: {
-        'p_user_id': userId,
-      },
-    );
-
-    if (response is Map<String, dynamic>) {
-      return response;
-    }
-    return Map<String, dynamic>.from(response as Map);
-  }
-
   /// Atomically retrieves or creates a canonical 1-on-1 bilateral tab between two users.
   static Future<String> getOrCreateBilateralTab({
     required String userA,
@@ -229,21 +190,5 @@ class SupabaseConfig {
     );
 
     return response.toString();
-  }
-
-  /// Links an unonboarded virtual contact to a newly registered user account (ADR-007).
-  static Future<bool> claimContact({
-    required String contactId,
-    required String claimedUserId,
-  }) async {
-    final response = await client.rpc(
-      rpcClaimContact,
-      params: {
-        'p_contact_id': contactId,
-        'p_claimed_user_id': claimedUserId,
-      },
-    );
-
-    return response == true;
   }
 }

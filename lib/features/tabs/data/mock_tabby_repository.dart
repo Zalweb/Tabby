@@ -14,8 +14,6 @@ class MockTabbyRepository {
     friendCode: 'TAB-9N6R3Q',
   );
 
-  static final List<TabbyUser> sampleFriends = [];
-
   static List<BilateralTab> getInitialTabs() => const [];
 
   /// AGENTS.md Section 8 Canonical Balance Calculation Engine
@@ -67,6 +65,10 @@ class MockTabbyRepository {
 
   /// Deduplicates ledger entries by exact ID and semantic transaction signature,
   /// prioritizing server-confirmed UUIDs over optimistic/temporary local IDs.
+  ///
+  /// Semantic merge rules only apply when at least one side has a temporary
+  /// local ID (starts with 'entry-'/'payment-' or is not a valid server UUID).
+  /// Two entries with different valid server UUIDs are never merged.
   static List<LedgerEntry> deduplicateLedgerEntries(List<LedgerEntry> list) {
     final result = <LedgerEntry>[];
 
@@ -74,11 +76,19 @@ class MockTabbyRepository {
       final normCandidateTitle = _normalizeTitle(candidate.title);
 
       final duplicateIndex = result.indexWhere((existing) {
-        // 1. Exact ID match
+        // 1. Exact ID match (unconditional)
         if (candidate.id.isNotEmpty &&
             existing.id.isNotEmpty &&
             candidate.id == existing.id) {
           return true;
+        }
+
+        // Semantic merge rules only bridge an optimistic local entry with
+        // its server-confirmed counterpart. Two entries of the same ID class
+        // (both temporary local or both server-confirmed) must never be
+        // merged — they are legitimate distinct records.
+        if (_isServerUuid(candidate.id) == _isServerUuid(existing.id)) {
+          return false;
         }
 
         // 2. Financial transaction match

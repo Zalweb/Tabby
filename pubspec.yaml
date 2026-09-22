@@ -25,24 +25,12 @@ dependencies:
 
   # State Management & Dependency Injection
   flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
-
-  # Local-First Offline Persistence
-  drift: ^2.20.0
-  sqlite3_flutter_libs: ^0.5.24
-  path_provider: ^2.1.4
-  path: ^1.9.0
 
   # Navigation & Deep Links
   go_router: ^14.3.0
 
-  # Mascot Animations & UI Polish
-  rive: ^0.13.4
-  lottie: ^3.1.2
-
   # Proof of Payment (Receipts) & Media
   image_picker: ^1.1.2
-  flutter_image_compress: ^2.3.0
 
   # Connectivity & Hardware Security
   connectivity_plus: ^6.0.5
@@ -65,9 +53,6 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  build_runner: ^2.4.12
-  drift_dev: ^2.20.0
-  riverpod_generator: ^2.6.1
   flutter_launcher_icons: ^0.13.1
 
 flutter_launcher_icons:

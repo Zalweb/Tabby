@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/services/receipt_attachment_service.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../shared/widgets/receipt_source_sheet.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../application/tabby_providers.dart';
 import '../domain/models.dart';
@@ -193,6 +196,70 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Real receipt attachment flow: lets the user pick a photo from the camera
+  /// or gallery, uploads it to the Supabase payment-proofs bucket when online,
+  /// and falls back to the local file path when offline so logging keeps
+  /// working.
+  Future<void> _attachReceipt() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final source = await ReceiptSourceSheet.show(context);
+    if (source == null || !mounted) return;
+
+    final XFile? file;
+    try {
+      file = await ReceiptAttachmentService.pickImage(source);
+    } catch (e) {
+      if (!mounted) return;
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Could not open image picker: $e'),
+            backgroundColor: TabbyColors.alertRed,
+          ),
+        );
+      return;
+    }
+    if (file == null || !mounted) return; // User cancelled.
+
+    final willUpload = ReceiptAttachmentService.canUploadToCloud;
+    if (willUpload) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: TabbyColors.brandEmerald),
+        ),
+      );
+    }
+
+    try {
+      final resolution = await ReceiptAttachmentService.resolveReceiptUrl(
+        file: file,
+        entryKey: 'expense_${DateTime.now().millisecondsSinceEpoch}',
+      );
+      if (mounted && willUpload) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (!mounted) return;
+      setState(() => _receiptUrl = resolution.receiptUrl);
+      _showMessage('Receipt image attached.');
+    } catch (e) {
+      if (mounted && willUpload) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (!mounted) return;
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Failed to attach receipt: $e'),
+            backgroundColor: TabbyColors.alertRed,
+          ),
+        );
+    }
   }
 
   String get _selectedParticipantName {
@@ -915,15 +982,11 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
               : 'Receipt attached',
           action: _receiptUrl == null ? 'Attach' : 'Remove',
           onPressed: () {
-            setState(() {
-              if (_receiptUrl == null) {
-                _receiptUrl =
-                    'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
-                _showMessage('Receipt image attached.');
-              } else {
-                _receiptUrl = null;
-              }
-            });
+            if (_receiptUrl == null) {
+              _attachReceipt();
+            } else {
+              setState(() => _receiptUrl = null);
+            }
           },
         ),
         const SizedBox(height: 8),

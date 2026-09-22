@@ -76,6 +76,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     return desc.contains('settled') || desc.contains('paid');
   }
 
+  static bool _isLocalActivityId(String id) =>
+      id.isEmpty ||
+      id.startsWith('act-') ||
+      id.startsWith('entry-') ||
+      id.startsWith('payment-');
+
   static List<TabbyActivity> deduplicateActivities(List<TabbyActivity> list) {
     final result = <TabbyActivity>[];
 
@@ -85,11 +91,28 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           _normalizeActivityTitle(candidate.description);
 
       final duplicateIndex = result.indexWhere((existing) {
-        // 1. Exact ID match
+        // 1. Exact ID match (unconditional)
         if (candidate.id.isNotEmpty &&
             existing.id.isNotEmpty &&
             candidate.id == existing.id) {
           return true;
+        }
+
+        // Two server-confirmed activities are always distinct records.
+        if (!_isLocalActivityId(candidate.id) &&
+            !_isLocalActivityId(existing.id)) {
+          return false;
+        }
+
+        final candidateIsLocal = _isLocalActivityId(candidate.id);
+        final existingIsLocal = _isLocalActivityId(existing.id);
+
+        // Two local *financial* activities are distinct debts — never merge
+        // them, otherwise a legitimate second expense would disappear.
+        if (candidateIsLocal &&
+            existingIsLocal &&
+            (candidate.amountCentavos > 0 || existing.amountCentavos > 0)) {
+          return false;
         }
 
         // 2. Financial transaction match

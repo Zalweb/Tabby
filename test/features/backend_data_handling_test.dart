@@ -1546,6 +1546,130 @@ void main() {
     });
 
     test(
+        'deduplicateLedgerEntries never merges two distinct server UUID entries '
+        'but still merges temp+server pairs', () {
+      final now = DateTime.now();
+
+      LedgerEntry buildEntry({
+        required String id,
+        required String title,
+        required DateTime date,
+        ExpenseCategory category = ExpenseCategory.food,
+      }) =>
+          LedgerEntry(
+            id: id,
+            tabId: 'f1b8bf25-04fc-47cf-a156-43ae2d5672e9',
+            title: title,
+            category: category,
+            totalAmountCentavos: 5400,
+            myShareCentavos: 0,
+            counterpartShareCentavos: 5400,
+            paidByUserId: '7e744c3a-7273-471a-847e-b7e1246d87ef',
+            paidByName: 'Jana Crizzia Gagno',
+            date: date,
+            status: TransactionStatus.acknowledged,
+          );
+
+      // 1. Same amount, same category, 10 minutes apart, DIFFERENT titles,
+      //    both valid server UUIDs -> both must survive.
+      final serverA = buildEntry(
+        id: '84003d99-472f-424a-94cd-d4d2a357c661',
+        title: 'Lunch at Mang Inasal',
+        date: now,
+      );
+      final serverB = buildEntry(
+        id: '99003d99-472f-424a-94cd-d4d2a357c662',
+        title: 'Dinner at Jollibee',
+        date: now.add(const Duration(minutes: 10)),
+      );
+      final serverOnlyDeduped =
+          TabbyNotifier.deduplicateLedgerEntries([serverA, serverB]);
+      expect(serverOnlyDeduped.length, equals(2));
+
+      // 2. Same amount, 1 hour apart, SAME title, both different valid
+      //    server UUIDs -> both must survive.
+      final serverC = buildEntry(
+        id: '84003d99-472f-424a-94cd-d4d2a357c661',
+        title: 'Milk tea',
+        date: now,
+      );
+      final serverD = buildEntry(
+        id: '99003d99-472f-424a-94cd-d4d2a357c662',
+        title: 'Milk tea',
+        date: now.add(const Duration(hours: 1)),
+      );
+      final sameTitleDeduped =
+          TabbyNotifier.deduplicateLedgerEntries([serverC, serverD]);
+      expect(sameTitleDeduped.length, equals(2));
+
+      // 3. Temp local ID + server UUID with same amount/title -> merged to 1,
+      //    server entry kept.
+      final tempEntry = buildEntry(
+        id: 'entry-123',
+        title: 'Milk tea',
+        date: now.add(const Duration(seconds: 2)),
+      );
+      final serverEntry = buildEntry(
+        id: '84003d99-472f-424a-94cd-d4d2a357c661',
+        title: 'Milk tea',
+        date: now,
+      );
+      final tempServerDeduped =
+          TabbyNotifier.deduplicateLedgerEntries([tempEntry, serverEntry]);
+      expect(tempServerDeduped.length, equals(1));
+      expect(tempServerDeduped.first.id,
+          equals('84003d99-472f-424a-94cd-d4d2a357c661'));
+    });
+
+    test(
+        'deduplicateActivities never merges two distinct server-ID activities '
+        'but still merges temp+server pairs', () {
+      final now = DateTime.now();
+
+      // 1. Two activities with same amount and same description 10s apart,
+      //    both server IDs -> both must survive.
+      final serverActA = TabbyActivity(
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        actorName: 'You',
+        description: 'Dinner',
+        amountCentavos: 50000,
+        timestamp: now,
+      );
+      final serverActB = TabbyActivity(
+        id: '660e8400-e29b-41d4-a716-446655440001',
+        actorName: 'You',
+        description: 'Dinner',
+        amountCentavos: 50000,
+        timestamp: now.add(const Duration(seconds: 10)),
+      );
+      final serverOnlyDeduped =
+          TabbyNotifier.deduplicateActivities([serverActA, serverActB]);
+      expect(serverOnlyDeduped.length, equals(2));
+
+      // 2. One 'act-...' activity + one server-ID activity with the same
+      //    content -> merged to 1, server activity kept.
+      final localAct = TabbyActivity(
+        id: 'act-1726650000000',
+        actorName: 'You',
+        description: 'Dinner',
+        amountCentavos: 50000,
+        timestamp: now,
+      );
+      final serverAct = TabbyActivity(
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        actorName: 'You',
+        description: 'Dinner',
+        amountCentavos: 50000,
+        timestamp: now.add(const Duration(seconds: 2)),
+      );
+      final tempServerDeduped =
+          TabbyNotifier.deduplicateActivities([localAct, serverAct]);
+      expect(tempServerDeduped.length, equals(1));
+      expect(tempServerDeduped.first.id,
+          equals('550e8400-e29b-41d4-a716-446655440000'));
+    });
+
+    test(
         'deduplicateTabs collapses multiple tabs for same counterpart and combines entries',
         () {
       final now = DateTime.now();

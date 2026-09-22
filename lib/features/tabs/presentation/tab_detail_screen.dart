@@ -1,11 +1,16 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/receipt_attachment_service.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../shared/widgets/receipt_source_sheet.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
 import '../application/tabby_providers.dart';
@@ -1334,25 +1339,8 @@ class TabDetailScreen extends ConsumerWidget {
                 const SizedBox(height: 14),
                 if (entry.receiptUrl == null || entry.receiptUrl!.isEmpty)
                   OutlinedButton.icon(
-                    onPressed: () {
-                      final messenger = ScaffoldMessenger.of(context);
-                      final receiptId =
-                          'receipt_${DateTime.now().millisecondsSinceEpoch}.png';
-                      ref.read(tabbyProvider.notifier).attachReceiptToEntry(
-                            tabId: entry.tabId,
-                            entryId: entry.id,
-                            receiptUrl: receiptId,
-                          );
-                      Navigator.pop(sheetContext);
-                      messenger.clearSnackBars();
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'Receipt image attached to transaction successfully!'),
-                          backgroundColor: TabbyColors.brandEmerald,
-                        ),
-                      );
-                    },
+                    onPressed: () =>
+                        _attachReceiptPhoto(context, sheetContext, ref, entry),
                     icon:
                         const Icon(Icons.add_photo_alternate_rounded, size: 18),
                     label: const Text('Attach Receipt Photo'),
@@ -1412,6 +1400,88 @@ class TabDetailScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  /// Real receipt attachment flow: lets the user pick a photo from the camera
+  /// or gallery, uploads it to the Supabase payment-proofs bucket when online,
+  /// and falls back to the local file path when offline so logging keeps
+  /// working.
+  Future<void> _attachReceiptPhoto(
+    BuildContext context,
+    BuildContext sheetContext,
+    WidgetRef ref,
+    LedgerEntry entry,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final source = await ReceiptSourceSheet.show(context);
+    if (source == null || !context.mounted) return;
+
+    final XFile? file;
+    try {
+      file = await ReceiptAttachmentService.pickImage(source);
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Could not open image picker: $e'),
+            backgroundColor: TabbyColors.alertRed,
+          ),
+        );
+      return;
+    }
+    if (file == null || !context.mounted) return; // User cancelled.
+
+    final willUpload = ReceiptAttachmentService.canUploadToCloud;
+    if (willUpload) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: TabbyColors.brandEmerald),
+        ),
+      );
+    }
+
+    try {
+      final resolution = await ReceiptAttachmentService.resolveReceiptUrl(
+        file: file,
+        entryKey: entry.id,
+      );
+      if (context.mounted && willUpload) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (!context.mounted) return;
+      ref.read(tabbyProvider.notifier).attachReceiptToEntry(
+            tabId: entry.tabId,
+            entryId: entry.id,
+            receiptUrl: resolution.receiptUrl,
+          );
+      if (sheetContext.mounted) Navigator.pop(sheetContext);
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content:
+                Text('Receipt image attached to transaction successfully!'),
+            backgroundColor: TabbyColors.brandEmerald,
+          ),
+        );
+    } catch (e) {
+      if (context.mounted && willUpload) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (!context.mounted) return;
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Failed to attach receipt: $e'),
+            backgroundColor: TabbyColors.alertRed,
+          ),
+        );
+    }
   }
 
   void _showReceiptsSheet(
@@ -1605,6 +1675,54 @@ class TabDetailScreen extends ConsumerWidget {
     );
   }
 
+  /// Resolves a stored receipt reference into a displayable image URL.
+  ///
+  /// Remote URLs pass through unchanged. Relative Supabase Storage paths
+  /// (`<userId>/<entryKey>.<ext>`) are converted into short-lived signed URLs
+  /// so private proof images stay protected (ADR-011). Returns null when the
+  /// reference is a local device file path or cannot be signed.
+  static Future<String?> resolveReceiptImageUrl(String receiptUrl) async {
+    if (receiptUrl.isEmpty) return null;
+    if (receiptUrl.startsWith('http')) return receiptUrl;
+
+    final looksLikeLocalFile = receiptUrl.contains('\\') ||
+        receiptUrl.startsWith('/') ||
+        receiptUrl.contains(':/') ||
+        receiptUrl.toLowerCase().contains(':\\\\');
+    final looksLikeStoragePath = !looksLikeLocalFile && receiptUrl.contains('/');
+
+    if (looksLikeStoragePath &&
+        SupabaseConfig.isInitialized &&
+        SupabaseConfig.currentUserId != null) {
+      try {
+        return await SupabaseConfig.paymentProofsBucket
+            .createSignedUrl(receiptUrl, 600);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  /// Fallback tile shown when a receipt image cannot be rendered.
+  static Widget _receiptFallbackTile() {
+    return Container(
+      width: double.infinity,
+      height: 180,
+      decoration: const BoxDecoration(
+        color: TabbyColors.brandMintAccent,
+        shape: BoxShape.rectangle,
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.receipt_long_rounded,
+          size: 40,
+          color: TabbyColors.brandEmerald,
+        ),
+      ),
+    );
+  }
+
   void _showReceiptPreviewSheet(BuildContext context, LedgerEntry entry) {
     showModalBottomSheet(
       context: context,
@@ -1669,17 +1787,38 @@ class TabDetailScreen extends ConsumerWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: const BoxDecoration(
-                          color: TabbyColors.brandMintAccent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.receipt_long_rounded,
-                          size: 40,
-                          color: TabbyColors.brandEmerald,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: FutureBuilder<String?>(
+                          future: resolveReceiptImageUrl(entry.receiptUrl ?? ''),
+                          builder: (context, snapshot) {
+                            final remoteUrl = snapshot.data;
+                            if (remoteUrl != null) {
+                              return Image.network(
+                                remoteUrl,
+                                width: double.infinity,
+                                height: 180,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _receiptFallbackTile(),
+                              );
+                            }
+                            final receiptPath = entry.receiptUrl ?? '';
+                            final isLocalFile = receiptPath.contains('\\') ||
+                                receiptPath.startsWith('/') ||
+                                receiptPath.contains(':/');
+                            if (isLocalFile) {
+                              return Image.file(
+                                File(receiptPath),
+                                width: double.infinity,
+                                height: 180,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    _receiptFallbackTile(),
+                              );
+                            }
+                            return _receiptFallbackTile();
+                          },
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -1738,11 +1877,34 @@ class TabDetailScreen extends ConsumerWidget {
                       variant: TabbyButtonVariant.outline,
                       icon: const Icon(Icons.download_rounded,
                           size: 16, color: TabbyColors.brandDarkTeal),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Receipt image saved to downloads!'),
-                            backgroundColor: TabbyColors.brandEmerald,
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final resolved = await resolveReceiptImageUrl(
+                            entry.receiptUrl ?? '');
+                        if (resolved != null) {
+                          final opened = await launchUrl(
+                            Uri.parse(resolved),
+                            mode: LaunchMode.externalApplication,
+                          );
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(opened
+                                  ? 'Receipt image opened. Save it from there.'
+                                  : 'Could not open the receipt image.'),
+                              backgroundColor: opened
+                                  ? TabbyColors.brandEmerald
+                                  : TabbyColors.alertRed,
+                            ),
+                          );
+                          return;
+                        }
+                        final localPath = entry.receiptUrl ?? '';
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(localPath.isEmpty
+                                ? 'No receipt image is attached.'
+                                : 'Receipt stored on this device: $localPath'),
+                            backgroundColor: TabbyColors.brandDarkTeal,
                           ),
                         );
                       },

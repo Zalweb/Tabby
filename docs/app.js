@@ -30,7 +30,7 @@
    * Format bytes to readable megabytes
    */
   function formatBytes(bytes) {
-    if (!bytes || isNaN(bytes)) return '68.9 MB';
+    if (!bytes || isNaN(bytes)) return '74.8 MB';
     const mb = bytes / (1024 * 1024);
     return `${mb.toFixed(1)} MB`;
   }
@@ -39,7 +39,7 @@
    * Format ISO date string into readable English date
    */
   function formatDate(isoString) {
-    if (!isoString) return 'September 17, 2026';
+    if (!isoString) return 'September 19, 2026';
     try {
       const date = new Date(isoString);
       return date.toLocaleDateString('en-US', {
@@ -48,7 +48,7 @@
         year: 'numeric'
       });
     } catch (e) {
-      return 'September 17, 2026';
+      return 'September 19, 2026';
     }
   }
 
@@ -89,7 +89,7 @@
     }
 
     const apkUrl = apkAsset ? apkAsset.browser_download_url : CANONICAL_APK_URL;
-    const apkSizeText = apkAsset ? formatBytes(apkAsset.size) : '68.9 MB';
+    const apkSizeText = apkAsset ? formatBytes(apkAsset.size) : '74.8 MB';
     const apkFilenameText = apkAsset ? apkAsset.name : 'Tabby.apk';
     const ipaUrl = ipaAsset ? ipaAsset.browser_download_url : CANONICAL_IPA_URL;
 

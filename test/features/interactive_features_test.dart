@@ -2,12 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:tabby/main.dart';
 import 'package:tabby/core/config/app_state.dart';
 import 'package:tabby/core/router/app_router.dart';
+import 'package:tabby/core/services/receipt_attachment_service.dart';
 import 'package:tabby/features/tabs/application/tabby_providers.dart';
 import 'package:tabby/features/tabs/domain/models.dart';
 import 'package:tabby/shared/widgets/tabby_button.dart';
+
+/// Installs a fake receipt picker returning a local image path so the
+/// image_picker flow runs end-to-end inside widget tests without launching a
+/// platform camera/gallery intent (Supabase is uninitialized in tests, so the
+/// flow falls back to the local path without any real file I/O).
+void installFakeReceiptPicker() {
+  ReceiptAttachmentService.debugPickImageOverride =
+      (_) async => XFile('test/fixtures/receipt.jpg');
+  addTearDown(() => ReceiptAttachmentService.debugPickImageOverride = null);
+}
 
 void main() {
   setUp(() {
@@ -481,11 +493,16 @@ void main() {
     await tester.enterText(descField, 'Team Dinner');
     await tester.pumpAndSettle();
 
-    // Attach a receipt, then create the tab.
+    // Attach a receipt, then create the tab (real image_picker flow).
+    installFakeReceiptPicker();
     final attachBtn = find.text('Attach');
     expect(attachBtn, findsOneWidget);
     await tester.ensureVisible(attachBtn);
     await tester.tap(attachBtn, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    // Source chooser sheet renders; pick from gallery.
+    expect(find.text('Add Receipt Photo'), findsOneWidget);
+    await tester.tap(find.text('Choose from Gallery'));
     await tester.pumpAndSettle();
     expect(find.text('Receipt attached'), findsOneWidget);
 

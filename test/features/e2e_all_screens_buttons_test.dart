@@ -2,13 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:tabby/main.dart';
 import 'package:tabby/core/config/app_state.dart';
 import 'package:tabby/core/router/app_router.dart';
+import 'package:tabby/core/services/receipt_attachment_service.dart';
 import 'package:tabby/features/tabs/presentation/add_expense_modal.dart';
 import 'package:tabby/features/profile/presentation/profile_screen.dart';
 import 'package:tabby/shared/widgets/notification_center_sheet.dart';
 import 'package:tabby/shared/widgets/tabby_button.dart';
+
+/// Installs a fake receipt picker returning a local image path so the
+/// image_picker flow runs end-to-end inside widget tests without launching a
+/// platform camera/gallery intent (Supabase is uninitialized in tests, so the
+/// flow falls back to the local path without any real file I/O).
+void installFakeReceiptPicker() {
+  ReceiptAttachmentService.debugPickImageOverride =
+      (_) async => XFile('test/fixtures/receipt.jpg');
+  addTearDown(() => ReceiptAttachmentService.debugPickImageOverride = null);
+}
 
 void main() {
   setUp(() {
@@ -227,10 +239,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Change'), findsOneWidget);
 
-      // 8. Attach / Remove receipt
+      // 8. Attach / Remove receipt (real image_picker flow with test override)
+      installFakeReceiptPicker();
       final attachBtn = find.text('Attach');
       await tester.ensureVisible(attachBtn);
       await tester.tap(attachBtn);
+      await tester.pumpAndSettle();
+      // Source chooser sheet renders; pick from gallery.
+      expect(find.text('Add Receipt Photo'), findsOneWidget);
+      await tester.tap(find.text('Choose from Gallery'));
       await tester.pumpAndSettle();
       expect(find.text('Receipt attached'), findsOneWidget);
       expect(find.text('Remove'), findsOneWidget);
@@ -785,7 +802,12 @@ void main() {
         expect(find.text('Expense Details'), findsOneWidget);
         final attachPhotoBtn = find.text('Attach Receipt Photo');
         if (attachPhotoBtn.evaluate().isNotEmpty) {
+          installFakeReceiptPicker();
           await tester.tap(attachPhotoBtn);
+          await tester.pumpAndSettle();
+          // Source chooser sheet renders; pick from gallery.
+          expect(find.text('Add Receipt Photo'), findsOneWidget);
+          await tester.tap(find.text('Choose from Gallery'));
           await tester.pumpAndSettle();
           expect(find.textContaining('Receipt image attached'), findsOneWidget);
           ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
