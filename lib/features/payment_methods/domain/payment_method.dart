@@ -201,6 +201,7 @@ class PaymentMethodDraft {
     this.qrBytes,
     this.qrExtension,
     this.qrMimeType,
+    this.generatedQrUrl,
   });
 
   final String provider;
@@ -210,7 +211,12 @@ class PaymentMethodDraft {
   final String? qrExtension;
   final String? qrMimeType;
 
-  bool get hasQr => qrBytes != null && qrBytes!.isNotEmpty;
+  /// GoQR.me generated QR PNG URL. When set and [qrBytes] is null, the
+  /// repository stores this URL directly as qr_url without uploading to Storage.
+  final String? generatedQrUrl;
+
+  bool get hasQr =>
+      (qrBytes != null && qrBytes!.isNotEmpty) || generatedQrUrl != null;
 
   bool get isValid =>
       provider.trim().isNotEmpty && displayName.trim().isNotEmpty;

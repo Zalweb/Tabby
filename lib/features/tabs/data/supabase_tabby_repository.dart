@@ -704,8 +704,13 @@ class SupabaseTabbyRepository {
 
     final id = const Uuid().v4();
     String? qrStoragePath;
+    // GoQR.me URL — stored directly, no Storage upload needed.
+    final String? directQrUrl =
+        (draft.qrBytes == null || draft.qrBytes!.isEmpty)
+            ? draft.generatedQrUrl
+            : null;
     try {
-      if (draft.hasQr) {
+      if (draft.qrBytes != null && draft.qrBytes!.isNotEmpty) {
         final extension = (draft.qrExtension ?? 'png').replaceAll('.', '');
         qrStoragePath = '$ownerUserId/$id.$extension';
         await SupabaseConfig.paymentMethodsBucket.uploadBinary(
@@ -731,6 +736,7 @@ class SupabaseTabbyRepository {
             'display_name': draft.displayName.trim(),
             'account_label': draft.accountLabel.trim(),
             'qr_storage_path': qrStoragePath,
+            if (directQrUrl != null) 'qr_url': directQrUrl,
             'is_default': makeDefault,
           })
           .select('*')
@@ -1572,6 +1578,61 @@ class SupabaseTabbyRepository {
     }
   }
 
+  /// Sends a friendly reminder notification to the user who owes on a tab.
+  /// Calls the Supabase RPC `send_tab_reminder`, with direct insert fallback.
+  Future<bool> sendTabReminder({
+    required String tabId,
+    required String recipientUserId,
+    required String senderName,
+    required String formattedAmount,
+    String? description,
+    String? customTitle,
+    String? customBody,
+  }) async {
+    if (!isConnected ||
+        !_isValidUuid(recipientUserId) ||
+        !_isValidUuid(tabId)) {
+      return false;
+    }
+
+    final title = customTitle ?? '$senderName sent you a friendly reminder';
+    final descText = (description != null && description.isNotEmpty)
+        ? ' for "$description"'
+        : '';
+    final body = customBody ??
+        'You have a pending balance of $formattedAmount$descText on your shared tab. Tap to settle up.';
+
+    try {
+      final res = await SupabaseConfig.client.rpc('send_tab_reminder', params: {
+        'p_tab_id': tabId,
+        'p_recipient_user_id': recipientUserId,
+        'p_title': title,
+        'p_body': body,
+      });
+      debugPrint(
+          '[SupabaseTabbyRepository] send_tab_reminder RPC success: $res');
+      return true;
+    } catch (e) {
+      debugPrint(
+          '[SupabaseTabbyRepository] send_tab_reminder RPC failed, trying direct insert fallback: $e');
+      try {
+        await SupabaseConfig.client.from('notifications').insert({
+          'recipient_user_id': recipientUserId,
+          'notification_type': 'tab_reminder',
+          'related_tab_id': tabId,
+          'title': title,
+          'body': body,
+          'is_read': false,
+        });
+        return true;
+      } catch (insertErr) {
+        debugPrint(
+            '[SupabaseTabbyRepository] direct insert fallback failed: $insertErr');
+        return false;
+      }
+    }
+  }
+
   /// Inserts a manual nudge notification row for the recipient user.
   /// Called when the current user taps "Remind" on a tab —
   /// the recipient sees this in their Notification Center next time they open the app.
@@ -1582,25 +1643,13 @@ class SupabaseTabbyRepository {
     required String description,
     required String formattedAmount,
   }) async {
-    if (!isConnected ||
-        !_isValidUuid(recipientUserId) ||
-        !_isValidUuid(relatedTabId)) {
-      return;
-    }
-    try {
-      await SupabaseConfig.client.from('notifications').insert({
-        'recipient_user_id': recipientUserId,
-        'notification_type': 'manual_nudge',
-        'related_tab_id': relatedTabId,
-        'title': '$senderName sent you a friendly reminder',
-        'body':
-            'You have a pending balance of $formattedAmount for "$description". '
-                'Tap to settle up.',
-        'is_read': false,
-      });
-    } catch (e) {
-      debugPrint('[SupabaseTabbyRepository] insertNudgeNotification error: $e');
-    }
+    await sendTabReminder(
+      tabId: relatedTabId,
+      recipientUserId: recipientUserId,
+      senderName: senderName,
+      formattedAmount: formattedAmount,
+      description: description,
+    );
   }
 
   /// Inserts a payment-confirmed notification for the payee.

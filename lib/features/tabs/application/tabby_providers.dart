@@ -401,6 +401,16 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         for (final r in [...serverReminders, ...state.reminders]) {
           if (r.id.isNotEmpty && seenReminderIds.add(r.id)) {
             allReminders.add(r);
+            unawaited(TabbyNotificationService.instance.scheduleDueReminder(
+              reminderId: r.id,
+              friendName: r.friendName,
+              description: r.description,
+              formattedAmount:
+                  CurrencyFormatter.formatCentavos(r.amountCentavos),
+              dueDate: r.dueDate,
+              iOweThem: r.isIWhoOwe,
+              tabId: r.tabId,
+            ));
           }
         }
 
@@ -491,15 +501,36 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       return false;
     }
 
-    state = state.copyWith(
-      friendRequests: state.friendRequests
-          .where((request) => request.id != friendshipId)
-          .toList(),
-    );
-    if (accept && tabId.isNotEmpty) {
-      await _loadTabs();
-    }
+    final updatedRequests = state.friendRequests.map((request) {
+      if (request.id == friendshipId) {
+        return request.copyWith(
+          status: accept
+              ? FriendRequestStatus.accepted
+              : FriendRequestStatus.declined,
+          respondedAt: DateTime.now(),
+        );
+      }
+      return request;
+    }).toList();
+
+    state = state.copyWith(friendRequests: updatedRequests);
+    unawaited(_refreshFriendRequestsAndTabs());
     return true;
+  }
+
+  Future<void> _refreshFriendRequestsAndTabs() async {
+    final currentUserId = SupabaseConfig.currentUserId;
+    if (currentUserId == null || !mounted) return;
+    try {
+      final requests = await SupabaseTabbyRepository.instance
+          .fetchFriendRequests(currentUserId);
+      if (mounted) {
+        state = state.copyWith(friendRequests: requests);
+      }
+      await _loadTabs();
+    } catch (e) {
+      debugPrint('[TabbyNotifier] _refreshFriendRequestsAndTabs error: $e');
+    }
   }
 
   void reset() {
@@ -568,7 +599,21 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       icon: icon ?? Icons.notifications_active_rounded,
     );
 
-    if (notif.type == 'payment_submitted' ||
+    if (notif.type == 'friend_request') {
+      unawaited(TabbyNotificationService.instance.showFriendRequestAlert(
+        title: notif.title,
+        body: notif.body,
+        tabId: notif.relatedTabId,
+      ));
+    } else if (notif.type == 'tab_reminder' ||
+        notif.type == 'manual_nudge' ||
+        notif.type == 'reminder') {
+      unawaited(TabbyNotificationService.instance.showTabReminderAlert(
+        title: notif.title,
+        body: notif.body,
+        tabId: notif.relatedTabId,
+      ));
+    } else if (notif.type == 'payment_submitted' ||
         notif.type == 'payment_confirmed') {
       unawaited(TabbyNotificationService.instance.showPaymentAlert(
         title: notif.title,
@@ -739,27 +784,27 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         }
       } else if (table == SupabaseConfig.tableFriendships) {
         if (newRec.isNotEmpty) {
-          final user1 = newRec['user_id_1'] as String?;
-          final user2 = newRec['user_id_2'] as String?;
-          final actionUserId = newRec['action_user_id'] as String?;
+          final requesterId = newRec['requester_id'] as String?;
+          final addresseeId = newRec['addressee_id'] as String?;
           final status = newRec['status'] as String?;
 
-          if ((user1 == currentUserId || user2 == currentUserId) &&
-              actionUserId != null &&
-              actionUserId != currentUserId) {
-            if (status == 'pending') {
-              final notif = AppNotification(
-                id: 'fr_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
-                recipientUserId: currentUserId,
-                type: 'friend_request',
-                title: 'New Friend Request',
-                body: 'You received a new friend request.',
-                isRead: false,
-                createdAt: DateTime.now(),
-              );
-              _recordAndDispatchNotification(notif,
-                  icon: Icons.person_add_rounded);
-            } else if (status == 'accepted') {
+          debugPrint(
+              '[TabbyNotifier] Realtime friendship event: status=$status, requester=$requesterId, addressee=$addresseeId, currentUserId=$currentUserId');
+
+          if (status == 'pending' && addresseeId == currentUserId) {
+            final notif = AppNotification(
+              id: 'fr_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
+              recipientUserId: currentUserId,
+              type: 'friend_request',
+              title: 'New Friend Request',
+              body: 'You received a new friend request.',
+              isRead: false,
+              createdAt: DateTime.now(),
+            );
+            _recordAndDispatchNotification(notif,
+                icon: Icons.person_add_rounded);
+          } else if (status == 'accepted') {
+            if (requesterId == currentUserId) {
               final notif = AppNotification(
                 id: 'fa_${newRec['id'] ?? DateTime.now().millisecondsSinceEpoch}',
                 recipientUserId: currentUserId,
@@ -771,6 +816,57 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
               );
               _recordAndDispatchNotification(notif,
                   icon: Icons.how_to_reg_rounded);
+            }
+          }
+
+          unawaited(_refreshFriendRequestsAndTabs());
+        }
+      } else if (table == SupabaseConfig.tableNotifications) {
+        if (payload.eventType == PostgresChangeEvent.insert && newRec.isNotEmpty) {
+          final recipientId = newRec['recipient_user_id'] as String?;
+          if (recipientId == currentUserId) {
+            final notifId = newRec['id'] as String? ?? 'notif_${DateTime.now().millisecondsSinceEpoch}';
+            final notifType = newRec['notification_type'] as String? ?? 'general';
+            final title = newRec['title'] as String? ?? 'Notification';
+            final body = newRec['body'] as String? ?? '';
+            final tabId = newRec['related_tab_id'] as String?;
+
+            final notif = AppNotification(
+              id: notifId,
+              recipientUserId: currentUserId,
+              type: notifType,
+              relatedTabId: tabId,
+              title: title,
+              body: body,
+              isRead: false,
+              createdAt: DateTime.now(),
+            );
+
+            IconData notifIcon = Icons.notifications_active_rounded;
+            if (notifType == 'friend_request') {
+              notifIcon = title.toLowerCase().contains('accepted')
+                  ? Icons.how_to_reg_rounded
+                  : Icons.person_add_rounded;
+            } else if (notifType.contains('payment')) {
+              notifIcon = Icons.payments_rounded;
+            } else if (notifType.contains('expense') || notifType.contains('debt')) {
+              notifIcon = Icons.receipt_long_rounded;
+            } else if (notifType == 'tab_reminder' || notifType == 'manual_nudge') {
+              notifIcon = Icons.alarm_rounded;
+            }
+
+            _recordAndDispatchNotification(notif, icon: notifIcon);
+
+            if (notifType == 'friend_request') {
+              unawaited(_refreshFriendRequestsAndTabs());
+            } else {
+              _realtimeDebounceTimer?.cancel();
+              _realtimeDebounceTimer =
+                  Timer(const Duration(milliseconds: 350), () {
+                if (mounted) {
+                  _loadTabs();
+                }
+              });
             }
           }
         }
@@ -1202,6 +1298,14 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
             newNetBalance.abs() > 0)
         .toList();
 
+    if (newNetBalance == 0) {
+      for (final r in state.reminders) {
+        if (r.tabId == tab.id || r.tabId == tab.counterpart.id) {
+          unawaited(TabbyNotificationService.instance.cancelReminder(r.id));
+        }
+      }
+    }
+
     final newActivity = TabbyActivity(
       id: paymentEntry.id,
       actorName:
@@ -1299,16 +1403,24 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     _scheduleEmotionReset(seconds: 4);
   }
 
-  /// Sends a gentle reminder to a friend
-  void sendGentleNudge({
+  /// Sends a gentle reminder to a friend / debtor on a shared tab.
+  Future<void> sendGentleNudge({
     required String tabId,
     required String friendName,
     required int amountCentavos,
-  }) {
+    String? recipientUserId,
+    String? description,
+    String? customTitle,
+    String? customBody,
+  }) async {
     final now = DateTime.now();
+    final currentUserName =
+        SupabaseConfig.currentUser?.userMetadata?['display_name'] as String? ??
+            MockTabbyRepository.currentUser.displayName;
+
     final newActivity = TabbyActivity(
       id: 'act-${now.millisecondsSinceEpoch}',
-      actorName: MockTabbyRepository.currentUser.displayName,
+      actorName: currentUserName,
       description: 'sent friendly reminder to $friendName',
       amountCentavos: amountCentavos,
       timestamp: now,
@@ -1326,6 +1438,32 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     );
 
     _scheduleEmotionReset(seconds: 5);
+
+    // Asynchronously send to Supabase for the debtor user
+    final currentUserId = SupabaseConfig.currentUserId;
+    if (currentUserId != null && SupabaseConfig.isInitialized) {
+      String? targetRecipientId = recipientUserId;
+      if (targetRecipientId == null || targetRecipientId.isEmpty) {
+        final tab = state.tabs.where((t) => t.id == tabId).firstOrNull;
+        if (tab != null && tab.counterpart.id.isNotEmpty) {
+          targetRecipientId = tab.counterpart.id;
+        }
+      }
+
+      if (targetRecipientId != null && targetRecipientId.isNotEmpty) {
+        final formattedAmount =
+            CurrencyFormatter.formatCentavos(amountCentavos.abs());
+        unawaited(SupabaseTabbyRepository.instance.sendTabReminder(
+          tabId: tabId,
+          recipientUserId: targetRecipientId,
+          senderName: currentUserName,
+          formattedAmount: formattedAmount,
+          description: description,
+          customTitle: customTitle,
+          customBody: customBody,
+        ));
+      }
+    }
   }
 
   void setTemporaryEmotion(MascotEmotion emotion,

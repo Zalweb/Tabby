@@ -211,6 +211,12 @@ class NotificationCenterSheet extends ConsumerWidget {
                             iconData = Icons.person_add_rounded;
                             iconColor = TabbyColors.accentLightBlue;
                             iconBg = TabbyColors.iconBgBlue;
+                          } else if (notif.type == 'tab_reminder' ||
+                              notif.type == 'manual_nudge' ||
+                              notif.type == 'reminder') {
+                            iconData = Icons.alarm_rounded;
+                            iconColor = TabbyColors.brandDarkTeal;
+                            iconBg = TabbyColors.brandMintAccent;
                           } else {
                             iconData = Icons.notifications_active_rounded;
                           }
@@ -226,6 +232,9 @@ class NotificationCenterSheet extends ConsumerWidget {
                               if (hasTab) {
                                 Navigator.pop(context);
                                 context.push('/tabs/${notif.relatedTabId}');
+                              } else if (notif.type == 'friend_request') {
+                                Navigator.pop(context);
+                                context.push('/profile/connections');
                               }
                             },
                             borderRadius: BorderRadius.circular(16),

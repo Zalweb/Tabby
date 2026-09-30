@@ -90,7 +90,9 @@ class _ConnectionsScreenState extends ConsumerState<ConnectionsScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: _tabPill(
-                          label: 'Requests',
+                          label: requests.isNotEmpty
+                              ? 'Requests (${requests.length})'
+                              : 'Requests',
                           selected: _selectedTab == 2,
                           onTap: () => setState(() => _selectedTab = 2),
                         ),

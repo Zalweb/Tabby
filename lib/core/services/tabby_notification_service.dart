@@ -199,6 +199,42 @@ class TabbyNotificationService {
     );
   }
 
+  /// Shows an immediate alert when the user receives a friendly tab reminder/nudge from a friend.
+  Future<void> showTabReminderAlert({
+    required String title,
+    required String body,
+    String? tabId,
+  }) async {
+    if (!_initialized) return;
+    await _show(
+      id: ('remind_${tabId ?? DateTime.now().millisecondsSinceEpoch}')
+              .hashCode &
+          0x7FFFFFFF,
+      title: title,
+      body: body,
+      channelId: _channelIdReminders,
+      channelName: 'Debt Reminders',
+      payload: tabId != null ? 'tab:$tabId' : null,
+    );
+  }
+
+  /// Shows an immediate notification for incoming friend requests or accepted requests.
+  Future<void> showFriendRequestAlert({
+    required String title,
+    required String body,
+    String? tabId,
+  }) async {
+    if (!_initialized) return;
+    await _show(
+      id: DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF,
+      title: title,
+      body: body,
+      channelId: _channelIdNudges,
+      channelName: 'Friend Requests',
+      payload: tabId != null ? 'tab:$tabId' : 'connections',
+    );
+  }
+
   /// Shows an immediate notification when a new tab is created with the user.
   Future<void> showNewTabCreated({
     required String title,
@@ -323,11 +359,13 @@ class TabbyNotificationService {
 
   /// Cancels a previously scheduled reminder by its ID.
   Future<void> cancelReminder(String reminderId) async {
+    if (!_initialized) return;
     await _plugin.cancel(id: reminderId.hashCode & 0x7FFFFFFF);
   }
 
   /// Cancels all pending scheduled notifications.
   Future<void> cancelAll() async {
+    if (!_initialized) return;
     await _plugin.cancelAll();
   }
 
@@ -535,6 +573,8 @@ class TabbyNotificationService {
       if (tabId.isNotEmpty) {
         appRouter.push('/tabs/$tabId');
       }
+    } else if (payload == 'connections') {
+      appRouter.push('/profile/connections');
     }
   }
 }

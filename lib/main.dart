@@ -104,6 +104,8 @@ Future<void> main() async {
   );
 }
 
+final ValueNotifier<bool?> webDeviceFrameOverride = ValueNotifier<bool?>(null);
+
 class TabbyApp extends ConsumerWidget {
   const TabbyApp({
     super.key,
@@ -148,27 +150,55 @@ class TabbyApp extends ConsumerWidget {
       builder: (context, child) {
         final content = child ?? const SizedBox.shrink();
 
-        // Constrain to realistic iPhone hardware frame on desktop browser viewports
-        final appContent = shouldRenderDeviceFrame(
-          isWeb: kIsWeb,
-          platform: defaultTargetPlatform,
-          size: MediaQuery.of(context).size,
-        )
-            ? IPhoneDeviceFrameWrapper(child: content)
-            : content;
+        return ValueListenableBuilder<bool?>(
+          valueListenable: webDeviceFrameOverride,
+          builder: (context, frameOverride, _) {
+            final isFramed = shouldRenderDeviceFrame(
+              isWeb: kIsWeb,
+              platform: defaultTargetPlatform,
+              size: MediaQuery.of(context).size,
+            );
 
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            disableAnimations: !settings.motionEnabled,
-          ),
-          child: BiometricGate(
-            child: AppUpdatePrompt(
-              checker: updateChecker,
-              enabled: enableUpdateCheck ?? false,
-              navigatorKey: appRouter.routerDelegate.navigatorKey,
-              child: appContent,
-            ),
-          ),
+            final appContent = isFramed
+                ? IPhoneDeviceFrameWrapper(
+                    onToggleFrame: () {
+                      webDeviceFrameOverride.value = false;
+                    },
+                    child: content,
+                  )
+                : (kIsWeb
+                    ? Stack(
+                        children: [
+                          content,
+                          Positioned(
+                            bottom: 16.0,
+                            right: 16.0,
+                            child: _buildFrameToggleBadge(
+                              label: 'iPhone Frame',
+                              icon: Icons.phone_iphone_rounded,
+                              onTap: () {
+                                webDeviceFrameOverride.value = true;
+                              },
+                            ),
+                          ),
+                        ],
+                      )
+                    : content);
+
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                disableAnimations: !settings.motionEnabled,
+              ),
+              child: BiometricGate(
+                child: AppUpdatePrompt(
+                  checker: updateChecker,
+                  enabled: enableUpdateCheck ?? false,
+                  navigatorKey: appRouter.routerDelegate.navigatorKey,
+                  child: appContent,
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -176,12 +206,16 @@ class TabbyApp extends ConsumerWidget {
 }
 
 /// Evaluates whether the desktop browser should simulate the iPhone hardware frame.
-/// Yields directly to the full native screen on physical mobile devices or narrow viewports.
+/// Yields directly to the full native screen on physical mobile devices or when frame override is false.
 bool shouldRenderDeviceFrame({
   required bool isWeb,
   required TargetPlatform platform,
   required Size size,
 }) {
+  if (webDeviceFrameOverride.value != null) {
+    return webDeviceFrameOverride.value!;
+  }
+
   if (!isWeb) return false;
 
   // On actual physical mobile devices (iOS / Android), yield to full native screen
@@ -189,7 +223,7 @@ bool shouldRenderDeviceFrame({
     return false;
   }
 
-  // On narrow browser windows (e.g. mobile emulation or resized window), yield to full native screen
+  // On narrow or short desktop browser windows (<= 500px in either dimension), yield to full native screen
   if (size.width <= 500 || size.height <= 500) {
     return false;
   }
@@ -197,13 +231,64 @@ bool shouldRenderDeviceFrame({
   return true;
 }
 
+Widget _buildFrameToggleBadge({
+  required String label,
+  required IconData icon,
+  required VoidCallback onTap,
+}) {
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+        decoration: BoxDecoration(
+          color: const Color(0xE61F2937),
+          borderRadius: BorderRadius.circular(24.0),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.18),
+            width: 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 10.0,
+              offset: const Offset(0, 3.0),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16.0, color: const Color(0xFFFBBF24)),
+            const SizedBox(width: 8.0),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12.0,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// Realistic iPhone hardware frame wrapper for Flutter Web desktop mode.
 class IPhoneDeviceFrameWrapper extends StatelessWidget {
   final Widget child;
+  final VoidCallback? onToggleFrame;
 
   const IPhoneDeviceFrameWrapper({
     super.key,
     required this.child,
+    this.onToggleFrame,
   });
 
   // Modern iPhone hardware geometry specs
@@ -232,15 +317,30 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
           stops: [0.0, 0.45, 1.0],
         ),
       ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.center,
-            child: _buildHardwareChassis(context),
+      child: Stack(
+        children: [
+          Center(
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: _buildHardwareChassis(context),
+              ),
+            ),
           ),
-        ),
+          if (onToggleFrame != null)
+            Positioned(
+              top: 16.0,
+              right: 16.0,
+              child: _buildFrameToggleBadge(
+                label: 'Full Screen',
+                icon: Icons.fullscreen_rounded,
+                onTap: onToggleFrame!,
+              ),
+            ),
+        ],
       ),
     );
   }

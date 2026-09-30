@@ -413,8 +413,8 @@ void main() {
     expect(find.text('Add Payment Method'), findsOneWidget);
     await tester.tap(find.text('Add Payment Method'));
     await tester.pumpAndSettle();
-    expect(find.text('Upload QR image'), findsOneWidget);
-    Navigator.of(tester.element(find.text('Upload QR image'))).pop();
+    expect(find.text('Upload QR image instead'), findsOneWidget);
+    Navigator.of(tester.element(find.text('Upload QR image instead'))).pop();
     await tester.pumpAndSettle();
     Navigator.of(tester.element(find.text('Payment Methods').last)).pop();
     await tester.pumpAndSettle();

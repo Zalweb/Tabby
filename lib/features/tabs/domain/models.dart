@@ -270,6 +270,30 @@ class FriendRequest {
 
   TabbyUser get otherUser => isIncoming ? requester : addressee;
 
+  FriendRequest copyWith({
+    String? id,
+    String? requesterId,
+    String? addresseeId,
+    TabbyUser? requester,
+    TabbyUser? addressee,
+    FriendRequestStatus? status,
+    DateTime? createdAt,
+    DateTime? respondedAt,
+    String? currentUserId,
+  }) {
+    return FriendRequest(
+      id: id ?? this.id,
+      requesterId: requesterId ?? this.requesterId,
+      addresseeId: addresseeId ?? this.addresseeId,
+      requester: requester ?? this.requester,
+      addressee: addressee ?? this.addressee,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      respondedAt: respondedAt ?? this.respondedAt,
+      currentUserId: currentUserId ?? this.currentUserId,
+    );
+  }
+
   factory FriendRequest.fromMap(
     Map<String, dynamic> map, {
     String? currentUserId,

@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/config/app_state.dart';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/tabby_api_services.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
@@ -30,6 +31,10 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   String? _errorText;
   String? _successText;
 
+  // Disify — email advisory (soft warning, does not block form submission)
+  bool _isValidatingEmail = false;
+  String? _emailWarning;
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -39,6 +44,24 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     _confirmPasswordController.dispose();
     super.dispose();
   }
+
+  /// Fires on email field blur. Shows a grey advisory for disposable or
+  /// badly-formatted addresses without ever preventing the user from continuing.
+  Future<void> _checkEmail() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
+    setState(() { _isValidatingEmail = true; _emailWarning = null; });
+    final allowed = await TabbyApiServices.isEmailAllowed(email);
+    if (!mounted) return;
+    setState(() {
+      _isValidatingEmail = false;
+      _emailWarning = allowed
+          ? null
+          : 'This looks like a temporary email address. '
+            'Use a real email so you can recover your account.';
+    });
+  }
+
 
   Future<void> _createAccount() async {
     final name = _nameController.text.trim();
@@ -218,7 +241,45 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
+                onEditingComplete: _checkEmail,
+                suffixIcon: _isValidatingEmail
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: TabbyColors.textSecondary,
+                          ),
+                        ),
+                      )
+                    : null,
               ),
+              if (_emailWarning != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 14,
+                      color: TabbyColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _emailWarning!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: TabbyColors.textSecondary,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               _buildField(
                 controller: _phoneController,
@@ -312,6 +373,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     bool obscureText = false,
     Widget? suffixIcon,
     ValueChanged<String>? onSubmitted,
+    VoidCallback? onEditingComplete,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -324,6 +386,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         textInputAction: textInputAction,
         obscureText: obscureText,
         onSubmitted: onSubmitted,
+        onEditingComplete: onEditingComplete,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(color: TabbyColors.textSecondary),

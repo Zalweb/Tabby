@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/config/app_state.dart';
 import '../../../core/config/supabase_config.dart';
+import '../../../core/services/tabby_api_services.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/widgets/app_version_footer.dart';
 import '../../../shared/widgets/notification_center_sheet.dart';
@@ -47,6 +48,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final syncDiagnostics = ref.watch(syncDiagnosticsProvider);
     final classroomConnection = ref.watch(classroomConnectionProvider);
     final classroomCourses = ref.watch(classroomCoursesProvider);
+    final pendingRequestsCount = ref
+        .watch(tabbyProvider)
+        .friendRequests
+        .where((r) => r.isIncoming && r.status == FriendRequestStatus.pending)
+        .length;
 
     void updateBiometrics(bool value) async {
       final enabled = await settingsNotifier.toggleBiometrics(value);
@@ -169,7 +175,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             iconBackground: TabbyColors.iconBgMint,
                             iconColor: TabbyColors.brandEmerald,
                             title: 'Manage Friends',
-                            subtitle: 'Friends and connections',
+                            subtitle: pendingRequestsCount > 0
+                                ? '$pendingRequestsCount pending request${pendingRequestsCount > 1 ? "s" : ""}'
+                                : 'Friends and connections',
+                            trailing: pendingRequestsCount > 0
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: TabbyColors.brandMintAccent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '$pendingRequestsCount new',
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        color: TabbyColors.brandDarkTeal,
+                                      ),
+                                    ),
+                                  )
+                                : null,
                             onTap: () => context.push('/profile/connections'),
                           ),
                           _buildSettingsRow(
@@ -504,14 +530,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     : const Icon(Icons.account_circle_rounded,
                                         size: 34,
                                         color: TabbyColors.surfaceWhite))
-                        : Text(
-                            user.displayName.isNotEmpty
-                                ? user.displayName.substring(0, 1).toUpperCase()
-                                : 'T',
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              color: TabbyColors.surfaceWhite,
+                        // DiceBear initials — deterministic, brand-coloured.
+                        : Image.network(
+                            TabbyApiServices.dicebearUrl(user.displayName),
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            // Graceful offline fallback: first initial letter.
+                            errorBuilder: (_, __, ___) => Text(
+                              user.displayName.isNotEmpty
+                                  ? user.displayName
+                                      .substring(0, 1)
+                                      .toUpperCase()
+                                  : 'T',
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                color: TabbyColors.surfaceWhite,
+                              ),
                             ),
                           ),
                   ),

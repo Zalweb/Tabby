@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/services/tabby_api_services.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../application/payment_methods_provider.dart';
@@ -298,11 +299,38 @@ class _PaymentMethodEditorState extends State<_PaymentMethodEditor> {
   String? _qrMimeType;
   String? _error;
 
+  // GoQR.me — generated QR URL preview
+  String? _generatedQrUrl;
+  bool _isGeneratingQr = false;
+
   @override
   void dispose() {
     _nameController.dispose();
     _accountController.dispose();
     super.dispose();
+  }
+
+  /// Generates a GoQR.me PNG URL from the account number field.
+  /// Clears any uploaded QR bytes so only one source is active at a time.
+  Future<void> _generateQr() async {
+    final account = _accountController.text.trim();
+    if (account.isEmpty) {
+      setState(() => _error = 'Enter an account number to generate a QR code.');
+      return;
+    }
+    setState(() {
+      _isGeneratingQr = true;
+      _error = null;
+      _qrBytes = null;
+      _qrExtension = null;
+      _qrMimeType = null;
+    });
+    // Build the GoQR.me URL and let the image widget load it.
+    final url = TabbyApiServices.goQrUrl(account, size: 300);
+    setState(() {
+      _generatedQrUrl = url;
+      _isGeneratingQr = false;
+    });
   }
 
   @override
@@ -367,17 +395,93 @@ class _PaymentMethodEditorState extends State<_PaymentMethodEditor> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _accountController,
+                  keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(
                     labelText: 'Account number or note',
                     hintText: 'Optional',
                   ),
+                  onChanged: (_) {
+                    // Clear generated QR when the account number changes so the
+                    // preview stays in sync with the current field value.
+                    if (_generatedQrUrl != null) {
+                      setState(() => _generatedQrUrl = null);
+                    }
+                  },
                 ),
                 const SizedBox(height: 14),
+                // GoQR.me — generate QR button (shown when account has content)
+                if (_accountController.text.trim().isNotEmpty ||
+                    _generatedQrUrl != null) ...[
+                  OutlinedButton.icon(
+                    onPressed: _isGeneratingQr ? null : _generateQr,
+                    icon: _isGeneratingQr
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.qr_code_2_rounded),
+                    label: Text(_generatedQrUrl != null
+                        ? 'Regenerate QR from number'
+                        : 'Generate QR from number'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48),
+                      foregroundColor: TabbyColors.brandEmerald,
+                      side: const BorderSide(color: TabbyColors.brandEmerald),
+                    ),
+                  ),
+                  // Live QR preview
+                  if (_generatedQrUrl != null) ...[
+                    const SizedBox(height: 12),
+                    Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          _generatedQrUrl!,
+                          width: 160,
+                          height: 160,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 160,
+                            height: 160,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: TabbyColors.bgCanvas,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                  color: TabbyColors.borderMint, width: 1),
+                            ),
+                            child: const Text(
+                              'QR preview unavailable.\nCheck your internet connection.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: TabbyColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Center(
+                      child: Text(
+                        'QR generated from account number',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: TabbyColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                ],
+                // Upload QR button (always visible as alternative path)
                 OutlinedButton.icon(
                   onPressed: _pickQr,
                   icon: const Icon(Icons.upload_file_rounded),
                   label: Text(_qrBytes == null
-                      ? 'Upload QR image'
+                      ? 'Upload QR image instead'
                       : 'QR image selected'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 48),
@@ -405,6 +509,9 @@ class _PaymentMethodEditorState extends State<_PaymentMethodEditor> {
                         qrBytes: _qrBytes,
                         qrExtension: _qrExtension,
                         qrMimeType: _qrMimeType,
+                        // Pass GoQR.me URL only when no uploaded bytes exist.
+                        generatedQrUrl:
+                            _qrBytes == null ? _generatedQrUrl : null,
                       ),
                     );
                   },
@@ -439,6 +546,8 @@ class _PaymentMethodEditorState extends State<_PaymentMethodEditor> {
       _qrMimeType = extension == 'jpg' || extension == 'jpeg'
           ? 'image/jpeg'
           : 'image/$extension';
+      // Clear generated QR if user uploads a real image.
+      _generatedQrUrl = null;
       _error = null;
     });
   }

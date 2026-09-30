@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/receipt_attachment_service.dart';
+import '../../../core/services/tabby_api_services.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/receipt_source_sheet.dart';
@@ -246,6 +247,26 @@ class TabDetailScreen extends ConsumerWidget {
                                 ),
                               ),
                             ),
+                            // Currency-api: USD equivalent (cosmetic, 24h cached)
+                            if (tab.netBalanceCentavos != 0)
+                              FutureBuilder<String?>(
+                                future: TabbyApiServices.centavosToUsdDisplay(
+                                    tab.netBalanceCentavos.abs()),
+                                builder: (context, snapshot) {
+                                  if (!snapshot.hasData ||
+                                      snapshot.data == null) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Text(
+                                    snapshot.data!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: TabbyColors.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  );
+                                },
+                              ),
                           ],
                         ),
                       ),
@@ -839,6 +860,11 @@ class TabDetailScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        final friendName = tab.counterpart.displayName;
+        final expenseTitle = tab.entries.firstOrNull?.title ?? 'shared tab';
+        final reminderMsg =
+            'Hey $friendName! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!';
+
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
@@ -872,9 +898,25 @@ class TabDetailScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const TabbyMascotWidget(
-                  emotion: MascotEmotion.gentleNudge,
-                  size: 52,
+                Row(
+                  children: [
+                    const TabbyMascotWidget(
+                      emotion: MascotEmotion.gentleNudge,
+                      size: 52,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        'Send an instant in-app notification directly to $friendName to keep tabs clear without awkwardness.',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: TabbyColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Container(
@@ -884,7 +926,7 @@ class TabDetailScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    'Hey ${tab.counterpart.displayName}! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!',
+                    reminderMsg,
                     style: const TextStyle(
                       fontSize: 13,
                       fontStyle: FontStyle.italic,
@@ -894,24 +936,48 @@ class TabDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 20),
                 TabbyButton(
-                  label: 'Share Reminder Link',
+                  label: 'Send In-App Reminder',
                   variant: TabbyButtonVariant.primary,
-                  icon: const Icon(Icons.share_rounded,
+                  icon: const Icon(Icons.notifications_active_rounded,
                       size: 18, color: TabbyColors.surfaceWhite),
                   onPressed: () {
-                    final reminderMsg =
-                        'Hey ${tab.counterpart.displayName}! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!';
-                    Clipboard.setData(ClipboardData(text: reminderMsg));
                     ref.read(tabbyProvider.notifier).sendGentleNudge(
                           tabId: tab.id,
-                          friendName: tab.counterpart.displayName,
+                          friendName: friendName,
                           amountCentavos: tab.netBalanceCentavos,
+                          recipientUserId: tab.counterpart.id,
+                          description: expenseTitle,
                         );
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                            'Reminder link copied to clipboard and sent to ${tab.counterpart.displayName}!'),
+                            'Friendly reminder sent to $friendName!'),
+                        backgroundColor: TabbyColors.brandDarkTeal,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                TabbyButton(
+                  label: 'Share Reminder Link',
+                  variant: TabbyButtonVariant.outline,
+                  icon: const Icon(Icons.share_rounded,
+                      size: 18, color: TabbyColors.brandEmerald),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: reminderMsg));
+                    ref.read(tabbyProvider.notifier).sendGentleNudge(
+                          tabId: tab.id,
+                          friendName: friendName,
+                          amountCentavos: tab.netBalanceCentavos,
+                          recipientUserId: tab.counterpart.id,
+                          description: expenseTitle,
+                        );
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                            'Reminder link copied to clipboard and sent to $friendName!'),
                         backgroundColor: TabbyColors.brandDarkTeal,
                       ),
                     );

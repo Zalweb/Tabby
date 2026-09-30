@@ -1008,6 +1008,7 @@ class _HomeDashboardScreenState extends ConsumerState<HomeDashboardScreen> {
                       tabId: reminder.tabId,
                       friendName: reminder.friendName,
                       amountCentavos: reminder.amountCentavos,
+                      description: reminder.description,
                     );
                     ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(

@@ -126,6 +126,37 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Frienzal'), findsOneWidget);
     });
+
+    testWidgets('iPhone frame override and toggle badge behave correctly',
+        (tester) async {
+      AppState.isAuthenticated.value = true;
+      appRouter.go('/home');
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1.0;
+      webDeviceFrameOverride.value = true;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+        webDeviceFrameOverride.value = null;
+      });
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: TabbyApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(IPhoneDeviceFrameWrapper), findsOneWidget);
+      expect(find.text('Full Screen'), findsOneWidget);
+
+      // Tap 'Full Screen' toggle
+      await tester.tap(find.text('Full Screen'));
+      await tester.pumpAndSettle();
+
+      expect(webDeviceFrameOverride.value, isFalse);
+      expect(find.byType(IPhoneDeviceFrameWrapper), findsNothing);
+    });
   });
 
   group('Standalone Widget Architectural Integrity', () {
