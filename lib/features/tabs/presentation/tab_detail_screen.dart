@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -898,25 +897,11 @@ class TabDetailScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const TabbyMascotWidget(
-                      emotion: MascotEmotion.gentleNudge,
-                      size: 52,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        'Send an instant in-app notification directly to $friendName to keep tabs clear without awkwardness.',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: TabbyColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                          height: 1.35,
-                        ),
-                      ),
-                    ),
-                  ],
+                TabbyMascotWidget(
+                  emotion: MascotEmotion.gentleNudge,
+                  size: 52,
+                  customMessage:
+                      'Send an instant notification directly to $friendName to keep tabs clear without awkwardness.',
                 ),
                 const SizedBox(height: 16),
                 Container(
@@ -953,31 +938,6 @@ class TabDetailScreen extends ConsumerWidget {
                       SnackBar(
                         content: Text(
                             'Friendly reminder sent to $friendName!'),
-                        backgroundColor: TabbyColors.brandDarkTeal,
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                TabbyButton(
-                  label: 'Share Reminder Link',
-                  variant: TabbyButtonVariant.outline,
-                  icon: const Icon(Icons.share_rounded,
-                      size: 18, color: TabbyColors.brandEmerald),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: reminderMsg));
-                    ref.read(tabbyProvider.notifier).sendGentleNudge(
-                          tabId: tab.id,
-                          friendName: friendName,
-                          amountCentavos: tab.netBalanceCentavos,
-                          recipientUserId: tab.counterpart.id,
-                          description: expenseTitle,
-                        );
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                            'Reminder link copied to clipboard and sent to $friendName!'),
                         backgroundColor: TabbyColors.brandDarkTeal,
                       ),
                     );

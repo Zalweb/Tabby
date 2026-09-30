@@ -37,8 +37,6 @@ jobs:
       - name: Generate Android launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Run build_runner
-        run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Create .env from secrets
         env:

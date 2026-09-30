@@ -372,13 +372,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Send Friendly Reminder'), findsOneWidget);
-      expect(find.text('Share Reminder Link'), findsOneWidget);
-      await tester.tap(find.text('Share Reminder Link'));
+      expect(find.text('Send In-App Reminder'), findsOneWidget);
+      expect(find.text('Share Reminder Link'), findsNothing);
+      await tester.tap(find.text('Send In-App Reminder'));
       await tester.pumpAndSettle();
 
       expect(
-          find.textContaining(
-              'Reminder link copied to clipboard and sent to Mateo Cruz!'),
+          find.textContaining('Friendly reminder sent to Mateo Cruz!'),
           findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
