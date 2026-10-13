@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tabby/core/config/supabase_config.dart';
 import 'package:tabby/core/services/tabby_notification_service.dart';
 import 'package:tabby/features/tabs/application/tabby_providers.dart';
 import 'package:tabby/features/tabs/application/tabby_state.dart';
@@ -138,6 +141,100 @@ void main() {
         isTrue,
       );
       expect(notifier.state.emotionOverride, MascotEmotion.celebrating);
+    });
+
+    test('Realtime notification payload on notifications table inserts tab_reminder into debtor state', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      const debtorId = 'user-debtor-test-456';
+      SupabaseConfig.debugUserIdOverride = debtorId;
+      addTearDown(() => SupabaseConfig.debugUserIdOverride = null);
+
+      final notifier = TabbyNotifier(loadInitialData: false);
+      addTearDown(notifier.dispose);
+      notifier.state = TabbyDashboardState(
+        tabs: MockTabbyRepository.getInitialTabs(),
+        activities: MockTabbyRepository.getInitialActivities(),
+        reminders: MockTabbyRepository.getInitialReminders(),
+      );
+
+      expect(notifier.state.notifications.isEmpty, isTrue);
+
+      final payload = PostgresChangePayload(
+        eventType: PostgresChangeEvent.insert,
+        newRecord: {
+          'id': 'notif-realtime-reminder-1',
+          'recipient_user_id': debtorId,
+          'notification_type': 'tab_reminder',
+          'title': 'Mateo sent you a friendly reminder',
+          'body': 'You have a pending balance of ₱500.00 for Dinner. Tap to settle up.',
+          'related_tab_id': 'tab-123',
+          'created_at': DateTime.now().toIso8601String(),
+        },
+        oldRecord: {},
+        schema: 'public',
+        table: 'notifications',
+        commitTimestamp: DateTime.now(),
+        errors: [],
+      );
+
+      notifier.handleRealtimePayloadForTesting(payload);
+
+      expect(notifier.state.notifications.length, 1);
+      final receivedNotif = notifier.state.notifications.first;
+      expect(receivedNotif.id, 'notif-realtime-reminder-1');
+      expect(receivedNotif.type, 'tab_reminder');
+      expect(receivedNotif.title, 'Mateo sent you a friendly reminder');
+      expect(receivedNotif.body, contains('₱500.00'));
+      expect(receivedNotif.relatedTabId, 'tab-123');
+      expect(receivedNotif.isRead, isFalse);
+      expect(notifier.state.unreadNotificationCount, 1);
+
+      // Debtor marks notification as read
+      await notifier.markNotificationAsRead('notif-realtime-reminder-1');
+      expect(notifier.state.notifications.first.isRead, isTrue);
+      expect(notifier.state.unreadNotificationCount, 0);
+    });
+
+    test('Realtime debtor notification from Postgres trigger handles expense_added payload', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      const debtorId = 'user-debtor-test-789';
+      SupabaseConfig.debugUserIdOverride = debtorId;
+      addTearDown(() => SupabaseConfig.debugUserIdOverride = null);
+
+      final notifier = TabbyNotifier(loadInitialData: false);
+      addTearDown(notifier.dispose);
+      notifier.state = TabbyDashboardState(
+        tabs: MockTabbyRepository.getInitialTabs(),
+        activities: MockTabbyRepository.getInitialActivities(),
+        reminders: MockTabbyRepository.getInitialReminders(),
+      );
+
+      final payload = PostgresChangePayload(
+        eventType: PostgresChangeEvent.insert,
+        newRecord: {
+          'id': 'notif-expense-added-1',
+          'recipient_user_id': debtorId,
+          'notification_type': 'expense_added',
+          'title': 'New Expense: Team Lunch',
+          'body': 'Juan paid ₱1,000.00. Your share is ₱500.00.',
+          'related_tab_id': 'tab-expense-789',
+          'created_at': DateTime.now().toIso8601String(),
+        },
+        oldRecord: {},
+        schema: 'public',
+        table: 'notifications',
+        commitTimestamp: DateTime.now(),
+        errors: [],
+      );
+
+      notifier.handleRealtimePayloadForTesting(payload);
+
+      expect(notifier.state.notifications.length, 1);
+      final notif = notifier.state.notifications.first;
+      expect(notif.type, 'expense_added');
+      expect(notif.title, 'New Expense: Team Lunch');
+      expect(notif.body, contains('Your share is ₱500.00'));
+      expect(notif.isRead, isFalse);
     });
   });
 }

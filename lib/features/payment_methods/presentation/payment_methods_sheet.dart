@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/services/qr_code_cropper.dart';
 import '../../../core/services/tabby_api_services.dart';
 import '../../../core/theme/tabby_colors.dart';
 import '../../../shared/widgets/tabby_button.dart';
@@ -302,6 +303,8 @@ class _PaymentMethodEditorState extends State<_PaymentMethodEditor> {
   // GoQR.me — generated QR URL preview
   String? _generatedQrUrl;
   bool _isGeneratingQr = false;
+  bool _isCropping = false;
+  bool _isAutoCropped = false;
 
   @override
   void dispose() {
@@ -478,15 +481,73 @@ class _PaymentMethodEditorState extends State<_PaymentMethodEditor> {
                 ],
                 // Upload QR button (always visible as alternative path)
                 OutlinedButton.icon(
-                  onPressed: _pickQr,
-                  icon: const Icon(Icons.upload_file_rounded),
-                  label: Text(_qrBytes == null
-                      ? 'Upload QR image instead'
-                      : 'QR image selected'),
+                  onPressed: _isCropping ? null : _pickQr,
+                  icon: _isCropping
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.upload_file_rounded),
+                  label: Text(_isCropping
+                      ? 'Detecting and cropping QR...'
+                      : (_qrBytes == null
+                          ? 'Upload QR image instead'
+                          : 'Change QR screenshot')),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(double.infinity, 48),
                   ),
                 ),
+                if (_qrBytes != null) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(
+                            _qrBytes!,
+                            width: 160,
+                            height: 160,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: TabbyColors.brandMintAccent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _isAutoCropped
+                                    ? Icons.crop_rounded
+                                    : Icons.check_circle_rounded,
+                                size: 14,
+                                color: TabbyColors.brandEmerald,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _isAutoCropped
+                                    ? 'QR automatically cropped from screenshot'
+                                    : 'QR image selected',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 if (_error != null) ...[
                   const SizedBox(height: 8),
                   Text(_error!,
@@ -527,25 +588,56 @@ class _PaymentMethodEditorState extends State<_PaymentMethodEditor> {
   Future<void> _pickQr() async {
     final file = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (file == null) return;
-    final bytes = await file.readAsBytes();
-    if (bytes.length > 10 * 1024 * 1024) {
-      setState(() => _error = 'QR image must be 10 MB or smaller.');
-      return;
-    }
-
-    final extension = file.path.split('.').last.toLowerCase();
-    const allowed = {'jpg', 'jpeg', 'png', 'webp', 'heic'};
-    if (!allowed.contains(extension)) {
-      setState(() => _error = 'Use a JPG, PNG, WEBP, or HEIC image.');
-      return;
-    }
 
     setState(() {
-      _qrBytes = bytes;
-      _qrExtension = extension;
-      _qrMimeType = extension == 'jpg' || extension == 'jpeg'
-          ? 'image/jpeg'
-          : 'image/$extension';
+      _isCropping = true;
+      _error = null;
+    });
+
+    final bytes = await file.readAsBytes();
+    if (bytes.length > 10 * 1024 * 1024) {
+      setState(() {
+        _isCropping = false;
+        _error = 'QR image must be 10 MB or smaller.';
+      });
+      return;
+    }
+
+    final formatInfo = QrCodeCropper.detectImageFormat(
+      name: file.name,
+      path: file.path,
+      mimeType: file.mimeType,
+      bytes: bytes,
+    );
+
+    if (!formatInfo.isValid) {
+      setState(() {
+        _isCropping = false;
+        _error = 'Use a JPG, PNG, WEBP, or HEIC image.';
+      });
+      return;
+    }
+
+    final extension = formatInfo.extension;
+
+    // Auto-detect and crop QR code from screenshot
+    final cropResult = await QrCodeCropper.cropQrCode(bytes);
+    final finalBytes = cropResult.wasCropped ? cropResult.bytes : bytes;
+    final finalExtension = cropResult.wasCropped ? 'png' : extension;
+    final finalMime = cropResult.wasCropped
+        ? 'image/png'
+        : (formatInfo.mimeType.isNotEmpty
+            ? formatInfo.mimeType
+            : (extension == 'jpg' || extension == 'jpeg'
+                ? 'image/jpeg'
+                : 'image/$extension'));
+
+    setState(() {
+      _qrBytes = finalBytes;
+      _qrExtension = finalExtension;
+      _qrMimeType = finalMime;
+      _isAutoCropped = cropResult.wasCropped;
+      _isCropping = false;
       // Clear generated QR if user uploads a real image.
       _generatedQrUrl = null;
       _error = null;

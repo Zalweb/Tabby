@@ -150,4 +150,27 @@ void main() {
 
     expect(find.text('Please enter a valid mobile number.'), findsOneWidget);
   });
+
+  testWidgets('profile completion rejects an empty full name',
+      (tester) async {
+    AppState.isAuthenticated.value = true;
+    AppState.profileCompletionRequired.value = true;
+    appRouter.go('/complete-profile');
+
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: TabbyApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Full name'),
+      '',
+    );
+    await tester.tap(find.text('Save and continue'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Please enter your full name.'), findsOneWidget);
+  });
 }

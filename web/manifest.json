@@ -1,11 +1,11 @@
 {
-    "name": "tabby",
-    "short_name": "tabby",
+    "name": "Tabby",
+    "short_name": "Tabby",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#1F1F1F",
     "theme_color": "#1F1F1F",
-    "description": "A new Flutter project.",
+    "description": "Keep tabs. Settle up. Filipino peer-to-peer financial relationship tracker.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -636,6 +636,11 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     }
   }
 
+  @visibleForTesting
+  void handleRealtimePayloadForTesting(PostgresChangePayload payload) {
+    _handleRealtimePayload(payload);
+  }
+
   void _handleRealtimePayload(PostgresChangePayload payload) {
     final currentUserId = SupabaseConfig.currentUserId;
     if (currentUserId == null) return;
@@ -2282,26 +2287,47 @@ class CurrentUserNotifier extends StateNotifier<TabbyUser> {
   ///
   /// This path waits for the Supabase write so the router never unlocks an
   /// account before its profile details are actually persisted.
-  Future<bool> completeProfile({
+  Future<ProfileUpdateResult> completeProfile({
     required String displayName,
     required String phone,
+    String? avatarUrl,
+    String? gcashNumber,
+    String? mayaNumber,
+    String? qrCodeUrl,
   }) async {
     if (!SupabaseConfig.isInitialized || SupabaseConfig.currentUserId == null) {
-      return false;
+      // Offline fallback: update local user state
+      state = state.copyWith(
+        displayName: displayName,
+        phone: phone,
+        avatarUrl: avatarUrl,
+        gcashNumber: gcashNumber,
+        mayaNumber: mayaNumber,
+        qrCodeUrl: qrCodeUrl,
+      );
+      return ProfileUpdateResult.success;
     }
 
-    final saved = await SupabaseTabbyRepository.instance.updateUserProfile(
+    final result = await SupabaseTabbyRepository.instance.updateUserProfile(
       userId: state.id,
       displayName: displayName,
       phone: phone,
+      avatarUrl: avatarUrl,
+      gcashNumber: gcashNumber,
+      mayaNumber: mayaNumber,
+      qrCodeUrl: qrCodeUrl,
     );
-    if (!saved) return false;
+    if (!result.isSuccess) return result;
 
     state = state.copyWith(
       displayName: displayName,
       phone: phone,
+      avatarUrl: avatarUrl,
+      gcashNumber: gcashNumber,
+      mayaNumber: mayaNumber,
+      qrCodeUrl: qrCodeUrl,
     );
-    return true;
+    return ProfileUpdateResult.success;
   }
 
   void reset() {

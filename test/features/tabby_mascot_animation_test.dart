@@ -25,7 +25,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 600));
 
         expect(find.text('Tabby'), findsOneWidget);
-        expect(find.text(emotion.stateKey), findsOneWidget);
+        expect(find.text(emotion.label), findsOneWidget);
         expect(find.text(emotion.microcopy), findsOneWidget);
         expect(find.byIcon(emotion.icon), findsOneWidget);
       }
@@ -67,14 +67,14 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.text('IDLE_NEUTRAL'), findsOneWidget);
+      expect(find.text('Ready'), findsOneWidget);
 
       // Tap to trigger emotion transition
       await tester.tap(find.text('Celebrate'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.text('CELEBRATING'), findsOneWidget);
+      expect(find.text('Settled'), findsOneWidget);
     });
 
     testWidgets('Responds to interactive tap gestures', (tester) async {
@@ -126,7 +126,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
 
       expect(find.text(customMsg), findsOneWidget);
-      expect(find.text('CALCULATING'), findsOneWidget);
+      expect(find.text('Calculating'), findsOneWidget);
     });
   });
 }

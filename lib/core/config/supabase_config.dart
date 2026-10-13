@@ -145,9 +145,12 @@ class SupabaseConfig {
   /// Current authenticated user (or null if unauthenticated).
   static User? get currentUser => isInitialized ? auth.currentUser : null;
 
+  /// Debug override for testing authenticated user ID without active network session.
+  static String? debugUserIdOverride;
+
   /// Current authenticated user ID (or null if unauthenticated).
   static String? get currentUserId =>
-      isInitialized ? auth.currentUser?.id : null;
+      debugUserIdOverride ?? (isInitialized ? auth.currentUser?.id : null);
 
   // --------------------------------------------------------------------------
   // Balance & Ledger RPC Helpers (Integer Centavos Standard)

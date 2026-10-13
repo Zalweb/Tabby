@@ -632,8 +632,34 @@ class SupabaseTabbyRepository {
     return null;
   }
 
+  /// Checks whether [phone] is available or already linked to another user.
+  Future<bool> isPhoneAvailable({
+    required String phone,
+    String? currentUserId,
+  }) async {
+    if (!isConnected) return true;
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 10) return false;
+
+    try {
+      final res = await SupabaseConfig.client.rpc(
+        'is_phone_available',
+        params: {
+          'p_phone': phone.trim(),
+          if (currentUserId != null && _isValidUuid(currentUserId))
+            'p_user_id': currentUserId,
+        },
+      );
+      if (res is bool) return res;
+      return true;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] isPhoneAvailable error: $e');
+      return true;
+    }
+  }
+
   /// Updates profile in Supabase public.users
-  Future<bool> updateUserProfile({
+  Future<ProfileUpdateResult> updateUserProfile({
     required String userId,
     String? displayName,
     String? phone,
@@ -642,7 +668,7 @@ class SupabaseTabbyRepository {
     String? mayaNumber,
     String? qrCodeUrl,
   }) async {
-    if (!isConnected || !_isValidUuid(userId)) return false;
+    if (!isConnected || !_isValidUuid(userId)) return ProfileUpdateResult.failure;
 
     try {
       final updates = <String, dynamic>{
@@ -654,18 +680,59 @@ class SupabaseTabbyRepository {
       if (gcashNumber != null) updates['gcash_number'] = gcashNumber;
       if (mayaNumber != null) updates['maya_number'] = mayaNumber;
       if (qrCodeUrl != null) updates['qr_code_url'] = qrCodeUrl;
+      try {
+        await SupabaseConfig.client.from(SupabaseConfig.tableUsers).upsert({
+          'id': userId,
+          ...updates,
+        }, onConflict: 'id');
+      } catch (upsertError) {
+        if (upsertError is PostgrestException &&
+            (upsertError.code == '23505' ||
+                upsertError.message.contains('users_phone_key'))) {
+          debugPrint(
+              '[SupabaseTabbyRepository] updateUserProfile duplicate phone error: $upsertError');
+          return const ProfileUpdateResult(
+            isSuccess: false,
+            isDuplicatePhone: true,
+            errorMessage:
+                'This mobile number is already linked to another Tabby account. Please enter a different number.',
+          );
+        }
 
-      await SupabaseConfig.client.from(SupabaseConfig.tableUsers).upsert({
-        'id': userId,
-        ...updates,
-      }, onConflict: 'id');
+        // Fallback: If optional payment columns fail on any environment,
+        // retry with core profile columns (display_name, phone, avatar_url)
+        // so the user's primary profile is never blocked from saving.
+        final coreUpdates = <String, dynamic>{
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+        if (displayName != null) coreUpdates['display_name'] = displayName;
+        if (phone != null) coreUpdates['phone'] = phone;
+        if (avatarUrl != null) coreUpdates['avatar_url'] = avatarUrl;
+
+        await SupabaseConfig.client.from(SupabaseConfig.tableUsers).upsert({
+          'id': userId,
+          ...coreUpdates,
+        }, onConflict: 'id');
+      }
 
       debugPrint(
           '[SupabaseTabbyRepository] updateUserProfile saved to Supabase');
-      return true;
+      return ProfileUpdateResult.success;
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] updateUserProfile error: $e');
-      return false;
+      if (e is PostgrestException &&
+          (e.code == '23505' || e.message.contains('users_phone_key'))) {
+        return const ProfileUpdateResult(
+          isSuccess: false,
+          isDuplicatePhone: true,
+          errorMessage:
+              'This mobile number is already linked to another Tabby account. Please enter a different number.',
+        );
+      }
+      return const ProfileUpdateResult(
+        isSuccess: false,
+        errorMessage: 'Unable to save profile. Please check your network connection.',
+      );
     }
   }
 

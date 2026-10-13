@@ -511,7 +511,7 @@ class _TabbyMascotWidgetState extends State<TabbyMascotWidget>
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          widget.emotion.stateKey,
+                          widget.emotion.label,
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w700,

@@ -860,9 +860,13 @@ class TabDetailScreen extends ConsumerWidget {
       backgroundColor: Colors.transparent,
       builder: (context) {
         final friendName = tab.counterpart.displayName;
-        final expenseTitle = tab.entries.firstOrNull?.title ?? 'shared tab';
-        final reminderMsg =
-            'Hey $friendName! Here is our tab for ${tab.entries.firstOrNull?.title ?? "shared expense"} (${CurrencyFormatter.formatCentavos(tab.netBalanceCentavos)}). Settle up whenever you are ready!';
+        final expenseTitle = tab.isGroupTab
+            ? (tab.groupName ?? (tab.entries.firstOrNull?.title ?? 'Group Tab'))
+            : (tab.entries.firstOrNull?.title ?? 'Shared Expense');
+        final firstEntry = tab.entries.firstOrNull;
+        final categoryIcon = firstEntry?.isPayment == true
+            ? Icons.payments_rounded
+            : (firstEntry?.category.icon ?? Icons.receipt_long_rounded);
 
         return Container(
           padding: const EdgeInsets.all(24),
@@ -904,19 +908,211 @@ class TabDetailScreen extends ConsumerWidget {
                       'Send an instant notification directly to $friendName to keep tabs clear without awkwardness.',
                 ),
                 const SizedBox(height: 16),
+                // Structured Intended Reminder Information Card
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: TabbyColors.brandMintAccent,
-                    borderRadius: BorderRadius.circular(16),
+                    color: TabbyColors.bgCanvas,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: TabbyColors.borderMint),
                   ),
-                  child: Text(
-                    reminderMsg,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontStyle: FontStyle.italic,
-                      color: TabbyColors.brandDarkTeal,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Recipient Profile Header
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: tab.isGroupTab
+                                ? TabbyColors.iconBgMint
+                                : TabbyColors.iconBgBlue,
+                            child: Text(
+                              tab.isGroupTab
+                                  ? 'G'
+                                  : (friendName.isNotEmpty
+                                      ? friendName.substring(0, 1).toUpperCase()
+                                      : '?'),
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: tab.isGroupTab
+                                    ? TabbyColors.brandEmerald
+                                    : TabbyColors.accentLightBlue,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'RECIPIENT',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: TabbyColors.textSecondary,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  friendName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: TabbyColors.brandDarkTeal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: TabbyColors.iconBgBlue,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.person_outline_rounded,
+                                  size: 13,
+                                  color: TabbyColors.accentBlue,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Debtor',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: TabbyColors.accentBlue,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Divider(
+                          height: 1,
+                          color: TabbyColors.borderMint,
+                        ),
+                      ),
+                      // Expense Title & Amount
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'TAB / EXPENSE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: TabbyColors.textSecondary,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      categoryIcon,
+                                      size: 16,
+                                      color: TabbyColors.accentLightBlue,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        expenseTitle,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: TabbyColors.brandDarkTeal,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text(
+                                'AMOUNT DUE',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: TabbyColors.textSecondary,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                CurrencyFormatter.formatCentavos(
+                                    tab.netBalanceCentavos.abs()),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: TabbyColors.brandEmerald,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Delivery Dispatch Info Banner
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: TabbyColors.brandMintAccent
+                              .withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.notifications_active_rounded,
+                              size: 15,
+                              color: TabbyColors.brandEmerald,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Instant notification will be sent directly to $friendName\'s device.',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: TabbyColors.brandDarkTeal,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -936,8 +1132,8 @@ class TabDetailScreen extends ConsumerWidget {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                            'Friendly reminder sent to $friendName!'),
+                        content:
+                            Text('Friendly reminder sent to $friendName!'),
                         backgroundColor: TabbyColors.brandDarkTeal,
                       ),
                     );

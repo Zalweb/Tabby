@@ -37,6 +37,30 @@ extension MascotEmotionExtension on MascotEmotion {
     }
   }
 
+  /// Friendly human-readable badge label (replacing raw uppercase enum strings)
+  String get label {
+    switch (this) {
+      case MascotEmotion.idleNeutral:
+        return 'Ready';
+      case MascotEmotion.userOwes:
+        return 'You Owe';
+      case MascotEmotion.userIsOwed:
+        return 'You Are Owed';
+      case MascotEmotion.calculating:
+        return 'Calculating';
+      case MascotEmotion.gentleNudge:
+        return 'Friendly Reminder';
+      case MascotEmotion.overdue:
+        return 'Overdue';
+      case MascotEmotion.paymentSubmitted:
+        return 'Payment Pending';
+      case MascotEmotion.celebrating:
+        return 'Settled';
+      case MascotEmotion.sleeping:
+        return 'All Clear';
+    }
+  }
+
   /// Clean empty string — Absolutely NO emojis in text anywhere in the app
   String get emoji => '';
 
@@ -856,3 +880,20 @@ class AppNotification {
             : null,
       );
 }
+
+/// Result of a profile completion or profile update operation.
+class ProfileUpdateResult {
+  final bool isSuccess;
+  final bool isDuplicatePhone;
+  final String? errorMessage;
+
+  const ProfileUpdateResult({
+    required this.isSuccess,
+    this.isDuplicatePhone = false,
+    this.errorMessage,
+  });
+
+  static const success = ProfileUpdateResult(isSuccess: true);
+  static const failure = ProfileUpdateResult(isSuccess: false);
+}
+
