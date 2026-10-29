@@ -59,8 +59,7 @@ class TabbyLocalCache {
       final parsed = decoded
           .map((item) => BilateralTab.fromMap(item as Map<String, dynamic>))
           .toList();
-      return MockTabbyRepository.deduplicateTabs(parsed,
-          currentUserId: userId);
+      return MockTabbyRepository.deduplicateTabs(parsed, currentUserId: userId);
     } catch (e) {
       debugPrint('[TabbyLocalCache] loadTabs warning: $e');
       return null;
@@ -214,9 +213,40 @@ class TabbyLocalCache {
           await _storage.read(key: 'tabby_pending_ops_${_scope(userId)}');
       if (raw == null || raw.isEmpty) return [];
       final decoded = jsonDecode(raw) as List<dynamic>;
-      return decoded.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+      return decoded
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
     } catch (_) {
       return [];
+    }
+  }
+
+  /// Returns all pending operations without changing the durable queue.
+  static Future<List<Map<String, dynamic>>> loadPendingOps({
+    String? userId,
+  }) async {
+    return _loadPendingOps(userId: userId);
+  }
+
+  /// Removes one operation after its remote write has been confirmed.
+  static Future<void> removePendingOp(
+    Map<String, dynamic> operation, {
+    String? userId,
+  }) async {
+    try {
+      final pending = await _loadPendingOps(userId: userId);
+      final encodedOperation = jsonEncode(operation);
+      final index = pending.indexWhere(
+        (candidate) => jsonEncode(candidate) == encodedOperation,
+      );
+      if (index < 0) return;
+      pending.removeAt(index);
+      await _storage.write(
+        key: 'tabby_pending_ops_${_scope(userId)}',
+        value: jsonEncode(pending),
+      );
+    } catch (e) {
+      debugPrint('[TabbyLocalCache] removePendingOp warning: $e');
     }
   }
 

@@ -1129,6 +1129,25 @@ void main() {
       expect(loadedB!.single.id, equals('tab-user-b'));
     });
 
+    test('pending operations stay durable until explicitly acknowledged',
+        () async {
+      final operation = <String, dynamic>{
+        'type': 'add_expense',
+        'tab_id': 'offline-tab',
+        'total_amount_centavos': 12500,
+      };
+
+      await TabbyLocalCache.enqueuePendingOp(operation, userId: 'user-queue');
+      final loaded = await TabbyLocalCache.loadPendingOps(userId: 'user-queue');
+      expect(loaded, equals([operation]));
+
+      await TabbyLocalCache.removePendingOp(operation, userId: 'user-queue');
+      expect(
+        await TabbyLocalCache.loadPendingOps(userId: 'user-queue'),
+        isEmpty,
+      );
+    });
+
     test(
         'SupabaseTabbyRepository.signOut purges local secure cache and handles offline gracefully',
         () async {
@@ -1287,7 +1306,9 @@ void main() {
       );
     });
 
-    test('TabbyNotifier preserves locally added tabs and un-synced entries across refresh', () async {
+    test(
+        'TabbyNotifier preserves locally added tabs and un-synced entries across refresh',
+        () async {
       FlutterSecureStorage.setMockInitialValues({});
       final notifier = TabbyNotifier();
 
@@ -1297,11 +1318,16 @@ void main() {
         phone: '+63 917 123 4567',
       );
 
-      expect(notifier.state.tabs.any((t) => t.counterpart.displayName == 'Maria Clara'), isTrue);
+      expect(
+          notifier.state.tabs
+              .any((t) => t.counterpart.displayName == 'Maria Clara'),
+          isTrue);
 
       // Add expense with Maria Clara
       await notifier.addExpense(
-        counterpartId: notifier.state.tabs.firstWhere((t) => t.counterpart.displayName == 'Maria Clara').id,
+        counterpartId: notifier.state.tabs
+            .firstWhere((t) => t.counterpart.displayName == 'Maria Clara')
+            .id,
         counterpartName: 'Maria Clara',
         title: 'Lunch treat',
         totalAmountCentavos: 50000,
@@ -1310,7 +1336,8 @@ void main() {
         isEqualSplit: true,
       );
 
-      final tabBeforeRefresh = notifier.state.tabs.firstWhere((t) => t.counterpart.displayName == 'Maria Clara');
+      final tabBeforeRefresh = notifier.state.tabs
+          .firstWhere((t) => t.counterpart.displayName == 'Maria Clara');
       expect(tabBeforeRefresh.entries.length, equals(1));
       expect(tabBeforeRefresh.netBalanceCentavos, equals(25000));
 
@@ -1318,13 +1345,15 @@ void main() {
       await notifier.refreshTabs();
 
       // Ensure tab is NOT wiped out and entries are intact!
-      final tabAfterRefresh = notifier.state.tabs.firstWhere((t) => t.counterpart.displayName == 'Maria Clara');
+      final tabAfterRefresh = notifier.state.tabs
+          .firstWhere((t) => t.counterpart.displayName == 'Maria Clara');
       expect(tabAfterRefresh.entries.length, equals(1));
       expect(tabAfterRefresh.entries.first.title, equals('Lunch treat'));
       expect(tabAfterRefresh.netBalanceCentavos, equals(25000));
     });
 
-    test('Realtime subscription lifecycle and activity deduplication', () async {
+    test('Realtime subscription lifecycle and activity deduplication',
+        () async {
       final notifier = TabbyNotifier(loadInitialData: false);
       addTearDown(notifier.dispose);
 
@@ -1436,8 +1465,8 @@ void main() {
       final payDeduped =
           TabbyNotifier.deduplicateActivities([serverPay, localPay]);
       expect(payDeduped.length, equals(1));
-      expect(payDeduped.first.id,
-          equals('770e8400-e29b-41d4-a716-446655440000'));
+      expect(
+          payDeduped.first.id, equals('770e8400-e29b-41d4-a716-446655440000'));
 
       // Test distinct transactions at different times are preserved
       final morningCoffee = TabbyActivity(
@@ -1455,8 +1484,8 @@ void main() {
         timestamp: now,
       );
 
-      final separateDeduped = TabbyNotifier.deduplicateActivities(
-          [morningCoffee, afternoonCoffee]);
+      final separateDeduped =
+          TabbyNotifier.deduplicateActivities([morningCoffee, afternoonCoffee]);
       expect(separateDeduped.length, equals(2));
 
       // Test non-financial activity deduplication (zero amounts within 30s)
@@ -1530,9 +1559,10 @@ void main() {
           equals('84003d99-472f-424a-94cd-d4d2a357c661'));
 
       // Test duplicate exact ID
-      final exactDuplicate = serverEntry.copyWith(date: now.add(const Duration(hours: 1)));
-      final exactDeduped = TabbyNotifier.deduplicateLedgerEntries(
-          [serverEntry, exactDuplicate]);
+      final exactDuplicate =
+          serverEntry.copyWith(date: now.add(const Duration(hours: 1)));
+      final exactDeduped =
+          TabbyNotifier.deduplicateLedgerEntries([serverEntry, exactDuplicate]);
       expect(exactDeduped.length, equals(1));
 
       // Test distinct expenses with same title at different days
@@ -1540,8 +1570,8 @@ void main() {
         id: '99003d99-472f-424a-94cd-d4d2a357c662',
         date: now.subtract(const Duration(days: 3)),
       );
-      final separateDeduped = TabbyNotifier.deduplicateLedgerEntries(
-          [serverEntry, dayOldEntry]);
+      final separateDeduped =
+          TabbyNotifier.deduplicateLedgerEntries([serverEntry, dayOldEntry]);
       expect(separateDeduped.length, equals(2));
     });
 
