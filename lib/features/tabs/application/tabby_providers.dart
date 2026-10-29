@@ -1209,21 +1209,6 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           final remotePayerId =
               paidByMe ? currentUserId : (payerId ?? resolvedCounterpartId);
           if (SupabaseTabbyRepository.isValidUuid(remotePayerId)) {
-            await SupabaseTabbyRepository.instance.createExpenseAtomic(
-              tabId: realTabId,
-              description:
-                  title.trim().isEmpty ? category.displayName : title.trim(),
-              totalAmountCentavos: totalAmountCentavos,
-              category: category,
-              paidByUserId: remotePayerId,
-              myShareCentavos: myShare,
-              counterpartShareCentavos: counterpartShare,
-              currentUserId: currentUserId,
-              counterpartId: resolvedCounterpartId,
-              dueDate: dueDate,
-              receiptUrl: receiptUrl,
-            );
-          } else {
             await SupabaseTabbyRepository.instance.logExpense(
               tabId: realTabId,
               title: title.trim().isEmpty ? category.displayName : title.trim(),
