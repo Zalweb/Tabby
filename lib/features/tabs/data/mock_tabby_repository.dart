@@ -48,6 +48,31 @@ class MockTabbyRepository {
     return netCentavos;
   }
 
+  /// Allocates every centavo exactly once using a stable participant order.
+  /// Earlier participants receive the remainder centavos.
+  static Map<String, int> allocateEqualShares(
+    int totalAmountCentavos,
+    Iterable<String> participantIds,
+  ) {
+    if (totalAmountCentavos < 0) {
+      throw ArgumentError.value(
+        totalAmountCentavos,
+        'totalAmountCentavos',
+        'must not be negative',
+      );
+    }
+
+    final ids = participantIds.toSet().toList()..sort();
+    if (ids.isEmpty) return const {};
+
+    final baseShare = totalAmountCentavos ~/ ids.length;
+    final remainder = totalAmountCentavos % ids.length;
+    return {
+      for (var index = 0; index < ids.length; index++)
+        ids[index]: baseShare + (index < remainder ? 1 : 0),
+    };
+  }
+
   static bool _isServerUuid(String id) {
     if (id.length != 36) return false;
     return RegExp(

@@ -10,6 +10,7 @@ import '../../../shared/widgets/receipt_source_sheet.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../application/tabby_providers.dart';
 import '../domain/models.dart';
+import '../domain/ledger_validation.dart';
 
 class AddExpenseModal extends ConsumerStatefulWidget {
   final String? initialCounterpartId;
@@ -289,7 +290,13 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
       return;
     }
 
-    final centavos = CurrencyFormatter.parseToCentavos(_amountController.text);
+    final int centavos;
+    try {
+      centavos = CurrencyFormatter.parseToCentavos(_amountController.text);
+    } on FormatException catch (error) {
+      _showMessage(error.message);
+      return;
+    }
     if (centavos <= 0) {
       _showMessage('Please enter an amount greater than PHP 0.00');
       return;
@@ -450,7 +457,11 @@ class _AddExpenseModalState extends ConsumerState<AddExpenseModal> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSubmitting = false);
-      _showMessage('The tab could not be created. Please try again.');
+      _showMessage(
+        error is TabValidationException
+            ? error.message
+            : 'The tab could not be created. Please try again.',
+      );
     }
   }
 

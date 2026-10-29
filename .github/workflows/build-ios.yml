@@ -50,38 +50,64 @@ jobs:
           echo "GOOGLE_ANDROID_CLIENT_ID=$GOOGLE_ANDROID_CLIENT_ID" >> .env
           echo "GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID" >> .env
 
-      # ── CRITICAL: Inject Google Sign-In reversed URL scheme into Info.plist ──
+      # ── CRITICAL: Keep native OAuth and media permissions in Info.plist ──
       # google_sign_in on iOS requires the reversed client ID as a URL scheme
       # so that Google can redirect back to the app after authentication.
       - name: Patch Info.plist with Google URL scheme
         env:
           GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
         run: |
-          # Derive the reversed client ID from the full client ID
-          # e.g. "12345-abc.apps.googleusercontent.com" -> "com.googleusercontent.apps.12345-abc"
-          REVERSED_CLIENT_ID=$(echo "$GOOGLE_IOS_CLIENT_ID" | awk -F'.' '{
-            for(i=NF;i>0;i--) printf "%s%s", $i, (i>1 ? "." : "")
-          }')
+          python3 <<'PY'
+          import os
+          import plistlib
 
-          echo "Reversed Client ID: $REVERSED_CLIENT_ID"
+          info_plist = "ios/Runner/Info.plist"
+          client_id = os.environ["GOOGLE_IOS_CLIENT_ID"].strip()
+          if not client_id:
+              raise SystemExit("GOOGLE_IOS_CLIENT_ID is required for iOS OAuth")
 
-          INFO_PLIST="ios/Runner/Info.plist"
+          reversed_client_id = ".".join(reversed(client_id.split(".")))
+          with open(info_plist, "rb") as handle:
+              plist = plistlib.load(handle)
 
-          # Insert CFBundleURLTypes with Google reversed client ID before </dict> at end
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" "$INFO_PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" "$INFO_PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleTypeRole string Editor" "$INFO_PLIST"
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string google" "$INFO_PLIST"
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" "$INFO_PLIST"
-          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string $REVERSED_CLIENT_ID" "$INFO_PLIST"
+          url_types = plist.setdefault("CFBundleURLTypes", [])
+          google_entry = next(
+              (entry for entry in url_types if entry.get("CFBundleURLName") == "google"),
+              None,
+          )
+          if google_entry is None:
+              google_entry = {
+                  "CFBundleTypeRole": "Editor",
+                  "CFBundleURLName": "google",
+                  "CFBundleURLSchemes": [],
+              }
+              url_types.insert(0, google_entry)
+          google_entry["CFBundleTypeRole"] = "Editor"
+          google_entry["CFBundleURLSchemes"] = [reversed_client_id]
 
-          # Ensure camera, photo library, and Face ID descriptions exist
-          /usr/libexec/PlistBuddy -c "Add :NSFaceIDUsageDescription string 'Tabby uses Face ID to securely authenticate and protect your financial tabs.'" "$INFO_PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Tabby uses the camera to scan and upload QR codes, payment receipts, and profile photos.'" "$INFO_PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Tabby accesses your photo library to let you upload QR codes, payment receipts, and profile photos.'" "$INFO_PLIST" 2>/dev/null || true
+          supabase_entry = next(
+              (entry for entry in url_types if entry.get("CFBundleURLName") == "supabase"),
+              None,
+          )
+          if supabase_entry is None:
+              url_types.append({
+                  "CFBundleTypeRole": "Editor",
+                  "CFBundleURLName": "supabase",
+                  "CFBundleURLSchemes": ["io.supabase.tabby"],
+              })
+          elif "io.supabase.tabby" not in supabase_entry.get("CFBundleURLSchemes", []):
+              supabase_entry.setdefault("CFBundleURLSchemes", []).append("io.supabase.tabby")
 
-          echo "Info.plist patched successfully."
-          /usr/libexec/PlistBuddy -c "Print :CFBundleURLTypes" "$INFO_PLIST"
+          plist.update({
+              "NSFaceIDUsageDescription": "Tabby uses Face ID to securely authenticate and protect your financial tabs.",
+              "NSCameraUsageDescription": "Tabby uses the camera to scan and upload QR codes, payment receipts, and profile photos.",
+              "NSPhotoLibraryUsageDescription": "Tabby accesses your photo library to let you upload QR codes, payment receipts, and profile photos.",
+          })
+
+          with open(info_plist, "wb") as handle:
+              plistlib.dump(plist, handle, sort_keys=False)
+          print("Info.plist patched successfully with native OAuth and media permissions.")
+          PY
 
       - name: Pod install
         run: |
