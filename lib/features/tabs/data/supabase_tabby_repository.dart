@@ -668,7 +668,9 @@ class SupabaseTabbyRepository {
     String? mayaNumber,
     String? qrCodeUrl,
   }) async {
-    if (!isConnected || !_isValidUuid(userId)) return ProfileUpdateResult.failure;
+    if (!isConnected || !_isValidUuid(userId)) {
+      return ProfileUpdateResult.failure;
+    }
 
     try {
       final updates = <String, dynamic>{
@@ -731,7 +733,8 @@ class SupabaseTabbyRepository {
       }
       return const ProfileUpdateResult(
         isSuccess: false,
-        errorMessage: 'Unable to save profile. Please check your network connection.',
+        errorMessage:
+            'Unable to save profile. Please check your network connection.',
       );
     }
   }
@@ -746,7 +749,7 @@ class SupabaseTabbyRepository {
           .from(SupabaseConfig.tablePaymentMethods)
           .select('*')
           .eq('owner_user_id', ownerUserId);
-      return _signedPaymentMethods(
+      return await _signedPaymentMethods(
         (rows as List)
             .whereType<Map>()
             .map((row) => payment_models.PaymentMethod.fromMap(
@@ -922,7 +925,7 @@ class SupabaseTabbyRepository {
         params: {'p_tab_id': tabId, 'p_payee_user_id': payeeUserId},
       );
       if (rows is! List) return const [];
-      return _signedPaymentMethods(
+      return await _signedPaymentMethods(
         rows
             .whereType<Map>()
             .map((row) => payment_models.PaymentMethod.fromMap(
@@ -1386,8 +1389,7 @@ class SupabaseTabbyRepository {
       );
       return result is String ? result : null;
     } catch (e) {
-      debugPrint(
-          '[SupabaseTabbyRepository] create_expense_atomic error: $e');
+      debugPrint('[SupabaseTabbyRepository] create_expense_atomic error: $e');
       return null;
     }
   }
@@ -1431,8 +1433,8 @@ class SupabaseTabbyRepository {
       final tabMembers = List<Map<String, dynamic>>.from(membersRes);
       final otherUserMembers = tabMembers
           .map((m) => m['user_id'] as String?)
-          .where((uid) =>
-              uid != null && _isValidUuid(uid) && uid != paidByUserId)
+          .where(
+              (uid) => uid != null && _isValidUuid(uid) && uid != paidByUserId)
           .cast<String>()
           .toList();
       final contactMembers = tabMembers
@@ -1589,7 +1591,6 @@ class SupabaseTabbyRepository {
           if (note != null && note.isNotEmpty) 'p_note': note,
         },
       );
-
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] recordPayment error: $e');
     }
