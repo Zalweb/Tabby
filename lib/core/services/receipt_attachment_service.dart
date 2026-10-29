@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -82,7 +83,10 @@ class ReceiptAttachmentService {
           receiptUrl: storagePath,
           uploadedToCloud: true,
         );
-      } catch (_) {
+      } catch (error) {
+        debugPrint(
+          '[ReceiptAttachmentService] Cloud upload failed; keeping local receipt: $error',
+        );
         // Fall through to the local path so offline logging still works.
       }
     }

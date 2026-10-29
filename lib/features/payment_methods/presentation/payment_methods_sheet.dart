@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/services/receipt_attachment_service.dart';
 import '../../../core/services/qr_code_cropper.dart';
 import '../../../core/services/tabby_api_services.dart';
 import '../../../core/theme/tabby_colors.dart';
@@ -586,7 +587,7 @@ class _PaymentMethodEditorState extends State<_PaymentMethodEditor> {
   }
 
   Future<void> _pickQr() async {
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final file = await ReceiptAttachmentService.pickImage(ImageSource.gallery);
     if (file == null) return;
 
     setState(() {
