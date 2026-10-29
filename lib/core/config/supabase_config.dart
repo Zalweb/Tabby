@@ -60,6 +60,9 @@ class SupabaseConfig {
   static const String rpcRespondFriendRequest = 'respond_friend_request';
   static const String rpcListPaymentMethodsForTab =
       'list_payment_methods_for_tab';
+  static const String rpcCreateExpenseAtomic = 'create_expense_atomic';
+  static const String rpcSubmitPayment = 'submit_payment';
+  static const String rpcConfirmPayment = 'confirm_payment';
 
   // --------------------------------------------------------------------------
   // State & Initialization

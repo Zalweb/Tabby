@@ -231,6 +231,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tab_id UUID NOT NULL REFERENCES public.tabs(id) ON DELETE CASCADE,
     submitted_by UUID NOT NULL REFERENCES public.users(id) ON DELETE RESTRICT,
+    recipient_user_id UUID REFERENCES public.users(id) ON DELETE RESTRICT,
     amount_centavos BIGINT NOT NULL CHECK (amount_centavos > 0),
     payment_method TEXT NOT NULL DEFAULT 'gcash' CHECK (payment_method IN ('gcash', 'maya', 'cash', 'bank_transfer', 'other')),
     note TEXT,
@@ -373,6 +374,7 @@ CREATE INDEX IF NOT EXISTS idx_trans_participants_contact ON public.transaction_
 -- Payments & Proofs
 CREATE INDEX IF NOT EXISTS idx_payments_tab ON public.payments(tab_id);
 CREATE INDEX IF NOT EXISTS idx_payments_submitted_by ON public.payments(submitted_by);
+CREATE INDEX IF NOT EXISTS idx_payments_recipient ON public.payments(recipient_user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_confirmed_by ON public.payments(confirmed_by);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON public.payments(status);
 CREATE INDEX IF NOT EXISTS idx_payment_proofs_payment ON public.payment_proofs(payment_id);
