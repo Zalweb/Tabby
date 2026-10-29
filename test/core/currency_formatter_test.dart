@@ -39,6 +39,14 @@ void main() {
       expect(CurrencyFormatter.parseToCentavos('-.50'), -50);
     });
 
+    test('rejects currency values with more than two decimal places', () {
+      expect(
+        () => CurrencyFormatter.parseToCentavos('10.125'),
+        throwsA(isA<FormatException>()),
+      );
+      expect(CurrencyFormatter.tryParseToCentavos('10.125'), isNull);
+    });
+
     test('guarantees zero floating-point drift on repeated centavo arithmetic', () {
       int totalCentavos = 0;
       // Add ₱0.10 (10 centavos) 1000 times

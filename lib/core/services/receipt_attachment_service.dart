@@ -83,7 +83,10 @@ class ReceiptAttachmentService {
           receiptUrl: storagePath,
           uploadedToCloud: true,
         );
-      } catch (_) {
+      } catch (error) {
+        debugPrint(
+          '[ReceiptAttachmentService] Cloud upload failed; keeping local receipt: $error',
+        );
         // Fall through to the local path so offline logging still works.
       }
     }

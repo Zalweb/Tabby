@@ -5,7 +5,6 @@ import 'package:tabby/features/tabs/data/mock_tabby_repository.dart';
 import 'package:tabby/features/tabs/data/supabase_tabby_repository.dart';
 import 'package:tabby/features/tabs/data/tabby_local_cache.dart';
 import 'package:tabby/features/tabs/domain/models.dart';
-import 'package:uuid/uuid.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -125,304 +124,30 @@ void main() {
       final resolved = await repo.ensureUserExists('user-alex', 'Alex');
       expect(resolved, equals('user-alex'));
 
-      // Failed writes must stay in the pending queue.
-      await expectLater(
-        repo.logExpense(
-          transactionId: '00000000-0000-4000-8000-000000000001',
-          tabId: 'test-tab',
-          title: 'Lunch',
-          totalAmountCentavos: 10000,
-          category: ExpenseCategory.food,
-          paidByUserId: 'user-me',
-          myShareCentavos: 5000,
-          counterpartShareCentavos: 5000,
-          currentUserId: 'user-me',
-          counterpartId: 'user-alex',
-        ),
-        throwsStateError,
+      // Writes report failure instead of throwing so callers can queue them.
+      final logged = await repo.logExpense(
+        tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+        title: 'Lunch',
+        totalAmountCentavos: 10000,
+        category: ExpenseCategory.food,
+        paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
+        myShareCentavos: 5000,
+        counterpartShareCentavos: 5000,
+        currentUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
+        counterpartId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5e',
       );
+      expect(logged, isFalse);
 
-      await expectLater(
-        repo.recordPayment(
-          paymentId: '00000000-0000-4000-8000-000000000002',
-          tabId: 'test-tab',
-          amountCentavos: 5000,
-          method: PaymentMethod.gcash,
-          paidByUserId: 'user-alex',
-          receivedByUserId: 'user-me',
-        ),
-        throwsStateError,
+      final recorded = await repo.recordPayment(
+        tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+        amountCentavos: 5000,
+        method: PaymentMethod.gcash,
+        paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5e',
+        receivedByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
       );
+      expect(recorded, isFalse);
 
       await expectLater(repo.signOut(), completes);
-    });
-  });
-
-  group('Expense participant allocation regressions', () {
-    const transactionId = '00000000-0000-4000-8000-000000000010';
-    const currentUserId = '00000000-0000-4000-8000-000000000004';
-    const friendId = '00000000-0000-4000-8000-000000000001';
-    const secondFriendId = '00000000-0000-4000-8000-000000000002';
-    const thirdFriendId = '00000000-0000-4000-8000-000000000003';
-    const contactId = '00000000-0000-4000-8000-000000000005';
-    const bilateralMembers = <Map<String, dynamic>>[
-      {'user_id': currentUserId},
-      {'user_id': friendId},
-    ];
-
-    List<Map<String, dynamic>> allocate({
-      required int total,
-      required int myShare,
-      required String payerId,
-      List<Map<String, dynamic>> members = bilateralMembers,
-    }) =>
-        SupabaseTabbyRepository.buildExpenseParticipants(
-          transactionId: transactionId,
-          tabMembers: members,
-          totalAmountCentavos: total,
-          myShareCentavos: myShare,
-          currentUserId: currentUserId,
-          paidByUserId: payerId,
-        );
-
-    BilateralTab parseExpense(List<Map<String, dynamic>> participants,
-            List<Map<String, dynamic>> members, int total,
-            {String viewerId = currentUserId}) =>
-        SupabaseTabbyRepository.parseTabRow({
-          'id': 'tab-allocation',
-          'tab_members': members,
-          'transactions': [
-            {
-              'id': transactionId,
-              'created_by': currentUserId,
-              'total_amount_centavos': total,
-              'status': 'acknowledged',
-              'transaction_participants': participants,
-            },
-          ],
-        }, viewerId)!;
-
-    for (final total in [10000, 10001]) {
-      test('Opposite payer preserves two-person shares for $total centavos',
-          () {
-        final participants = allocate(
-          total: total,
-          myShare: 5000,
-          payerId: friendId,
-        );
-        final payer = participants
-            .singleWhere((row) => row['participant_role'] == 'payer');
-        final debtor = participants
-            .singleWhere((row) => row['participant_role'] == 'debtor');
-        expect(payer['user_id'], friendId);
-        expect(payer['share_amount_centavos'], total - 5000);
-        expect(payer['acknowledged'], isTrue);
-        expect(debtor['user_id'], currentUserId);
-        expect(debtor['share_amount_centavos'], 5000);
-        expect(debtor['acknowledged'], isFalse);
-        expect(
-            participants.fold<int>(
-                0, (sum, row) => sum + (row['share_amount_centavos'] as int)),
-            total);
-        expect(
-            parseExpense(participants, bilateralMembers, total)
-                .netBalanceCentavos,
-            -5000);
-        expect(
-            parseExpense(participants, bilateralMembers, total,
-                    viewerId: friendId)
-                .netBalanceCentavos,
-            5000);
-      });
-    }
-
-    test('Group remainders and row IDs are deterministic across roster order',
-        () {
-      const members = <Map<String, dynamic>>[
-        {'user_id': currentUserId},
-        {'user_id': thirdFriendId},
-        {'user_id': friendId},
-        {'user_id': secondFriendId},
-      ];
-      for (final total in [10001, 10002]) {
-        final participants = allocate(
-          total: total,
-          myShare: 2500,
-          payerId: secondFriendId,
-          members: members,
-        );
-        expect(
-            allocate(
-              total: total,
-              myShare: 2500,
-              payerId: secondFriendId,
-              members: members.reversed.toList(),
-            ),
-            participants);
-        expect(participants.map((row) => row['user_id']).toList(),
-            [friendId, secondFriendId, thirdFriendId, currentUserId]);
-        expect(participants.map((row) => row['share_amount_centavos']).toList(),
-            [2501, total == 10002 ? 2501 : 2500, 2500, 2500]);
-        expect(
-            participants.fold<int>(
-                0, (sum, row) => sum + (row['share_amount_centavos'] as int)),
-            total);
-        expect(
-            participants
-                .where((row) => row['participant_role'] == 'payer')
-                .single['user_id'],
-            secondFriendId);
-        for (final row in participants) {
-          expect(row['id'],
-              const Uuid().v5(transactionId, 'user_id:${row['user_id']}'));
-        }
-        expect(participants.map((row) => row['id']).toSet().length, 4);
-        final currentUserPays = allocate(
-          total: total,
-          myShare: 2500,
-          payerId: currentUserId,
-          members: members,
-        );
-        expect(currentUserPays.map((row) => row['id']).toList(),
-            participants.map((row) => row['id']).toList());
-        expect(
-            currentUserPays.map((row) => row['share_amount_centavos']).toList(),
-            participants.map((row) => row['share_amount_centavos']).toList());
-      }
-    });
-
-    test('Zero-share participants preserve full obligations in both directions',
-        () {
-      const total = 54321;
-      for (final myShare in [0, total]) {
-        for (final payerId in [currentUserId, friendId]) {
-          final participants = allocate(
-            total: total,
-            myShare: myShare,
-            payerId: payerId,
-          );
-          expect(participants.length, 2);
-          expect(
-              participants.singleWhere((row) =>
-                  row['user_id'] == currentUserId)['share_amount_centavos'],
-              myShare);
-          expect(
-              participants.singleWhere(
-                  (row) => row['user_id'] == friendId)['share_amount_centavos'],
-              total - myShare);
-          expect(
-              parseExpense(participants, bilateralMembers, total)
-                  .netBalanceCentavos,
-              payerId == currentUserId ? total - myShare : -myShare);
-        }
-      }
-    });
-
-    test(
-        'A virtual or explicit contact payer receives only its allocated share',
-        () {
-      const members = <Map<String, dynamic>>[
-        {'user_id': currentUserId, 'contact_id': null},
-        {'user_id': null, 'contact_id': contactId},
-      ];
-      for (final payerId in ['virtual-contact', contactId, currentUserId]) {
-        final participants = allocate(
-          total: 10001,
-          myShare: 5000,
-          payerId: payerId,
-          members: members,
-        );
-        final contact =
-            participants.singleWhere((row) => row['contact_id'] == contactId);
-        expect(contact.containsKey('user_id'), isFalse);
-        expect(contact['share_amount_centavos'], 5001);
-        expect(contact['participant_role'],
-            payerId == currentUserId ? 'debtor' : 'payer');
-        expect(contact['id'],
-            const Uuid().v5(transactionId, 'contact_id:$contactId'));
-        expect(parseExpense(participants, members, 10001).netBalanceCentavos,
-            payerId == currentUserId ? 5001 : -5000);
-      }
-    });
-
-    test('Invalid shares, membership and nonmember payers fail before writes',
-        () {
-      for (final allocation in [(-1, 0), (100, -1), (100, 101)]) {
-        expect(
-            () => allocate(
-                  total: allocation.$1,
-                  myShare: allocation.$2,
-                  payerId: currentUserId,
-                ),
-            throwsArgumentError);
-      }
-      expect(() => allocate(total: 100, myShare: 50, payerId: ''),
-          throwsArgumentError);
-      expect(
-          () => SupabaseTabbyRepository.buildExpenseParticipants(
-                transactionId: 'invalid-transaction',
-                tabMembers: bilateralMembers,
-                totalAmountCentavos: 100,
-                myShareCentavos: 50,
-                currentUserId: currentUserId,
-                paidByUserId: friendId,
-              ),
-          throwsArgumentError);
-      for (final members in <List<Map<String, dynamic>>>[
-        [],
-        [
-          {'user_id': currentUserId}
-        ],
-        [
-          {'user_id': friendId},
-          {'user_id': secondFriendId}
-        ],
-        [
-          ...bilateralMembers,
-          {'user_id': friendId}
-        ],
-        [
-          ...bilateralMembers,
-          {'user_id': 'invalid'}
-        ],
-        [
-          ...bilateralMembers,
-          {'user_id': secondFriendId, 'contact_id': contactId}
-        ],
-        [
-          ...bilateralMembers,
-          {'contact_id': contactId}
-        ],
-      ]) {
-        expect(
-            () => allocate(
-                  total: 100,
-                  myShare: 50,
-                  payerId: currentUserId,
-                  members: members,
-                ),
-            throwsStateError);
-      }
-      for (final payerId in [thirdFriendId, 'virtual-nonmember']) {
-        expect(
-            () => allocate(
-                  total: 100,
-                  myShare: 50,
-                  payerId: payerId,
-                ),
-            throwsStateError);
-      }
-      expect(
-          () => allocate(
-                total: 100,
-                myShare: 50,
-                payerId: thirdFriendId,
-                members: [
-                  {'user_id': currentUserId},
-                  {'contact_id': contactId},
-                ],
-              ),
-          throwsStateError);
     });
   });
 
@@ -944,57 +669,35 @@ void main() {
       }
     });
 
-    test('recordPayment throws offline regardless of IDs or claimed confirmer',
+    test('recordPayment returns false offline regardless of IDs or confirmer',
         () async {
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          paymentId: '00000000-0000-4000-8000-000000000001',
-          tabId: 'synthetic-tab-123',
+      final cases = <Map<String, String>>[
+        {
+          'tab_id': 'synthetic-tab-123',
+          'paid_by': 'user-juan',
+          'received_by': 'user-me',
+        },
+        {
+          'tab_id': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'paid_by': 'user-synthetic-counterpart',
+          'received_by': 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
+        },
+        {
+          'tab_id': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'paid_by': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'received_by': 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
+        },
+      ];
+      for (final testCase in cases) {
+        final recorded = await SupabaseTabbyRepository.instance.recordPayment(
+          tabId: testCase['tab_id']!,
           amountCentavos: 15000,
           method: PaymentMethod.gcash,
-          paidByUserId: 'user-juan',
-          receivedByUserId: 'user-me',
-        ),
-        throwsStateError,
-      );
-
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          paymentId: '00000000-0000-4000-8000-000000000002',
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 10000,
-          method: PaymentMethod.gcash,
-          paidByUserId: 'user-synthetic-counterpart',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-        ),
-        throwsStateError,
-      );
-
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          paymentId: '00000000-0000-4000-8000-000000000003',
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 25000,
-          method: PaymentMethod.maya,
-          paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-          confirmedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-        ),
-        throwsStateError,
-      );
-
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          paymentId: '00000000-0000-4000-8000-000000000004',
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 5000,
-          method: PaymentMethod.cash,
-          paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-          confirmedByUserId: 'user-admin',
-        ),
-        throwsStateError,
-      );
+          paidByUserId: testCase['paid_by']!,
+          receivedByUserId: testCase['received_by']!,
+        );
+        expect(recorded, isFalse);
+      }
     });
   });
 
@@ -1454,6 +1157,30 @@ void main() {
 
       expect(loadedA!.single.id, equals('tab-user-a'));
       expect(loadedB!.single.id, equals('tab-user-b'));
+    });
+
+    test('pending operations stay durable until explicitly acknowledged',
+        () async {
+      final operation = <String, dynamic>{
+        'type': 'add_expense',
+        'tab_id': 'offline-tab',
+        'total_amount_centavos': 12500,
+      };
+
+      await TabbyLocalCache.enqueuePendingOp(operation, userId: 'user-queue');
+      final loaded = await TabbyLocalCache.loadPendingOps(userId: 'user-queue');
+      expect(loaded, hasLength(1));
+      expect(loaded.single['operation_id'], isNotEmpty);
+      expect(
+        Map<String, dynamic>.from(loaded.single)..remove('operation_id'),
+        equals(operation),
+      );
+
+      await TabbyLocalCache.removePendingOp(loaded.single, userId: 'user-queue');
+      expect(
+        await TabbyLocalCache.loadPendingOps(userId: 'user-queue'),
+        isEmpty,
+      );
     });
 
     test(

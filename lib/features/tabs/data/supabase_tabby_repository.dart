@@ -503,6 +503,8 @@ class SupabaseTabbyRepository {
           : null;
       final receiptUrl = proofUrl ??
           (pay['payment_proof_url'] ?? pay['receipt_url']) as String?;
+      // Only a confirmed payment clears the obligation; submitted and legacy
+      // statuses stay pending until the recipient confirms them.
       final paymentStatus = switch (pay['status']) {
         'confirmed' => TransactionStatus.settled,
         'rejected' => TransactionStatus.cancelled,
@@ -1361,111 +1363,46 @@ class SupabaseTabbyRepository {
     return null;
   }
 
-  static List<Map<String, dynamic>> buildExpenseParticipants({
-    required String transactionId,
-    required List<Map<String, dynamic>> tabMembers,
+  /// Creates an expense and all participant allocations atomically.
+  Future<String?> createExpenseAtomic({
+    required String tabId,
+    required String title,
     required int totalAmountCentavos,
-    required int myShareCentavos,
-    required String currentUserId,
+    required ExpenseCategory category,
     required String paidByUserId,
-  }) {
-    if (!isValidUuid(transactionId) ||
-        paidByUserId.trim().isEmpty ||
-        totalAmountCentavos < 0 ||
-        myShareCentavos < 0 ||
-        myShareCentavos > totalAmountCentavos) {
-      throw ArgumentError(
-          'Invalid transaction ID, payer or expense allocation.');
-    }
-
-    final members = <String, String>{};
-    for (final member in tabMembers) {
-      final userId = member['user_id'] as String?;
-      final contactId = member['contact_id'] as String?;
-      if ((userId == null) == (contactId == null)) {
-        throw StateError('Each tab member must have exactly one identity.');
-      }
-      final id = userId ?? contactId!;
-      if (!isValidUuid(id) || members.containsKey(id)) {
-        throw StateError('Invalid or duplicate tab member identity.');
-      }
-      members[id] = userId != null ? 'user_id' : 'contact_id';
-    }
-    if (members[currentUserId] != 'user_id' || members.length < 2) {
-      throw StateError('Expense requires the current user and a counterpart.');
-    }
-
-    final contactIds =
-        members.keys.where((id) => members[id] == 'contact_id').toList();
-    if (contactIds.isNotEmpty &&
-        (contactIds.length != 1 || members.length != 2)) {
-      throw StateError('Contacts are restricted to one-to-one tabs.');
-    }
-    final payerId = !isValidUuid(paidByUserId) && contactIds.length == 1
-        ? contactIds.single
-        : paidByUserId;
-    if (!members.containsKey(payerId)) {
-      throw StateError('Expense payer must belong to the tab.');
-    }
-
-    final otherIds = members.keys.where((id) => id != currentUserId).toList()
-      ..sort();
-    final remaining = totalAmountCentavos - myShareCentavos;
-    final quotient = remaining ~/ otherIds.length;
-    final remainder = remaining % otherIds.length;
-    final shares = <String, int>{currentUserId: myShareCentavos};
-    for (var i = 0; i < otherIds.length; i++) {
-      shares[otherIds[i]] = quotient + (i < remainder ? 1 : 0);
-    }
-    if (shares.values.any((share) => share < 0) ||
-        shares.values.fold<int>(0, (sum, share) => sum + share) !=
-            totalAmountCentavos) {
-      throw StateError('Participant shares must equal the expense total.');
-    }
-
-    final sortedIds = members.keys.toList()..sort();
-    return [
-      for (final id in sortedIds)
-        {
-          'id': const Uuid().v5(transactionId, '${members[id]}:$id'),
-          'transaction_id': transactionId,
-          members[id]!: id,
-          'participant_role': id == payerId ? 'payer' : 'debtor',
-          'share_amount_centavos': shares[id]!,
-          'acknowledged': id == payerId,
-        },
-    ];
-  }
-
-  Future<void> _upsertFinancialRows({
-    required String table,
-    required List<Map<String, dynamic>> rows,
-    required String parentColumn,
-    required String parentId,
+    required List<Map<String, dynamic>> participants,
+    DateTime? dueDate,
+    String? receiptUrl,
   }) async {
-    final expectedIds = rows.map((row) => row['id'] as String).toSet();
-    final inserted = await SupabaseConfig.client
-        .from(table)
-        .upsert(rows, onConflict: 'id', ignoreDuplicates: true)
-        .select('id');
-    final persistedIds = inserted.map((row) => row['id'] as String).toSet();
-    if (!persistedIds.containsAll(expectedIds)) {
-      // DO NOTHING returns no rows for existing IDs; verify them before success.
-      final existing = await SupabaseConfig.client
-          .from(table)
-          .select('id')
-          .eq(parentColumn, parentId)
-          .inFilter('id', expectedIds.toList());
-      persistedIds.addAll(existing.map((row) => row['id'] as String));
+    if (!isConnected || !_isValidUuid(tabId) || !_isValidUuid(paidByUserId)) {
+      return null;
     }
-    if (!persistedIds.containsAll(expectedIds)) {
-      throw StateError('Unable to verify all persisted $table records.');
+
+    try {
+      final result = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcCreateExpenseAtomic,
+        params: {
+          'p_tab_id': tabId,
+          'p_description': title.isEmpty ? category.displayName : title,
+          'p_category': _mapCategory(category),
+          'p_total_amount_centavos': totalAmountCentavos,
+          'p_paid_by_user_id': paidByUserId,
+          'p_participants': participants,
+          if (dueDate != null)
+            'p_due_date': dueDate.toIso8601String().split('T')[0],
+          if (receiptUrl != null && receiptUrl.isNotEmpty)
+            'p_receipt_url': receiptUrl,
+        },
+      );
+      return result is String ? result : null;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] create_expense_atomic error: $e');
+      return null;
     }
   }
 
   /// Logs an expense to Supabase (ADR-001: integer centavos BIGINT).
-  Future<void> logExpense({
-    required String transactionId,
+  Future<bool> logExpense({
     required String tabId,
     required String title,
     required int totalAmountCentavos,
@@ -1479,63 +1416,158 @@ class SupabaseTabbyRepository {
     String? receiptUrl,
   }) async {
     if (!isConnected ||
-        SupabaseConfig.auth.currentSession == null ||
-        SupabaseConfig.currentUser?.id != currentUserId) {
-      throw StateError('An authenticated session is required to log expenses.');
+        !_isValidUuid(tabId) ||
+        !_isValidUuid(paidByUserId) ||
+        !_isValidUuid(currentUserId)) {
+      return false;
     }
-    if (!_isValidUuid(tabId) ||
-        !_isValidUuid(transactionId) ||
-        totalAmountCentavos <= 0 ||
-        counterpartShareCentavos < 0) {
-      throw ArgumentError('Invalid expense ID, tab ID or amount.');
+    if (totalAmountCentavos <= 0 ||
+        myShareCentavos < 0 ||
+        counterpartShareCentavos < 0 ||
+        myShareCentavos + counterpartShareCentavos != totalAmountCentavos) {
+      throw ArgumentError(
+        'Expense total and participant shares must be positive and sum exactly.',
+      );
     }
 
-    final members = await SupabaseConfig.client
-        .from(SupabaseConfig.tableTabMembers)
-        .select('user_id, contact_id')
-        .eq('tab_id', tabId);
-    final participants = buildExpenseParticipants(
-      transactionId: transactionId,
-      tabMembers: List<Map<String, dynamic>>.from(members),
-      totalAmountCentavos: totalAmountCentavos,
-      myShareCentavos: myShareCentavos,
-      currentUserId: currentUserId,
-      paidByUserId: paidByUserId,
-    );
+    try {
+      final participants = <Map<String, dynamic>>[];
 
-    await _upsertFinancialRows(
-      table: SupabaseConfig.tableTransactions,
-      parentColumn: 'tab_id',
-      parentId: tabId,
-      rows: [
-        {
-          'id': transactionId,
-          'tab_id': tabId,
-          'created_by': currentUserId,
-          'transaction_type': 'shared_expense',
-          'category': _mapCategory(category),
-          'description': title.isEmpty ? category.displayName : title,
-          'total_amount_centavos': totalAmountCentavos,
-          'currency': 'PHP',
-          'status': 'acknowledged',
-          if (dueDate != null)
-            'due_date': dueDate.toIso8601String().split('T')[0],
-          if (receiptUrl != null && receiptUrl.isNotEmpty)
-            'receipt_url': receiptUrl,
-        },
-      ],
-    );
-    await _upsertFinancialRows(
-      table: SupabaseConfig.tableTransactionParticipants,
-      parentColumn: 'transaction_id',
-      parentId: transactionId,
-      rows: participants,
-    );
+      final membersRes = await SupabaseConfig.client
+          .from(SupabaseConfig.tableTabMembers)
+          .select('user_id, contact_id')
+          .eq('tab_id', tabId);
+      final tabMembers = List<Map<String, dynamic>>.from(membersRes);
+      final otherUserMembers = tabMembers
+          .map((m) => m['user_id'] as String?)
+          .where(
+              (uid) => uid != null && _isValidUuid(uid) && uid != paidByUserId)
+          .cast<String>()
+          .toList();
+      final contactMembers = tabMembers
+          .map((m) => m['contact_id'] as String?)
+          .where((cid) => cid != null && _isValidUuid(cid))
+          .cast<String>()
+          .toList();
+      final isContactPayer =
+          contactMembers.isNotEmpty && paidByUserId != currentUserId;
+      final payerShare = paidByUserId == currentUserId
+          ? myShareCentavos
+          : counterpartShareCentavos;
+
+      if (!isContactPayer) {
+        participants.add({
+          'user_id': paidByUserId,
+          'participant_role': 'payer',
+          'share_amount_centavos': payerShare,
+          'acknowledged': true,
+        });
+      }
+
+      if (otherUserMembers.isNotEmpty) {
+        final remainingAmount = totalAmountCentavos - payerShare;
+        final perMemberShare = remainingAmount > 0
+            ? (remainingAmount ~/ otherUserMembers.length)
+            : counterpartShareCentavos;
+        var remainder = remainingAmount > 0
+            ? remainingAmount - perMemberShare * otherUserMembers.length
+            : 0;
+        for (final memberId in otherUserMembers) {
+          final share = perMemberShare + (remainder-- > 0 ? 1 : 0);
+          participants.add({
+            'user_id': memberId,
+            'participant_role': 'debtor',
+            'share_amount_centavos': share,
+            'acknowledged': false,
+          });
+        }
+      } else if (contactMembers.isNotEmpty) {
+        final contactId = contactMembers.first;
+        if (paidByUserId == currentUserId) {
+          participants.add({
+            'contact_id': contactId,
+            'participant_role': 'debtor',
+            'share_amount_centavos': counterpartShareCentavos,
+            'acknowledged': false,
+          });
+        } else {
+          participants.add({
+            'contact_id': contactId,
+            'participant_role': 'payer',
+            'share_amount_centavos': counterpartShareCentavos,
+            'acknowledged': true,
+          });
+          participants.add({
+            'user_id': currentUserId,
+            'participant_role': 'debtor',
+            'share_amount_centavos': myShareCentavos,
+            'acknowledged': false,
+          });
+        }
+      } else {
+        final debtorId =
+            paidByUserId == currentUserId ? counterpartId : currentUserId;
+        final debtorShare = paidByUserId == currentUserId
+            ? counterpartShareCentavos
+            : myShareCentavos;
+        if (_isValidUuid(debtorId) && debtorId != paidByUserId) {
+          participants.add({
+            'user_id': debtorId,
+            'participant_role': 'debtor',
+            'share_amount_centavos': debtorShare,
+            'acknowledged': false,
+          });
+        }
+      }
+
+      if (isContactPayer) {
+        final inserted = await SupabaseConfig.client
+            .from(SupabaseConfig.tableTransactions)
+            .insert({
+              'tab_id': tabId,
+              'created_by': currentUserId,
+              'transaction_type': 'shared_expense',
+              'category': _mapCategory(category),
+              'description': title.isEmpty ? category.displayName : title,
+              'total_amount_centavos': totalAmountCentavos,
+              'currency': 'PHP',
+              'status': 'acknowledged',
+              if (dueDate != null)
+                'due_date': dueDate.toIso8601String().split('T')[0],
+              if (receiptUrl != null && receiptUrl.isNotEmpty)
+                'receipt_url': receiptUrl,
+            })
+            .select('id')
+            .single();
+        final transactionId = inserted['id'] as String;
+        await SupabaseConfig.client
+            .from(SupabaseConfig.tableTransactionParticipants)
+            .insert([
+          for (final participant in participants)
+            {...participant, 'transaction_id': transactionId},
+        ]);
+        return true;
+      }
+
+      final transactionId = await createExpenseAtomic(
+        tabId: tabId,
+        title: title,
+        totalAmountCentavos: totalAmountCentavos,
+        category: category,
+        paidByUserId: paidByUserId,
+        participants: participants,
+        dueDate: dueDate,
+        receiptUrl: receiptUrl,
+      );
+      return transactionId != null;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] logExpense error: $e');
+      return false;
+    }
   }
 
   /// Records a payment settlement in Supabase.
-  Future<void> recordPayment({
-    required String paymentId,
+  Future<bool> recordPayment({
     required String tabId,
     required int amountCentavos,
     required PaymentMethod method,
@@ -1544,43 +1576,88 @@ class SupabaseTabbyRepository {
     String? note,
     String? confirmedByUserId,
   }) async {
-    if (!isConnected || SupabaseConfig.auth.currentSession == null) {
-      throw StateError(
-          'An authenticated session is required to record payments.');
-    }
-    if (!_isValidUuid(paymentId) ||
-        !_isValidUuid(tabId) ||
-        !_isValidUuid(paidByUserId) ||
-        amountCentavos <= 0) {
-      throw ArgumentError('Invalid payment ID, tab ID, payer ID or amount.');
+    if (!isConnected) return false;
+
+    // Only insert if tabId and paidByUserId are valid UUIDs
+    if (!_isValidUuid(tabId) || !_isValidUuid(paidByUserId)) {
+      debugPrint(
+          '[SupabaseTabbyRepository] recordPayment skipped: tabId ($tabId) or paidByUserId ($paidByUserId) is not a valid UUID');
+      return false;
     }
 
-    final currentUserId = SupabaseConfig.currentUser?.id;
-    if (currentUserId == null ||
-        (currentUserId != paidByUserId && currentUserId != receivedByUserId)) {
-      throw StateError('Only the debtor or creditor can record this payment.');
-    }
-    final isCreditorRecording =
-        currentUserId == receivedByUserId && currentUserId != paidByUserId;
-    await _upsertFinancialRows(
-      table: SupabaseConfig.tablePayments,
-      parentColumn: 'tab_id',
-      parentId: tabId,
-      rows: [
-        {
-          'id': paymentId,
-          'tab_id': tabId,
-          'submitted_by': paidByUserId,
-          'amount_centavos': amountCentavos,
-          'payment_method': _mapPaymentMethod(method),
-          if (note != null && note.isNotEmpty) 'note': note,
-          'status': isCreditorRecording ? 'confirmed' : 'submitted',
-          if (isCreditorRecording) 'confirmed_by': currentUserId,
-          if (isCreditorRecording)
-            'confirmed_at': DateTime.now().toUtc().toIso8601String(),
+    try {
+      final currentUserId = SupabaseConfig.currentUserId;
+      if (currentUserId == null || !_isValidUuid(receivedByUserId)) {
+        return false;
+      }
+
+      await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcSubmitPayment,
+        params: {
+          'p_tab_id': tabId,
+          'p_submitted_by_user_id': paidByUserId,
+          'p_recipient_user_id': receivedByUserId,
+          'p_amount_centavos': amountCentavos,
+          'p_payment_method': _mapPaymentMethod(method),
+          if (note != null && note.isNotEmpty) 'p_note': note,
         },
-      ],
-    );
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] recordPayment error: $e');
+      return false;
+    }
+  }
+
+  /// Submits or confirms a payment through the atomic payment contract.
+  Future<String?> submitPayment({
+    required String tabId,
+    required String submittedByUserId,
+    required String recipientUserId,
+    required int amountCentavos,
+    required PaymentMethod method,
+    String? note,
+  }) async {
+    if (!isConnected ||
+        !_isValidUuid(tabId) ||
+        !_isValidUuid(submittedByUserId) ||
+        !_isValidUuid(recipientUserId) ||
+        submittedByUserId == recipientUserId ||
+        amountCentavos <= 0) {
+      return null;
+    }
+    try {
+      final response = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcSubmitPayment,
+        params: {
+          'p_tab_id': tabId,
+          'p_submitted_by_user_id': submittedByUserId,
+          'p_recipient_user_id': recipientUserId,
+          'p_amount_centavos': amountCentavos,
+          'p_payment_method': _mapPaymentMethod(method),
+          'p_note': note,
+        },
+      );
+      return response is String ? response : response?.toString();
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] submit_payment error: $e');
+      return null;
+    }
+  }
+
+  /// Confirms a previously submitted payment as its explicit recipient.
+  Future<String?> confirmPayment(String paymentId) async {
+    if (!isConnected || !_isValidUuid(paymentId)) return null;
+    try {
+      final response = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcConfirmPayment,
+        params: {'p_payment_id': paymentId},
+      );
+      return response is String ? response : response?.toString();
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] confirm_payment error: $e');
+      return null;
+    }
   }
 
   /// Archives a tab in Supabase.

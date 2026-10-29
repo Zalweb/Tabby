@@ -189,6 +189,9 @@ class TabbyLocalCache {
   }) {
     final write = _pendingOpWrite.then((_) async {
       final ops = await _loadPendingOps(scope: scope);
+      for (final op in ops) {
+        op['operation_id'] ??= const Uuid().v4();
+      }
       update(ops);
       await _storage.write(
         key: 'tabby_pending_ops_$scope',
@@ -218,23 +221,59 @@ class TabbyLocalCache {
   static Future<List<Map<String, dynamic>>> _loadPendingOps({
     required String scope,
   }) async {
-    final raw = await _storage.read(key: 'tabby_pending_ops_$scope');
-    if (raw == null || raw.isEmpty) return [];
-    final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded.map((item) {
-      final op = Map<String, dynamic>.from(item as Map);
-      op['operation_id'] ??= const Uuid().v4();
-      return op;
-    }).toList();
+    try {
+      final raw = await _storage.read(key: 'tabby_pending_ops_$scope');
+      if (raw == null || raw.isEmpty) return [];
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+    } catch (e) {
+      debugPrint('[TabbyLocalCache] _loadPendingOps warning: $e');
+      return [];
+    }
   }
 
+  /// Returns all pending operations without changing the durable queue.
   static Future<List<Map<String, dynamic>>> loadPendingOps({
+    String? userId,
+  }) async {
+    final scope = _scope(userId);
+    final ops = await _loadPendingOps(scope: scope);
+    if (ops.every((op) => op['operation_id'] is String)) return ops;
+    // Legacy records predate operation identities; persist the assigned ids so
+    // a replay keeps the same identity across app launches.
+    await _updatePendingOps((_) {}, scope: scope);
+    return _loadPendingOps(scope: scope);
+  }
+
+  /// Removes one operation after its remote write has been confirmed.
+  static Future<void> removePendingOp(
+    Map<String, dynamic> operation, {
+    String? userId,
+  }) {
+    final operationId = operation['operation_id'];
+    if (operationId is String) {
+      return acknowledgePendingOp(operationId, userId: userId);
+    }
+    final encodedOperation = jsonEncode(operation);
+    return _updatePendingOps(
+      (ops) => ops.removeWhere(
+        (candidate) => jsonEncode(candidate) == encodedOperation,
+      ),
+      scope: _scope(userId),
+    );
+  }
+
+  /// Drains and returns all pending offline operations, clearing the queue.
+  static Future<List<Map<String, dynamic>>> drainPendingOps({
     String? userId,
   }) async {
     final scope = _scope(userId);
     late List<Map<String, dynamic>> snapshot;
     await _updatePendingOps((ops) {
       snapshot = ops.map(Map<String, dynamic>.from).toList();
+      ops.clear();
     }, scope: scope);
     return snapshot;
   }
