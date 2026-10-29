@@ -1368,6 +1368,14 @@ class SupabaseTabbyRepository {
     String? receiptUrl,
   }) async {
     if (!isConnected) return;
+    if (totalAmountCentavos <= 0 ||
+        myShareCentavos < 0 ||
+        counterpartShareCentavos < 0 ||
+        myShareCentavos + counterpartShareCentavos != totalAmountCentavos) {
+      throw ArgumentError(
+        'Expense total and participant shares must be positive and sum exactly.',
+      );
+    }
 
     // Only insert if tabId is a valid UUID
     if (!_isValidUuid(tabId)) {
@@ -1401,20 +1409,6 @@ class SupabaseTabbyRepository {
 
         final participants = <Map<String, dynamic>>[];
 
-        // Payer participant
-        if (_isValidUuid(paidByUserId)) {
-          final payerShare = paidByUserId == currentUserId
-              ? myShareCentavos
-              : counterpartShareCentavos;
-          participants.add({
-            'transaction_id': txId,
-            'user_id': paidByUserId,
-            'participant_role': 'payer',
-            'share_amount_centavos': payerShare,
-            'acknowledged': true,
-          });
-        }
-
         // Debtor participant(s) & contact lookup
         List<Map<String, dynamic>> tabMembers = [];
         try {
@@ -1427,11 +1421,11 @@ class SupabaseTabbyRepository {
           debugPrint('[SupabaseTabbyRepository] tabMembers lookup warning: $e');
         }
 
-        final otherUserMembers = tabMembers
+        final registeredMembers = tabMembers
             .map((m) => m['user_id'] as String?)
-            .where((uid) =>
-                uid != null && _isValidUuid(uid) && uid != paidByUserId)
+            .where((uid) => uid != null && _isValidUuid(uid))
             .cast<String>()
+            .toSet()
             .toList();
 
         final contactMembers = tabMembers
@@ -1440,19 +1434,33 @@ class SupabaseTabbyRepository {
             .cast<String>()
             .toList();
 
-        if (otherUserMembers.isNotEmpty) {
-          // Multi-party / registered group tab: distribute debtor share
-          final remainingAmount = totalAmountCentavos -
-              (paidByUserId == currentUserId ? myShareCentavos : 0);
-          final perMemberShare = remainingAmount > 0
-              ? (remainingAmount ~/ otherUserMembers.length)
-              : counterpartShareCentavos;
-          for (final memberId in otherUserMembers) {
+        if (registeredMembers.isNotEmpty) {
+          // Allocate the full expense deterministically across every
+          // registered participant, preserving every remainder centavo.
+          final participantIds = {
+            ...registeredMembers,
+            if (_isValidUuid(paidByUserId)) paidByUserId,
+          }.toList()
+            ..sort();
+          final shares = MockTabbyRepository.allocateEqualShares(
+            totalAmountCentavos,
+            participantIds,
+          );
+
+          participants.add({
+            'transaction_id': txId,
+            'user_id': paidByUserId,
+            'participant_role': 'payer',
+            'share_amount_centavos': shares[paidByUserId] ?? 0,
+            'acknowledged': true,
+          });
+          for (final memberId in participantIds) {
+            if (memberId == paidByUserId) continue;
             participants.add({
               'transaction_id': txId,
               'user_id': memberId,
               'participant_role': 'debtor',
-              'share_amount_centavos': perMemberShare,
+              'share_amount_centavos': shares[memberId] ?? 0,
               'acknowledged': false,
             });
           }
@@ -1461,6 +1469,13 @@ class SupabaseTabbyRepository {
           final contactId = contactMembers.first;
           final isPayerMe = paidByUserId == currentUserId;
           if (isPayerMe) {
+            participants.add({
+              'transaction_id': txId,
+              'user_id': currentUserId,
+              'participant_role': 'payer',
+              'share_amount_centavos': myShareCentavos,
+              'acknowledged': true,
+            });
             participants.add({
               'transaction_id': txId,
               'contact_id': contactId,
@@ -1495,6 +1510,15 @@ class SupabaseTabbyRepository {
           if (_isValidUuid(debtorId) && debtorId != paidByUserId) {
             participants.add({
               'transaction_id': txId,
+              'user_id': paidByUserId,
+              'participant_role': 'payer',
+              'share_amount_centavos': paidByUserId == currentUserId
+                  ? myShareCentavos
+                  : counterpartShareCentavos,
+              'acknowledged': true,
+            });
+            participants.add({
+              'transaction_id': txId,
               'user_id': debtorId,
               'participant_role': 'debtor',
               'share_amount_centavos': debtorShare,
@@ -1525,6 +1549,13 @@ class SupabaseTabbyRepository {
     String? confirmedByUserId,
   }) async {
     if (!isConnected) return;
+    if (amountCentavos <= 0) {
+      throw ArgumentError.value(
+        amountCentavos,
+        'amountCentavos',
+        'must be greater than zero',
+      );
+    }
 
     // Only insert if tabId and paidByUserId are valid UUIDs
     if (!_isValidUuid(tabId) || !_isValidUuid(paidByUserId)) {

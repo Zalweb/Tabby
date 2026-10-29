@@ -974,6 +974,13 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     DateTime? dueDate,
     String? receiptUrl,
   }) async {
+    if (totalAmountCentavos <= 0) {
+      throw ArgumentError.value(
+        totalAmountCentavos,
+        'totalAmountCentavos',
+        'must be greater than zero',
+      );
+    }
     final currentUserId = SupabaseConfig.isInitialized
         ? (SupabaseConfig.currentUserId ?? MockTabbyRepository.currentUser.id)
         : MockTabbyRepository.currentUser.id;
@@ -1242,6 +1249,13 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         isPayingMe, // true if counterpart paid user; false if user paid counterpart
     String? note,
   }) async {
+    if (amountCentavos <= 0) {
+      throw ArgumentError.value(
+        amountCentavos,
+        'amountCentavos',
+        'must be greater than zero',
+      );
+    }
     final currentUserId = SupabaseConfig.isInitialized
         ? (SupabaseConfig.currentUserId ?? MockTabbyRepository.currentUser.id)
         : MockTabbyRepository.currentUser.id;
@@ -1258,6 +1272,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     if (tabIndex < 0) return;
 
     final tab = state.tabs[tabIndex];
+    if (tab.netBalanceCentavos == 0 ||
+        amountCentavos > tab.netBalanceCentavos.abs()) {
+      throw ArgumentError(
+        'Payment cannot exceed the current outstanding tab balance.',
+      );
+    }
 
     final paymentEntry = LedgerEntry(
       id: 'payment-${now.millisecondsSinceEpoch}',

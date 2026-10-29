@@ -108,6 +108,20 @@ void main() {
       expect(counterpartShare, 5001);
     });
 
+    test('Group share allocation preserves every centavo deterministically', () {
+      final shares = MockTabbyRepository.allocateEqualShares(
+        10001,
+        const ['user-c', 'user-a', 'user-b'],
+      );
+
+      expect(shares, {
+        'user-a': 3334,
+        'user-b': 3334,
+        'user-c': 3333,
+      });
+      expect(shares.values.reduce((a, b) => a + b), 10001);
+    });
+
     test('Mascot Emotion FSM State Derivation', () {
       // 1. Zero balances -> SLEEPING
       const stateSleeping = TabbyDashboardState(
