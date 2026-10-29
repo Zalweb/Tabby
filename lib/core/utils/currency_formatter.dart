@@ -57,22 +57,44 @@ class CurrencyFormatter {
     if (absCleaned.isEmpty) return 0;
 
     final parts = absCleaned.split('.');
+    if (parts.length > 2) {
+      throw const FormatException('Currency values may have only one decimal point.');
+    }
     final wholeStr = parts[0];
+    if (wholeStr.isEmpty && (parts.length == 1 || parts[1].isEmpty)) {
+      throw const FormatException('Invalid currency value.');
+    }
     final whole = int.tryParse(wholeStr) ?? 0;
 
     int centavos = whole * 100;
     if (parts.length > 1) {
       String fracStr = parts[1];
       if (fracStr.length > 2) {
-        fracStr = fracStr.substring(0, 2);
+        throw const FormatException(
+          'Currency values may have at most two decimal places.',
+        );
       } else if (fracStr.length == 1) {
         fracStr = '${fracStr}0';
+      }
+      if (fracStr.isNotEmpty && int.tryParse(fracStr) == null) {
+        throw const FormatException('Invalid currency value.');
       }
       final frac = int.tryParse(fracStr) ?? 0;
       centavos += frac;
     }
 
     return isNegative ? -centavos : centavos;
+  }
+
+  /// Parses a currency value without throwing for user-entered invalid text.
+  /// Returns `null` when the value is empty, malformed, or has excess precision.
+  static int? tryParseToCentavos(String input) {
+    if (input.trim().isEmpty) return null;
+    try {
+      return parseToCentavos(input);
+    } on FormatException {
+      return null;
+    }
   }
 
   /// Converts accumulated keypad digits into centavos.

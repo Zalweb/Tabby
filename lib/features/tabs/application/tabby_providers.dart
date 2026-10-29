@@ -16,6 +16,7 @@ import '../data/mock_tabby_repository.dart';
 import '../data/supabase_tabby_repository.dart';
 import '../data/tabby_local_cache.dart';
 import '../domain/models.dart';
+import '../domain/ledger_validation.dart';
 import 'tabby_state.dart';
 
 /// Main Tabby Notifier managing bilateral tabs, activity logs, reminders, and mascot state machine
@@ -997,6 +998,17 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     final effectivePayerName =
         payerName ?? (paidByMe ? currentUserDisplayName : counterpartName);
 
+    LedgerValidation.validateExpense(
+      totalAmountCentavos: totalAmountCentavos,
+      isEqualSplit: isEqualSplit,
+      participantCount: participantCount,
+      paidByMe: paidByMe,
+      currentUserId: currentUserId,
+      counterpartId: counterpartId,
+      payerId: payerId,
+      payerName: payerName,
+    );
+
     int myShare;
     int counterpartShare;
 
@@ -1004,7 +1016,10 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       // Equal split with integer centavo division (ADR-001). For a group,
       // the current user owns one share and the remaining shares belong to
       // the other participants.
-      myShare = totalAmountCentavos ~/ splitParticipantCount;
+      myShare = LedgerValidation.equalSplitShare(
+        totalAmountCentavos: totalAmountCentavos,
+        participantCount: splitParticipantCount,
+      );
       counterpartShare = paidByMe ? totalAmountCentavos - myShare : 0;
     } else {
       // Full obligation allocation
@@ -1191,20 +1206,38 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
             );
           }
 
-          await SupabaseTabbyRepository.instance.logExpense(
-            tabId: realTabId,
-            title: title.trim().isEmpty ? category.displayName : title.trim(),
-            totalAmountCentavos: totalAmountCentavos,
-            category: category,
-            paidByUserId:
-                paidByMe ? currentUserId : (payerId ?? resolvedCounterpartId),
-            myShareCentavos: myShare,
-            counterpartShareCentavos: counterpartShare,
-            currentUserId: currentUserId,
-            counterpartId: resolvedCounterpartId,
-            dueDate: dueDate,
-            receiptUrl: receiptUrl,
-          );
+          final remotePayerId =
+              paidByMe ? currentUserId : (payerId ?? resolvedCounterpartId);
+          if (SupabaseTabbyRepository.isValidUuid(remotePayerId)) {
+            await SupabaseTabbyRepository.instance.createExpenseAtomic(
+              tabId: realTabId,
+              description:
+                  title.trim().isEmpty ? category.displayName : title.trim(),
+              totalAmountCentavos: totalAmountCentavos,
+              category: category,
+              paidByUserId: remotePayerId,
+              myShareCentavos: myShare,
+              counterpartShareCentavos: counterpartShare,
+              currentUserId: currentUserId,
+              counterpartId: resolvedCounterpartId,
+              dueDate: dueDate,
+              receiptUrl: receiptUrl,
+            );
+          } else {
+            await SupabaseTabbyRepository.instance.logExpense(
+              tabId: realTabId,
+              title: title.trim().isEmpty ? category.displayName : title.trim(),
+              totalAmountCentavos: totalAmountCentavos,
+              category: category,
+              paidByUserId: remotePayerId,
+              myShareCentavos: myShare,
+              counterpartShareCentavos: counterpartShare,
+              currentUserId: currentUserId,
+              counterpartId: resolvedCounterpartId,
+              dueDate: dueDate,
+              receiptUrl: receiptUrl,
+            );
+          }
 
           await _loadTabs();
         }
@@ -1278,6 +1311,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         'Payment cannot exceed the current outstanding tab balance.',
       );
     }
+
+    LedgerValidation.validatePayment(
+      amountCentavos: amountCentavos,
+      netBalanceCentavos: tab.netBalanceCentavos,
+      isPayingMe: isPayingMe,
+    );
 
     final paymentEntry = LedgerEntry(
       id: 'payment-${now.millisecondsSinceEpoch}',
@@ -1396,15 +1435,19 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
                   ? (isPayingMe ? currentUserId : tab.counterpart.id)
                   : currentUserId;
 
-          await SupabaseTabbyRepository.instance.recordPayment(
-            tabId: realTabId,
-            amountCentavos: amountCentavos,
-            method: method,
-            paidByUserId: effectivePaidBy,
-            receivedByUserId: effectiveReceivedBy,
-            note: note,
-            confirmedByUserId: currentUserId,
-          );
+          if (!SupabaseTabbyRepository.isValidUuid(tab.counterpart.id) ||
+              tab.counterpart.id == currentUserId) {
+            throw const StateError(
+              'Payment sync requires a registered counterpart account.',
+            );
+          }
+          await SupabaseTabbyRepository.instance.submitPayment(
+              tabId: realTabId,
+              amountCentavos: amountCentavos,
+              method: method,
+              submittedByUserId: effectivePaidBy,
+              recipientUserId: effectiveReceivedBy,
+              note: note);
           await _loadTabs();
         }
       } catch (e) {
