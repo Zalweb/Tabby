@@ -1422,7 +1422,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
           if (!SupabaseTabbyRepository.isValidUuid(tab.counterpart.id) ||
               tab.counterpart.id == currentUserId) {
-            throw const StateError(
+            throw StateError(
               'Payment sync requires a registered counterpart account.',
             );
           }

@@ -1595,18 +1595,42 @@ class SupabaseTabbyRepository {
     }
   }
 
-  /// Confirms a submitted payment through the recipient-only RPC.
-  Future<bool> confirmPayment(String paymentId) async {
-    if (!isConnected || !_isValidUuid(paymentId)) return false;
+  /// Submits or confirms a payment through the atomic payment contract.
+  Future<String?> submitPayment({
+    required String tabId,
+    required String submittedByUserId,
+    required String recipientUserId,
+    required int amountCentavos,
+    required PaymentMethod method,
+    String? note,
+  }) async {
+    if (!isConnected || !_isValidUuid(tabId)) return null;
+    final response = await SupabaseConfig.client.rpc(
+      'submit_payment',
+      params: {
+        'p_tab_id': tabId,
+        'p_submitted_by_user_id': submittedByUserId,
+        'p_recipient_user_id': recipientUserId,
+        'p_amount_centavos': amountCentavos,
+        'p_payment_method': _mapPaymentMethod(method),
+        'p_note': note,
+      },
+    );
+    return response is String ? response : response?.toString();
+  }
+
+  /// Confirms a previously submitted payment as its explicit recipient.
+  Future<String?> confirmPayment(String paymentId) async {
+    if (!isConnected || !_isValidUuid(paymentId)) return null;
     try {
-      await SupabaseConfig.client.rpc(
+      final response = await SupabaseConfig.client.rpc(
         SupabaseConfig.rpcConfirmPayment,
         params: {'p_payment_id': paymentId},
       );
-      return true;
+      return response is String ? response : response?.toString();
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] confirm_payment error: $e');
-      return false;
+      return null;
     }
   }
 
