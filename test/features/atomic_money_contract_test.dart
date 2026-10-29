@@ -48,4 +48,23 @@ void main() {
       ),
     );
   });
+
+  test('participant identity hardening rejects duplicate allocations', () {
+    final migration = File(
+      '${projectRoot.path}/supabase/migrations/'
+      '20261029000002_participant_identity_hardening.sql',
+    ).readAsStringSync();
+    final schema = File(
+      '${projectRoot.path}/supabase/schema_all.sql',
+    ).readAsStringSync();
+
+    for (final sql in [migration, schema]) {
+      expect(sql, contains('validate_transaction_participant_identity'));
+      expect(
+        sql,
+        contains('A transaction participant identity may appear only once'),
+      );
+      expect(sql, contains('trigger_validate_transaction_participant_identity'));
+    }
+  });
 }
