@@ -1208,8 +1208,10 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
           final remotePayerId =
               paidByMe ? currentUserId : (payerId ?? resolvedCounterpartId);
-          if (SupabaseTabbyRepository.isValidUuid(remotePayerId)) {
-            await SupabaseTabbyRepository.instance.logExpense(
+          if (!SupabaseTabbyRepository.isValidUuid(remotePayerId)) {
+            throw StateError('Expense sync requires a registered payer.');
+          }
+          final synced = await SupabaseTabbyRepository.instance.logExpense(
               tabId: realTabId,
               title: title.trim().isEmpty ? category.displayName : title.trim(),
               totalAmountCentavos: totalAmountCentavos,
@@ -1222,37 +1224,44 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
               dueDate: dueDate,
               receiptUrl: receiptUrl,
             );
+          if (!synced) {
+            throw StateError('Expense sync was not accepted by Supabase.');
           }
 
           await _loadTabs();
+        } else {
+          throw StateError(
+              'Unable to resolve a Supabase tab for this expense.');
         }
       } catch (e) {
         debugPrint('[TabbyNotifier] Supabase sync error: $e');
-        // Queue the operation so it is retried when connectivity returns.
-        final pendingTabId = existingTabIndex >= 0
-            ? state.tabs[existingTabIndex].id
-            : counterpartId;
-        await TabbyLocalCache.enqueuePendingOp(
-          {
-            'type': 'add_expense',
-            'tab_id': pendingTabId,
-            'title':
-                title.trim().isEmpty ? category.displayName : title.trim(),
-            'total_amount_centavos': totalAmountCentavos,
-            'category': category.name,
-            'paid_by_user_id': paidByMe
-                ? currentUserId
-                : (payerId ?? counterpartId),
-            'my_share_centavos': myShare,
-            'counterpart_share_centavos': counterpartShare,
-            'counterpart_id': counterpartId,
-            'counterpart_name': counterpartName,
-            'paid_by_me': paidByMe,
-            'due_date': dueDate?.toIso8601String(),
-            'receipt_url': receiptUrl,
-          },
-          userId: SupabaseConfig.currentUserId,
-        );
+        final retryablePayerId =
+            paidByMe ? currentUserId : (payerId ?? counterpartId);
+        if (SupabaseTabbyRepository.isValidUuid(retryablePayerId)) {
+          // Queue the operation so it is retried when connectivity returns.
+          final pendingTabId = existingTabIndex >= 0
+              ? state.tabs[existingTabIndex].id
+              : counterpartId;
+          await TabbyLocalCache.enqueuePendingOp(
+            {
+              'type': 'add_expense',
+              'tab_id': pendingTabId,
+              'title':
+                  title.trim().isEmpty ? category.displayName : title.trim(),
+              'total_amount_centavos': totalAmountCentavos,
+              'category': category.name,
+              'paid_by_user_id': retryablePayerId,
+              'my_share_centavos': myShare,
+              'counterpart_share_centavos': counterpartShare,
+              'counterpart_id': counterpartId,
+              'counterpart_name': counterpartName,
+              'paid_by_me': paidByMe,
+              'due_date': dueDate?.toIso8601String(),
+              'receipt_url': receiptUrl,
+            },
+            userId: SupabaseConfig.currentUserId,
+          );
+        }
       }
     }
 
@@ -1426,30 +1435,39 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
               'Payment sync requires a registered counterpart account.',
             );
           }
-          await SupabaseTabbyRepository.instance.submitPayment(
+          final paymentId =
+              await SupabaseTabbyRepository.instance.submitPayment(
               tabId: realTabId,
               amountCentavos: amountCentavos,
               method: method,
               submittedByUserId: effectivePaidBy,
               recipientUserId: effectiveReceivedBy,
               note: note);
+          if (paymentId == null) {
+            throw StateError('Payment sync was not accepted by Supabase.');
+          }
           await _loadTabs();
+        } else if (SupabaseTabbyRepository.isValidUuid(tab.counterpart.id)) {
+          throw StateError(
+              'Unable to resolve a Supabase tab for this payment.');
         }
       } catch (e) {
         debugPrint('[TabbyNotifier] Supabase sync error: $e');
-        await TabbyLocalCache.enqueuePendingOp(
-          {
-            'type': 'settle_payment',
-            'tab_id': tab.id,
-            'amount_centavos': amountCentavos,
-            'method': method.name,
-            'is_paying_me': isPayingMe,
-            'counterpart_id': tab.counterpart.id,
-            'counterpart_name': tab.counterpart.displayName,
-            'note': note,
-          },
-          userId: SupabaseConfig.currentUserId,
-        );
+        if (SupabaseTabbyRepository.isValidUuid(tab.counterpart.id)) {
+          await TabbyLocalCache.enqueuePendingOp(
+            {
+              'type': 'settle_payment',
+              'tab_id': tab.id,
+              'amount_centavos': amountCentavos,
+              'method': method.name,
+              'is_paying_me': isPayingMe,
+              'counterpart_id': tab.counterpart.id,
+              'counterpart_name': tab.counterpart.displayName,
+              'note': note,
+            },
+            userId: SupabaseConfig.currentUserId,
+          );
+        }
       }
     }
 

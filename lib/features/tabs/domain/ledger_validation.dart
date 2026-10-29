@@ -39,22 +39,29 @@ class LedgerValidation {
       return;
     }
 
-    if (payerId == null || payerId.trim().isEmpty) {
-      throw const TabValidationException(
-        'Select the friend who paid this expense.',
-      );
-    }
-    if (payerId == currentUserId) {
+    final selectedPayerId =
+        payerId == null || payerId.trim().isEmpty ? counterpartId : payerId;
+    if (selectedPayerId == currentUserId) {
       throw const TabValidationException(
         'The payer must be the other participant when they paid.',
       );
     }
-    if (payerName == null || payerName.trim().isEmpty) {
+    if (selectedPayerId.trim().isEmpty) {
+      throw const TabValidationException(
+        'Select the friend who paid this expense.',
+      );
+    }
+    if (payerId != null &&
+        payerId.trim().isNotEmpty &&
+        payerName != null &&
+        payerName.trim().isEmpty) {
       throw const TabValidationException(
         'The payer name is required when they paid.',
       );
     }
-    if (!isEqualSplit && payerId != counterpartId && participantCount == 2) {
+    if (!isEqualSplit &&
+        selectedPayerId != counterpartId &&
+        participantCount == 2) {
       throw const TabValidationException(
         'The payer must match the tab participant.',
       );

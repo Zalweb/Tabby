@@ -33,6 +33,22 @@ void main() {
       );
     });
 
+    test(
+        'defaults counterpart as payer when counterpart-paid fields are omitted',
+        () {
+      expect(
+        () => LedgerValidation.validateExpense(
+          totalAmountCentavos: 100,
+          isEqualSplit: false,
+          participantCount: 2,
+          paidByMe: false,
+          currentUserId: 'me',
+          counterpartId: 'friend',
+        ),
+        returnsNormally,
+      );
+    });
+
     test('rejects payment direction and overpayment', () {
       expect(
         () => LedgerValidation.validatePayment(

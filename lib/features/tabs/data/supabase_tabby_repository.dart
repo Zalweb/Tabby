@@ -1395,7 +1395,7 @@ class SupabaseTabbyRepository {
   }
 
   /// Logs an expense to Supabase (ADR-001: integer centavos BIGINT).
-  Future<void> logExpense({
+  Future<bool> logExpense({
     required String tabId,
     required String title,
     required int totalAmountCentavos,
@@ -1412,7 +1412,7 @@ class SupabaseTabbyRepository {
         !_isValidUuid(tabId) ||
         !_isValidUuid(paidByUserId) ||
         !_isValidUuid(currentUserId)) {
-      return;
+      return false;
     }
     if (totalAmountCentavos <= 0 ||
         myShareCentavos < 0 ||
@@ -1539,10 +1539,10 @@ class SupabaseTabbyRepository {
           for (final participant in participants)
             {...participant, 'transaction_id': transactionId},
         ]);
-        return;
+        return true;
       }
 
-      await createExpenseAtomic(
+      final transactionId = await createExpenseAtomic(
         tabId: tabId,
         title: title,
         totalAmountCentavos: totalAmountCentavos,
@@ -1552,13 +1552,15 @@ class SupabaseTabbyRepository {
         dueDate: dueDate,
         receiptUrl: receiptUrl,
       );
+      return transactionId != null;
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] logExpense error: $e');
+      return false;
     }
   }
 
   /// Records a payment settlement in Supabase.
-  Future<void> recordPayment({
+  Future<bool> recordPayment({
     required String tabId,
     required int amountCentavos,
     required PaymentMethod method,
@@ -1567,18 +1569,20 @@ class SupabaseTabbyRepository {
     String? note,
     String? confirmedByUserId,
   }) async {
-    if (!isConnected) return;
+    if (!isConnected) return false;
 
     // Only insert if tabId and paidByUserId are valid UUIDs
     if (!_isValidUuid(tabId) || !_isValidUuid(paidByUserId)) {
       debugPrint(
           '[SupabaseTabbyRepository] recordPayment skipped: tabId ($tabId) or paidByUserId ($paidByUserId) is not a valid UUID');
-      return;
+      return false;
     }
 
     try {
       final currentUserId = SupabaseConfig.currentUserId;
-      if (currentUserId == null || !_isValidUuid(receivedByUserId)) return;
+      if (currentUserId == null || !_isValidUuid(receivedByUserId)) {
+        return false;
+      }
 
       await SupabaseConfig.client.rpc(
         SupabaseConfig.rpcSubmitPayment,
@@ -1591,8 +1595,10 @@ class SupabaseTabbyRepository {
           if (note != null && note.isNotEmpty) 'p_note': note,
         },
       );
+      return true;
     } catch (e) {
       debugPrint('[SupabaseTabbyRepository] recordPayment error: $e');
+      return false;
     }
   }
 
@@ -1605,19 +1611,31 @@ class SupabaseTabbyRepository {
     required PaymentMethod method,
     String? note,
   }) async {
-    if (!isConnected || !_isValidUuid(tabId)) return null;
-    final response = await SupabaseConfig.client.rpc(
-      'submit_payment',
-      params: {
-        'p_tab_id': tabId,
-        'p_submitted_by_user_id': submittedByUserId,
-        'p_recipient_user_id': recipientUserId,
-        'p_amount_centavos': amountCentavos,
-        'p_payment_method': _mapPaymentMethod(method),
-        'p_note': note,
-      },
-    );
-    return response is String ? response : response?.toString();
+    if (!isConnected ||
+        !_isValidUuid(tabId) ||
+        !_isValidUuid(submittedByUserId) ||
+        !_isValidUuid(recipientUserId) ||
+        submittedByUserId == recipientUserId ||
+        amountCentavos <= 0) {
+      return null;
+    }
+    try {
+      final response = await SupabaseConfig.client.rpc(
+        SupabaseConfig.rpcSubmitPayment,
+        params: {
+          'p_tab_id': tabId,
+          'p_submitted_by_user_id': submittedByUserId,
+          'p_recipient_user_id': recipientUserId,
+          'p_amount_centavos': amountCentavos,
+          'p_payment_method': _mapPaymentMethod(method),
+          'p_note': note,
+        },
+      );
+      return response is String ? response : response?.toString();
+    } catch (e) {
+      debugPrint('[SupabaseTabbyRepository] submit_payment error: $e');
+      return null;
+    }
   }
 
   /// Confirms a previously submitted payment as its explicit recipient.
