@@ -52,3 +52,37 @@ ALTER FUNCTION public.validate_transaction_participant_identity()
 
 REVOKE ALL ON FUNCTION public.validate_transaction_participant_identity()
     FROM PUBLIC, anon;
+
+-- A row-level BEFORE trigger cannot see rows inserted earlier in the same
+-- multi-row statement, which is how create_expense_atomic writes participants.
+-- Re-check the whole transaction at commit time to close that window.
+CREATE OR REPLACE FUNCTION public.assert_transaction_participant_identities()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM public.transaction_participants
+        WHERE transaction_id = NEW.transaction_id
+        GROUP BY user_id, contact_id
+        HAVING count(*) > 1
+    ) THEN
+        RAISE EXCEPTION 'A transaction participant identity may appear only once';
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
+
+ALTER FUNCTION public.assert_transaction_participant_identities()
+    SET search_path = public, pg_temp;
+
+REVOKE ALL ON FUNCTION public.assert_transaction_participant_identities()
+    FROM PUBLIC, anon;
+
+DROP TRIGGER IF EXISTS trigger_assert_transaction_participant_identities
+    ON public.transaction_participants;
+CREATE CONSTRAINT TRIGGER trigger_assert_transaction_participant_identities
+    AFTER INSERT ON public.transaction_participants
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW
+    EXECUTE FUNCTION public.assert_transaction_participant_identities();

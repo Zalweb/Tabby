@@ -65,6 +65,38 @@ void main() {
         contains('A transaction participant identity may appear only once'),
       );
       expect(sql, contains('trigger_validate_transaction_participant_identity'));
+      expect(
+        sql,
+        contains('trigger_assert_transaction_participant_identities'),
+      );
+    }
+  });
+
+  test('migration version prefixes are unique', () {
+    // Shipped in main before ordering was enforced; renaming applied
+    // migrations would make the CLI re-run them.
+    const legacyDuplicates = {'20260917000002'};
+
+    final migrations = Directory('${projectRoot.path}/supabase/migrations')
+        .listSync()
+        .whereType<File>()
+        .map((file) => file.uri.pathSegments.last)
+        .where((name) => name.endsWith('.sql'))
+        .toList();
+
+    final versions = <String, List<String>>{};
+    for (final name in migrations) {
+      versions.putIfAbsent(name.split('_').first, () => []).add(name);
+    }
+
+    for (final entry in versions.entries) {
+      if (entry.value.length < 2) continue;
+      expect(
+        legacyDuplicates,
+        contains(entry.key),
+        reason: 'Migration version ${entry.key} is used by '
+            '${entry.value.join(', ')}',
+      );
     }
   });
 }

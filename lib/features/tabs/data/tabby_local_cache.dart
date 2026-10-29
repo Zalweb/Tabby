@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/config/supabase_config.dart';
 import '../domain/models.dart';
 import 'mock_tabby_repository.dart';
@@ -68,16 +69,9 @@ class TabbyLocalCache {
 
   static List<TabbyActivity> _dedupActivities(List<TabbyActivity> list) {
     final seenIds = <String>{};
-    final seenKeys = <String>{};
     final result = <TabbyActivity>[];
     for (final a in list) {
       if (a.id.isNotEmpty && !seenIds.add(a.id)) {
-        continue;
-      }
-      final timeKey = a.timestamp.millisecondsSinceEpoch ~/ 3000;
-      final key =
-          '${a.actorName}_${a.description}_${a.amountCentavos}_$timeKey';
-      if (!seenKeys.add(key)) {
         continue;
       }
       result.add(a);
@@ -176,8 +170,8 @@ class TabbyLocalCache {
       await _storage.delete(key: _key('activities', userId));
       await _storage.delete(key: _key('reminders', userId));
       await _storage.delete(key: _key('notifications', userId));
-      await _storage.delete(key: 'tabby_pending_ops_${_scope(userId)}');
 
+      // Unsynced financial writes remain scoped to their owner after logout.
       // Remove cache written by versions before account scoping was added.
       await _storage.delete(key: _legacyKeyTabs);
       await _storage.delete(key: _legacyKeyActivities);
@@ -187,36 +181,55 @@ class TabbyLocalCache {
     }
   }
 
-  /// Enqueues an offline operation to be synced when connectivity returns.
+  static Future<void> _pendingOpWrite = Future<void>.value();
+
+  static Future<void> _updatePendingOps(
+    void Function(List<Map<String, dynamic>>) update, {
+    required String scope,
+  }) {
+    final write = _pendingOpWrite.then((_) async {
+      final ops = await _loadPendingOps(scope: scope);
+      for (final op in ops) {
+        op['operation_id'] ??= const Uuid().v4();
+      }
+      update(ops);
+      await _storage.write(
+        key: 'tabby_pending_ops_$scope',
+        value: jsonEncode(ops),
+      );
+    });
+    _pendingOpWrite = write.catchError((Object _) {});
+    return write;
+  }
+
   static Future<void> enqueuePendingOp(
     Map<String, dynamic> op, {
     String? userId,
-  }) async {
-    try {
-      final existing = await _loadPendingOps(userId: userId);
-      existing.add(op);
-      await _storage.write(
-        key: 'tabby_pending_ops_${_scope(userId)}',
-        value: jsonEncode(existing),
-      );
-    } catch (e) {
-      debugPrint('[TabbyLocalCache] enqueuePendingOp warning: $e');
-    }
+  }) {
+    final pending = {
+      ...op,
+      'operation_id': op['operation_id'] ?? const Uuid().v4(),
+    };
+    return _updatePendingOps((ops) {
+      if (!ops.any(
+          (existing) => existing['operation_id'] == pending['operation_id'])) {
+        ops.add(pending);
+      }
+    }, scope: _scope(userId));
   }
 
-  /// Returns all pending offline operations in FIFO order.
   static Future<List<Map<String, dynamic>>> _loadPendingOps({
-    String? userId,
+    required String scope,
   }) async {
     try {
-      final raw =
-          await _storage.read(key: 'tabby_pending_ops_${_scope(userId)}');
+      final raw = await _storage.read(key: 'tabby_pending_ops_$scope');
       if (raw == null || raw.isEmpty) return [];
       final decoded = jsonDecode(raw) as List<dynamic>;
       return decoded
           .map((item) => Map<String, dynamic>.from(item as Map))
           .toList();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[TabbyLocalCache] _loadPendingOps warning: $e');
       return [];
     }
   }
@@ -225,45 +238,57 @@ class TabbyLocalCache {
   static Future<List<Map<String, dynamic>>> loadPendingOps({
     String? userId,
   }) async {
-    return _loadPendingOps(userId: userId);
+    final scope = _scope(userId);
+    final ops = await _loadPendingOps(scope: scope);
+    if (ops.every((op) => op['operation_id'] is String)) return ops;
+    // Legacy records predate operation identities; persist the assigned ids so
+    // a replay keeps the same identity across app launches.
+    await _updatePendingOps((_) {}, scope: scope);
+    return _loadPendingOps(scope: scope);
   }
 
   /// Removes one operation after its remote write has been confirmed.
   static Future<void> removePendingOp(
     Map<String, dynamic> operation, {
     String? userId,
-  }) async {
-    try {
-      final pending = await _loadPendingOps(userId: userId);
-      final encodedOperation = jsonEncode(operation);
-      final index = pending.indexWhere(
-        (candidate) => jsonEncode(candidate) == encodedOperation,
-      );
-      if (index < 0) return;
-      pending.removeAt(index);
-      await _storage.write(
-        key: 'tabby_pending_ops_${_scope(userId)}',
-        value: jsonEncode(pending),
-      );
-    } catch (e) {
-      debugPrint('[TabbyLocalCache] removePendingOp warning: $e');
+  }) {
+    final operationId = operation['operation_id'];
+    if (operationId is String) {
+      return acknowledgePendingOp(operationId, userId: userId);
     }
+    final encodedOperation = jsonEncode(operation);
+    return _updatePendingOps(
+      (ops) => ops.removeWhere(
+        (candidate) => jsonEncode(candidate) == encodedOperation,
+      ),
+      scope: _scope(userId),
+    );
   }
 
   /// Drains and returns all pending offline operations, clearing the queue.
   static Future<List<Map<String, dynamic>>> drainPendingOps({
     String? userId,
   }) async {
-    final ops = await _loadPendingOps(userId: userId);
-    if (ops.isNotEmpty) {
-      await _storage.delete(key: 'tabby_pending_ops_${_scope(userId)}');
-    }
-    return ops;
+    final scope = _scope(userId);
+    late List<Map<String, dynamic>> snapshot;
+    await _updatePendingOps((ops) {
+      snapshot = ops.map(Map<String, dynamic>.from).toList();
+      ops.clear();
+    }, scope: scope);
+    return snapshot;
   }
 
-  /// Returns true if there are pending offline operations waiting to sync.
+  static Future<void> acknowledgePendingOp(
+    String operationId, {
+    String? userId,
+  }) =>
+      _updatePendingOps(
+        (ops) => ops.removeWhere((op) => op['operation_id'] == operationId),
+        scope: _scope(userId),
+      );
+
   static Future<bool> hasPendingOps({String? userId}) async {
-    final ops = await _loadPendingOps(userId: userId);
+    final ops = await loadPendingOps(userId: userId);
     return ops.isNotEmpty;
   }
 }

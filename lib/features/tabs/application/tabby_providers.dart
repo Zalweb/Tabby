@@ -6,9 +6,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show AuthState, PostgresChangeEvent, PostgresChangePayload, RealtimeChannel;
+import 'package:uuid/uuid.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/services/device_auth_service.dart';
 import '../../../core/services/pin_protection_service.dart';
+import '../../../core/services/receipt_attachment_service.dart';
 import '../../../core/services/tabby_notification_banner.dart';
 import '../../../core/services/tabby_notification_service.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -464,6 +466,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   }
 
   Future<bool> refreshTabs() async {
+    await _syncPendingOps();
     return _loadTabs();
   }
 
@@ -883,7 +886,8 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   Timer? _emotionTimer;
   StreamSubscription<AuthState>? _authSub;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
-  bool _pendingSyncInProgress = false;
+  bool _syncInFlight = false;
+  bool _syncRequested = false;
   RealtimeChannel? _realtimeChannel;
   Timer? _realtimeDebounceTimer;
 
@@ -1019,7 +1023,7 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         totalAmountCentavos: totalAmountCentavos,
         participantCount: splitParticipantCount,
       );
-      counterpartShare = paidByMe ? totalAmountCentavos - myShare : 0;
+      counterpartShare = totalAmountCentavos - myShare;
     } else {
       // Full obligation allocation
       if (paidByMe) {
@@ -1126,6 +1130,43 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
     final updatedActivities =
         _deduplicateActivities([newActivity, ...state.activities]);
 
+    final cacheUserId =
+        SupabaseConfig.isInitialized ? SupabaseConfig.currentUserId : null;
+    final isGroupTab =
+        existingTabIndex >= 0 && state.tabs[existingTabIndex].isGroupTab;
+    final pendingExpenseOp = <String, dynamic>{
+      'operation_id': const Uuid().v4(),
+      'type': 'add_expense',
+      'tab_id':
+          existingTabIndex >= 0 ? state.tabs[existingTabIndex].id : counterpartId,
+      'is_group_tab': isGroupTab,
+      'is_connected_friend': isConnectedFriend,
+      'title': expenseTitle,
+      'total_amount_centavos': totalAmountCentavos,
+      'category': category.name,
+      'paid_by_user_id': effectivePayerId,
+      'my_share_centavos': myShare,
+      'counterpart_share_centavos': counterpartShare,
+      'counterpart_id': counterpartId,
+      'counterpart_name': counterpartName,
+      'paid_by_me': paidByMe,
+      'due_date': dueDate?.toIso8601String(),
+      'receipt_url': receiptUrl,
+    };
+    // The write intent must be durable before local state claims the expense.
+    if (cacheUserId != null) {
+      pendingExpenseOp['receipt_bytes'] =
+          await ReceiptAttachmentService.readPendingReceiptBytes(
+        receiptUrl,
+        userId: cacheUserId,
+      );
+      await TabbyLocalCache.enqueuePendingOp(
+        pendingExpenseOp,
+        userId: cacheUserId,
+      );
+      if (!mounted || SupabaseConfig.currentUserId != cacheUserId) return;
+    }
+
     state = state.copyWith(
       tabs: updatedTabs,
       activities: updatedActivities,
@@ -1134,8 +1175,6 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       emotionCustomMessage: 'Tab logged successfully! Calculating balances...',
     );
 
-    final cacheUserId =
-        SupabaseConfig.isInitialized ? SupabaseConfig.currentUserId : null;
     await TabbyLocalCache.saveTabs(updatedTabs, userId: cacheUserId);
     await TabbyLocalCache.saveActivities(updatedActivities,
         userId: cacheUserId);
@@ -1147,9 +1186,6 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         if (!await _hasNetworkConnection()) {
           throw StateError('Device is offline; expense queued for sync.');
         }
-        final isGroupTab =
-            existingTabIndex >= 0 && state.tabs[existingTabIndex].isGroupTab;
-
         // Ensure counterpart exists in public.users (handles typed-name friends with synthetic IDs)
         final resolvedCounterpartId = isGroupTab
             ? counterpartId
@@ -1229,6 +1265,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           if (!synced) {
             throw StateError('Expense sync was not accepted by Supabase.');
           }
+          if (cacheUserId != null) {
+            await TabbyLocalCache.removePendingOp(
+              pendingExpenseOp,
+              userId: cacheUserId,
+            );
+          }
 
           await _loadTabs();
         } else {
@@ -1239,29 +1281,13 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         debugPrint('[TabbyNotifier] Supabase sync error: $e');
         final retryablePayerId =
             paidByMe ? currentUserId : (payerId ?? counterpartId);
-        if (SupabaseTabbyRepository.isValidUuid(retryablePayerId)) {
-          // Queue the operation so it is retried when connectivity returns.
-          final pendingTabId = existingTabIndex >= 0
-              ? state.tabs[existingTabIndex].id
-              : counterpartId;
-          await TabbyLocalCache.enqueuePendingOp(
-            {
-              'type': 'add_expense',
-              'tab_id': pendingTabId,
-              'title':
-                  title.trim().isEmpty ? category.displayName : title.trim(),
-              'total_amount_centavos': totalAmountCentavos,
-              'category': category.name,
-              'paid_by_user_id': retryablePayerId,
-              'my_share_centavos': myShare,
-              'counterpart_share_centavos': counterpartShare,
-              'counterpart_id': counterpartId,
-              'counterpart_name': counterpartName,
-              'paid_by_me': paidByMe,
-              'due_date': dueDate?.toIso8601String(),
-              'receipt_url': receiptUrl,
-            },
-            userId: SupabaseConfig.currentUserId,
+        // The operation is already durable; drop it only when replay can never
+        // succeed because the payer is not a registered account.
+        if (cacheUserId != null &&
+            !SupabaseTabbyRepository.isValidUuid(retryablePayerId)) {
+          await TabbyLocalCache.removePendingOp(
+            pendingExpenseOp,
+            userId: cacheUserId,
           );
         }
       }
@@ -1296,11 +1322,11 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
 
     final now = DateTime.now();
 
-    final tabIndex = state.tabs
+    var tabIndex = state.tabs
         .indexWhere((t) => t.id == tabId || t.counterpart.id == tabId);
     if (tabIndex < 0) return;
 
-    final tab = state.tabs[tabIndex];
+    var tab = state.tabs[tabIndex];
     if (tab.netBalanceCentavos == 0 ||
         amountCentavos > tab.netBalanceCentavos.abs()) {
       throw ArgumentError(
@@ -1313,6 +1339,42 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       netBalanceCentavos: tab.netBalanceCentavos,
       isPayingMe: isPayingMe,
     );
+
+    final cacheUserId =
+        SupabaseConfig.isInitialized ? SupabaseConfig.currentUserId : null;
+    final pendingPaymentOp = <String, dynamic>{
+      'operation_id': const Uuid().v4(),
+      'type': 'settle_payment',
+      'tab_id': tab.id,
+      'amount_centavos': amountCentavos,
+      'method': method.name,
+      'is_paying_me': isPayingMe,
+      'counterpart_id': tab.counterpart.id,
+      'counterpart_name': tab.counterpart.displayName,
+      'note': note,
+    };
+    // The payment intent must be durable before local state records it.
+    if (cacheUserId != null) {
+      await TabbyLocalCache.enqueuePendingOp(
+        pendingPaymentOp,
+        userId: cacheUserId,
+      );
+      if (!mounted || SupabaseConfig.currentUserId != cacheUserId) return;
+      tabIndex = state.tabs
+          .indexWhere((t) => t.id == tabId || t.counterpart.id == tabId);
+      if (tabIndex < 0) return;
+      tab = state.tabs[tabIndex];
+      if (tab.netBalanceCentavos == 0 ||
+          amountCentavos > tab.netBalanceCentavos.abs()) {
+        await TabbyLocalCache.removePendingOp(
+          pendingPaymentOp,
+          userId: cacheUserId,
+        );
+        throw ArgumentError(
+          'Payment cannot exceed the current outstanding tab balance.',
+        );
+      }
+    }
 
     final paymentEntry = LedgerEntry(
       id: 'payment-${now.millisecondsSinceEpoch}',
@@ -1328,7 +1390,9 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       paidByName:
           isPayingMe ? tab.counterpart.displayName : currentUserDisplayName,
       date: now,
-      status: TransactionStatus.settled,
+      status: isPayingMe
+          ? TransactionStatus.settled
+          : TransactionStatus.paymentSubmitted,
       isPayment: true,
       paymentMethod: method,
       note: note,
@@ -1383,14 +1447,15 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
       tabs: updatedTabs,
       activities: updatedActivities,
       reminders: updatedReminders,
-      emotionOverride: MascotEmotion.celebrating,
-      emotionCustomMessage: newNetBalance == 0
-          ? 'Nice! That tab is completely settled!'
-          : 'Payment recorded! Remaining balance updated.',
+      emotionOverride:
+          isPayingMe ? MascotEmotion.celebrating : MascotEmotion.calculating,
+      emotionCustomMessage: !isPayingMe
+          ? 'Payment submitted. Your balance updates after confirmation.'
+          : newNetBalance == 0
+              ? 'Nice! That tab is completely settled!'
+              : 'Payment recorded! Remaining balance updated.',
     );
 
-    final cacheUserId =
-        SupabaseConfig.isInitialized ? SupabaseConfig.currentUserId : null;
     await TabbyLocalCache.saveTabs(updatedTabs, userId: cacheUserId);
     await TabbyLocalCache.saveActivities(updatedActivities,
         userId: cacheUserId);
@@ -1450,6 +1515,12 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
           if (paymentId == null) {
             throw StateError('Payment sync was not accepted by Supabase.');
           }
+          if (cacheUserId != null) {
+            await TabbyLocalCache.removePendingOp(
+              pendingPaymentOp,
+              userId: cacheUserId,
+            );
+          }
           await _loadTabs();
         } else if (SupabaseTabbyRepository.isValidUuid(tab.counterpart.id)) {
           throw StateError(
@@ -1457,19 +1528,14 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         }
       } catch (e) {
         debugPrint('[TabbyNotifier] Supabase sync error: $e');
-        if (SupabaseTabbyRepository.isValidUuid(tab.counterpart.id)) {
-          await TabbyLocalCache.enqueuePendingOp(
-            {
-              'type': 'settle_payment',
-              'tab_id': tab.id,
-              'amount_centavos': amountCentavos,
-              'method': method.name,
-              'is_paying_me': isPayingMe,
-              'counterpart_id': tab.counterpart.id,
-              'counterpart_name': tab.counterpart.displayName,
-              'note': note,
-            },
-            userId: SupabaseConfig.currentUserId,
+        // The operation is already durable; drop it only when replay can never
+        // succeed because the counterpart is not a registered account.
+        if (cacheUserId != null &&
+            (!SupabaseTabbyRepository.isValidUuid(tab.counterpart.id) ||
+                tab.counterpart.id == currentUserId)) {
+          await TabbyLocalCache.removePendingOp(
+            pendingPaymentOp,
+            userId: cacheUserId,
           );
         }
       }
@@ -2034,18 +2100,22 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
   /// Replays queued offline expense and settlement operations against Supabase.
   /// Each operation remains durable until its remote write succeeds.
   Future<void> _syncPendingOps() async {
-    if (_pendingSyncInProgress) return;
     final userId = SupabaseConfig.currentUserId;
-    if (userId == null) return;
+    if (userId == null || !mounted) return;
+    if (_syncInFlight) {
+      _syncRequested = true;
+      return;
+    }
     if (!await _hasNetworkConnection()) return;
 
-    _pendingSyncInProgress = true;
+    _syncInFlight = true;
     try {
       final ops = await TabbyLocalCache.loadPendingOps(userId: userId);
       if (ops.isEmpty) return;
       debugPrint(
           '[TabbyNotifier] Syncing ${ops.length} pending offline operation(s)...');
       for (final op in ops) {
+        if (!mounted || SupabaseConfig.currentUserId != userId) break;
         try {
           final type = op['type'] as String?;
           if (type == 'add_expense') {
@@ -2067,50 +2137,63 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
               orElse: () => ExpenseCategory.other,
             );
 
+            final isGroupTab = op['is_group_tab'] as bool? ?? false;
+            final isConnectedFriend =
+                op['is_connected_friend'] as bool? ?? false;
             String? realTabId = tabId;
             String resolvedCounterpartId = counterpartId;
 
             if (realTabId == null ||
                 !SupabaseTabbyRepository.isValidUuid(realTabId)) {
-              if (counterpartName.isNotEmpty) {
-                resolvedCounterpartId = await SupabaseTabbyRepository.instance
-                    .ensureUserExists(counterpartId, counterpartName);
+              if (isGroupTab) {
+                throw StateError('Group tab has not synchronized yet.');
               }
-
-              if (SupabaseTabbyRepository.isValidUuid(userId) &&
-                  SupabaseTabbyRepository.isValidUuid(resolvedCounterpartId) &&
-                  userId != resolvedCounterpartId) {
+              if (isConnectedFriend &&
+                  SupabaseTabbyRepository.isValidUuid(counterpartId) &&
+                  counterpartId != userId) {
                 realTabId = await SupabaseConfig.getOrCreateBilateralTab(
                   userA: userId,
-                  userB: resolvedCounterpartId,
+                  userB: counterpartId,
                 );
-              } else if (SupabaseTabbyRepository.isValidUuid(userId) &&
-                  counterpartName.isNotEmpty) {
-                final contactResult = await SupabaseTabbyRepository.instance
-                    .getOrCreateContactTab(
+              } else {
+                final contactResult =
+                    await SupabaseTabbyRepository.instance.getOrCreateContactTab(
                   ownerId: userId,
                   contactName: counterpartName,
                 );
-                if (contactResult != null) {
-                  realTabId = contactResult['tab_id'];
-                }
+                realTabId = contactResult?['tab_id'];
+                resolvedCounterpartId =
+                    contactResult?['contact_id'] ?? counterpartId;
               }
             }
 
             if (realTabId != null &&
                 SupabaseTabbyRepository.isValidUuid(realTabId)) {
+              final storedPayerId = op['paid_by_user_id'] as String?;
+              final remotePayerId = paidByMe
+                  ? userId
+                  : (isGroupTab
+                      ? storedPayerId ?? counterpartId
+                      : resolvedCounterpartId);
+              final uploadedReceiptUrl =
+                  await ReceiptAttachmentService.uploadPendingReceipt(
+                receiptUrl,
+                entryKey: op['operation_id'] as String? ?? realTabId,
+                userId: userId,
+                encodedBytes: op['receipt_bytes'] as String?,
+              );
               final synced = await SupabaseTabbyRepository.instance.logExpense(
                 tabId: realTabId,
                 title: op['title'] as String? ?? '',
                 totalAmountCentavos: totalAmountCentavos,
                 category: category,
-                paidByUserId: paidByMe ? userId : resolvedCounterpartId,
+                paidByUserId: remotePayerId,
                 myShareCentavos: myShare,
                 counterpartShareCentavos: counterpartShare,
                 currentUserId: userId,
                 counterpartId: resolvedCounterpartId,
                 dueDate: dueDate,
-                receiptUrl: receiptUrl,
+                receiptUrl: uploadedReceiptUrl,
               );
               if (!synced) {
                 throw StateError('Pending expense sync was not accepted.');
@@ -2193,9 +2276,17 @@ class TabbyNotifier extends StateNotifier<TabbyDashboardState> {
         }
       }
       // Refresh from server once all pending ops have been attempted.
-      await _loadTabs();
+      if (mounted && SupabaseConfig.currentUserId == userId) {
+        await _loadTabs();
+      }
     } finally {
-      _pendingSyncInProgress = false;
+      _syncInFlight = false;
+      if (_syncRequested) {
+        _syncRequested = false;
+        if (mounted && SupabaseConfig.currentUserId != null) {
+          unawaited(_syncPendingOps());
+        }
+      }
     }
   }
 

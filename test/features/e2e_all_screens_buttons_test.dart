@@ -7,6 +7,8 @@ import 'package:tabby/main.dart';
 import 'package:tabby/core/config/app_state.dart';
 import 'package:tabby/core/router/app_router.dart';
 import 'package:tabby/core/services/receipt_attachment_service.dart';
+import 'package:tabby/features/tabs/application/tabby_providers.dart';
+import 'package:tabby/features/tabs/domain/models.dart';
 import 'package:tabby/features/tabs/presentation/add_expense_modal.dart';
 import 'package:tabby/features/profile/presentation/profile_screen.dart';
 import 'package:tabby/shared/widgets/notification_center_sheet.dart';
@@ -22,6 +24,33 @@ void installFakeReceiptPicker() {
   addTearDown(() => ReceiptAttachmentService.debugPickImageOverride = null);
 }
 
+class _FailOncePaymentNotifier extends TabbyNotifier {
+  _FailOncePaymentNotifier() : super(loadInitialData: false);
+
+  var failNextPayment = true;
+
+  @override
+  Future<void> settleTab({
+    required String tabId,
+    required int amountCentavos,
+    required PaymentMethod method,
+    required bool isPayingMe,
+    String? note,
+  }) async {
+    if (failNextPayment) {
+      failNextPayment = false;
+      throw StateError('Injected durable save failure');
+    }
+    await super.settleTab(
+      tabId: tabId,
+      amountCentavos: amountCentavos,
+      method: method,
+      isPayingMe: isPayingMe,
+      note: note,
+    );
+  }
+}
+
 void main() {
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({});
@@ -31,6 +60,47 @@ void main() {
   });
 
   group('E2E All Screens & Buttons Comprehensive Test Suite', () {
+    testWidgets('Payment save failure stays inline and permits a safe retry',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final notifier = _FailOncePaymentNotifier();
+      await notifier.addExpense(
+        counterpartId: 'storage-failure-friend',
+        counterpartName: 'Juan',
+        title: 'Dinner',
+        totalAmountCentavos: 10001,
+        category: ExpenseCategory.food,
+        paidByMe: false,
+        isEqualSplit: true,
+      );
+      appRouter.go('/tabs/storage-failure-friend');
+      await tester.pumpWidget(ProviderScope(
+        overrides: [tabbyProvider.overrideWith((ref) => notifier)],
+        child: const TabbyApp(),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TabbyButton, 'I Paid'));
+      await tester.pumpAndSettle();
+      final submit = find.widgetWithText(TabbyButton, 'Submit Payment Proof');
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+      expect(find.text('Unable to save payment. Please try again.'),
+          findsOneWidget);
+      expect(tester.widget<TabbyButton>(submit).isLoading, isFalse);
+      expect(notifier.state.tabs.first.entries, hasLength(1));
+      expect(notifier.state.tabs.first.netBalanceCentavos, -5000);
+      await tester.tap(submit);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(find.text('Record Settlement'), findsNothing);
+      expect(find.text('Awaiting Confirmation'), findsOneWidget);
+      expect(notifier.state.tabs.first.entries, hasLength(2));
+      expect(notifier.state.tabs.first.netBalanceCentavos, -5000);
+    });
+
     testWidgets(
         'Home Dashboard: Every button and interactive control works without failure',
         (tester) async {
@@ -377,8 +447,7 @@ void main() {
       await tester.tap(find.text('Send In-App Reminder'));
       await tester.pumpAndSettle();
 
-      expect(
-          find.textContaining('Friendly reminder sent to Mateo Cruz!'),
+      expect(find.textContaining('Friendly reminder sent to Mateo Cruz!'),
           findsOneWidget);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
@@ -771,21 +840,29 @@ void main() {
       expect(find.text('Record Settlement'), findsOneWidget);
       expect(find.text('Submit Payment Proof'), findsOneWidget);
 
-      // Select GCash and tap Submit Payment Proof
       await tester.tap(find.widgetWithText(ChoiceChip, 'GCash'));
       await tester.pumpAndSettle();
+      final paymentAmount = find.byType(TextField).last;
+      final originalAmount =
+          tester.widget<TextField>(paymentAmount).controller!.text;
+      await tester.enterText(paymentAmount, '0');
+      await tester
+          .tap(find.widgetWithText(TabbyButton, 'Submit Payment Proof'));
+      await tester.pumpAndSettle();
+      expect(find.text('Please enter an amount greater than ₱0.00'),
+          findsOneWidget);
+      await tester.enterText(paymentAmount, originalAmount);
 
       await tester
           .tap(find.widgetWithText(TabbyButton, 'Submit Payment Proof'));
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
 
-      // Tab should now be settled
-      expect(find.text('All settled up'), findsOneWidget);
-      expect(find.text('Log New Expense'), findsOneWidget);
+      expect(find.text('All settled up'), findsNothing);
+      expect(find.text('Awaiting Confirmation'), findsOneWidget);
+      expect(find.widgetWithText(TabbyButton, 'I Paid'), findsOneWidget);
 
-      // 2. Tap Log New Expense -> opens AddExpenseModal
-      await tester.tap(find.text('Log New Expense'));
+      await tester.tap(find.byTooltip('Add to Tab'));
       await tester.pumpAndSettle();
       expect(find.text('Create Tab'), findsOneWidget);
 

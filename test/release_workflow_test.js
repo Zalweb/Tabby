@@ -2,18 +2,17 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
+const readText = file => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+
 const repoRoot = path.join(__dirname, '..');
-const androidWorkflow = fs.readFileSync(
-  path.join(repoRoot, '.github', 'workflows', 'build-android.yml'),
-  'utf8'
+const androidWorkflow = readText(
+  path.join(repoRoot, '.github', 'workflows', 'build-android.yml')
 );
-const iosWorkflow = fs.readFileSync(
-  path.join(repoRoot, '.github', 'workflows', 'build-ios.yml'),
-  'utf8'
+const iosWorkflow = readText(
+  path.join(repoRoot, '.github', 'workflows', 'build-ios.yml')
 );
-const mobileWorkflow = fs.readFileSync(
-  path.join(repoRoot, '.github', 'workflows', 'build-mobile.yml'),
-  'utf8'
+const mobileWorkflow = readText(
+  path.join(repoRoot, '.github', 'workflows', 'build-mobile.yml')
 );
 const publisherPath = path.join(
   repoRoot,
@@ -37,7 +36,7 @@ assert(mobileWorkflow.includes('./.github/workflows/build-android.yml') &&
 assert(fs.existsSync(publisherPath),
   'A coordinated latest-build publisher workflow must exist');
 
-const publisher = fs.readFileSync(publisherPath, 'utf8');
+const publisher = readText(publisherPath);
 assert(publisher.includes('workflow_run:'),
   'Latest-build publisher must run after build workflows complete');
 assert(publisher.includes('Build Android APK + iOS IPA'),
@@ -63,7 +62,7 @@ assert(publisher.includes('overwrite_files: true') && publisher.includes('make_l
   'Publisher must replace the newest public release assets');
 
 for (const relativePath of ['docs/app.js', 'landing/app.js']) {
-  const appJs = fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
+  const appJs = readText(path.join(repoRoot, relativePath));
   assert(appJs.includes('/releases/latest'),
     `${relativePath} must resolve downloads from the latest public release`);
   assert(appJs.includes('releases/latest/download/Tabby.apk'),

@@ -954,6 +954,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         Center(
                           child: TextButton(
+                            onPressed: () async {
+                              final url = Uri.parse('https://icons8.com');
+                              try {
+                                await launchUrl(url,
+                                    mode: LaunchMode.externalApplication);
+                              } catch (_) {}
+                            },
+                            child: const Text(
+                              'App icon by Icons8',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: TabbyColors.textSecondary),
+                            ),
+                          ),
+                        ),
+                        Center(
+                          child: TextButton(
                             onPressed: () => Navigator.pop(sheetContext),
                             child: const Text('Close'),
                           ),

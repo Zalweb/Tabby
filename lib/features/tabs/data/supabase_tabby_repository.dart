@@ -503,6 +503,13 @@ class SupabaseTabbyRepository {
           : null;
       final receiptUrl = proofUrl ??
           (pay['payment_proof_url'] ?? pay['receipt_url']) as String?;
+      // Only a confirmed payment clears the obligation; submitted and legacy
+      // statuses stay pending until the recipient confirms them.
+      final paymentStatus = switch (pay['status']) {
+        'confirmed' => TransactionStatus.settled,
+        'rejected' => TransactionStatus.cancelled,
+        _ => TransactionStatus.paymentSubmitted,
+      };
 
       entries.add(LedgerEntry(
         id: pay['id'] as String? ?? 'pay-$tabId',
@@ -517,7 +524,7 @@ class SupabaseTabbyRepository {
         date: dateStr != null
             ? DateTime.tryParse(dateStr) ?? DateTime.now()
             : DateTime.now(),
-        status: TransactionStatus.settled,
+        status: paymentStatus,
         isPayment: true,
         paymentMethod: unmapPaymentMethod(pay['payment_method']),
         note: pay['note'] as String?,

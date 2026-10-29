@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -90,6 +91,59 @@ class ReceiptAttachmentService {
       }
     }
     return ReceiptResolution(receiptUrl: file.path, uploadedToCloud: false);
+  }
+
+  static bool _isCloudReceipt(String receiptUrl, String userId) {
+    final uri = Uri.tryParse(receiptUrl);
+    return receiptUrl.startsWith('$userId/') ||
+        uri?.scheme == 'https' ||
+        uri?.scheme == 'http';
+  }
+
+  static Future<String?> readPendingReceiptBytes(
+    String? receiptUrl, {
+    required String userId,
+  }) async {
+    if (receiptUrl == null ||
+        receiptUrl.isEmpty ||
+        _isCloudReceipt(receiptUrl, userId)) {
+      return null;
+    }
+    return base64Encode(await XFile(receiptUrl).readAsBytes());
+  }
+
+  static Future<String?> uploadPendingReceipt(
+    String? receiptUrl, {
+    required String entryKey,
+    required String userId,
+    String? encodedBytes,
+  }) async {
+    if (receiptUrl == null || receiptUrl.isEmpty) return receiptUrl;
+    if (_isCloudReceipt(receiptUrl, userId)) return receiptUrl;
+    if (SupabaseConfig.currentUserId != userId) {
+      throw StateError('Receipt owner is not signed in');
+    }
+    if (encodedBytes != null) {
+      final extension = _extensionOf(XFile(receiptUrl));
+      final storagePath = '$userId/$entryKey.$extension';
+      await SupabaseConfig.paymentProofsBucket.uploadBinary(
+        storagePath,
+        base64Decode(encodedBytes),
+        fileOptions: FileOptions(
+          upsert: true,
+          contentType: _mimeTypeFor(extension),
+        ),
+      );
+      return storagePath;
+    }
+    final resolution = await resolveReceiptUrl(
+      file: XFile(receiptUrl),
+      entryKey: entryKey,
+    );
+    if (!resolution.uploadedToCloud) {
+      throw StateError('Receipt upload is still pending');
+    }
+    return resolution.receiptUrl;
   }
 
   static String _extensionOf(XFile file) {

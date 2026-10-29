@@ -54,12 +54,17 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.13.1
+  mime: ^2.1.0
+  shared_preferences: ^2.5.5
 
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
-  image_path: "assets/branding/tabby-icon.jpg"
+  image_path: "assets/branding/tabby-app-icon.png"
   min_sdk_android: 21
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFC94A"
+  adaptive_icon_foreground: "assets/branding/tabby-app-icon-foreground.png"
   web:
     generate: true
     image_path: "assets/branding/tabby-icon.jpg"

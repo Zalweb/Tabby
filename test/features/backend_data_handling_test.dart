@@ -124,32 +124,28 @@ void main() {
       final resolved = await repo.ensureUserExists('user-alex', 'Alex');
       expect(resolved, equals('user-alex'));
 
-      // Write operations should not throw when uninitialized
-      await expectLater(
-        repo.logExpense(
-          tabId: 'test-tab',
-          title: 'Lunch',
-          totalAmountCentavos: 10000,
-          category: ExpenseCategory.food,
-          paidByUserId: 'user-me',
-          myShareCentavos: 5000,
-          counterpartShareCentavos: 5000,
-          currentUserId: 'user-me',
-          counterpartId: 'user-alex',
-        ),
-        completes,
+      // Writes report failure instead of throwing so callers can queue them.
+      final logged = await repo.logExpense(
+        tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+        title: 'Lunch',
+        totalAmountCentavos: 10000,
+        category: ExpenseCategory.food,
+        paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
+        myShareCentavos: 5000,
+        counterpartShareCentavos: 5000,
+        currentUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
+        counterpartId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5e',
       );
+      expect(logged, isFalse);
 
-      await expectLater(
-        repo.recordPayment(
-          tabId: 'test-tab',
-          amountCentavos: 5000,
-          method: PaymentMethod.gcash,
-          paidByUserId: 'user-alex',
-          receivedByUserId: 'user-me',
-        ),
-        completes,
+      final recorded = await repo.recordPayment(
+        tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+        amountCentavos: 5000,
+        method: PaymentMethod.gcash,
+        paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5e',
+        receivedByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
       );
+      expect(recorded, isFalse);
 
       await expectLater(repo.signOut(), completes);
     });
@@ -528,7 +524,7 @@ void main() {
             'amount_centavos': 10000,
             'payment_method': 'gcash',
             'note': 'Partial via GCash ref #12345',
-            'status': 'settled',
+            'status': 'confirmed',
             'submitted_at': '2026-09-12T09:00:00Z',
           },
         ],
@@ -616,60 +612,92 @@ void main() {
       expect(pay.paymentMethod, equals(PaymentMethod.other));
       expect(pay.paidByName, equals('You'));
       expect(pay.title, equals('You paid'));
+      expect(pay.status, TransactionStatus.paymentSubmitted);
     });
 
-    test(
-        'recordPayment executes safely offline and ignores invalid UUIDs without throwing',
+    test('Only confirmed payments affect parsed balances in either direction',
+        () {
+      const statuses = <String?, TransactionStatus>{
+        'confirmed': TransactionStatus.settled,
+        'submitted': TransactionStatus.paymentSubmitted,
+        'rejected': TransactionStatus.cancelled,
+        'unknown': TransactionStatus.paymentSubmitted,
+        'settled': TransactionStatus.paymentSubmitted,
+        null: TransactionStatus.paymentSubmitted,
+      };
+      for (final paymentByMe in [false, true]) {
+        for (final status in statuses.entries) {
+          final parsed = SupabaseTabbyRepository.parseTabRow({
+            'id': 'tab-payment-status',
+            'tab_members': [
+              {'user_id': currentUserId},
+              {'user_id': counterpartUserId},
+            ],
+            'transactions': [
+              {
+                'id': '00000000-0000-4000-8000-000000000010',
+                'created_by': paymentByMe ? counterpartUserId : currentUserId,
+                'total_amount_centavos': 10000,
+                'status': 'acknowledged',
+                'created_at': '2026-09-10T12:00:00Z',
+              },
+            ],
+            'payments': [
+              {
+                'id': '00000000-0000-4000-8000-000000000011',
+                'submitted_by': paymentByMe ? currentUserId : counterpartUserId,
+                'amount_centavos': 2500,
+                if (status.key != null) 'status': status.key,
+                'submitted_at': '2026-09-12T12:00:00Z',
+                'confirmed_by': paymentByMe ? counterpartUserId : currentUserId,
+                'confirmed_at': '2026-09-12T12:00:00Z',
+              },
+            ],
+          }, currentUserId)!;
+          final payment =
+              parsed.entries.singleWhere((entry) => entry.isPayment);
+          expect(payment.status, status.value);
+          final outstanding = status.key == 'confirmed' ? 7500 : 10000;
+          expect(parsed.netBalanceCentavos,
+              paymentByMe ? -outstanding : outstanding,
+              reason: 'status=${status.key}, paymentByMe=$paymentByMe');
+          expect(
+              MockTabbyRepository.calculateNetBalance(
+                  parsed.entries, currentUserId),
+              parsed.netBalanceCentavos);
+        }
+      }
+    });
+
+    test('recordPayment returns false offline regardless of IDs or confirmer',
         () async {
-      // Offline / synthetic tabId
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          tabId: 'synthetic-tab-123',
+      final cases = <Map<String, String>>[
+        {
+          'tab_id': 'synthetic-tab-123',
+          'paid_by': 'user-juan',
+          'received_by': 'user-me',
+        },
+        {
+          'tab_id': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'paid_by': 'user-synthetic-counterpart',
+          'received_by': 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
+        },
+        {
+          'tab_id': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'paid_by': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'received_by': 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
+        },
+      ];
+      for (final testCase in cases) {
+        final recorded = await SupabaseTabbyRepository.instance.recordPayment(
+          tabId: testCase['tab_id']!,
           amountCentavos: 15000,
           method: PaymentMethod.gcash,
-          paidByUserId: 'user-juan',
-          receivedByUserId: 'user-me',
-        ),
-        completes,
-      );
-
-      // Valid UUID tabId but synthetic/invalid paidByUserId
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 10000,
-          method: PaymentMethod.gcash,
-          paidByUserId: 'user-synthetic-counterpart',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-        ),
-        completes,
-      );
-
-      // Valid UUID tabId
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 25000,
-          method: PaymentMethod.maya,
-          paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-          confirmedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-        ),
-        completes,
-      );
-
-      // Valid UUID tabId with non-UUID confirmedByUserId
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 5000,
-          method: PaymentMethod.cash,
-          paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-          confirmedByUserId: 'user-admin',
-        ),
-        completes,
-      );
+          paidByUserId: testCase['paid_by']!,
+          receivedByUserId: testCase['received_by']!,
+        );
+        expect(recorded, isFalse);
+      }
     });
   });
 
@@ -983,6 +1011,7 @@ void main() {
             'amount_centavos': 50000,
             'payment_method': 'gcash',
             'submitted_by': 'usr-member-carlos',
+            'status': 'confirmed',
             'created_at': DateTime.now().toIso8601String(),
             'confirmed_at': DateTime.now().toIso8601String(),
             'payment_proof_url': 'https://supabase.tabby.ph/proofs/gcash1.jpg',
@@ -993,6 +1022,7 @@ void main() {
             'amount_centavos': 50000,
             'payment_method': 'maya',
             'submitted_by': currentUserId,
+            'status': 'confirmed',
             'created_at': DateTime.now().toIso8601String(),
             'confirmed_at': DateTime.now().toIso8601String(),
             'payment_proof_url': null,
@@ -1139,9 +1169,14 @@ void main() {
 
       await TabbyLocalCache.enqueuePendingOp(operation, userId: 'user-queue');
       final loaded = await TabbyLocalCache.loadPendingOps(userId: 'user-queue');
-      expect(loaded, equals([operation]));
+      expect(loaded, hasLength(1));
+      expect(loaded.single['operation_id'], isNotEmpty);
+      expect(
+        Map<String, dynamic>.from(loaded.single)..remove('operation_id'),
+        equals(operation),
+      );
 
-      await TabbyLocalCache.removePendingOp(operation, userId: 'user-queue');
+      await TabbyLocalCache.removePendingOp(loaded.single, userId: 'user-queue');
       expect(
         await TabbyLocalCache.loadPendingOps(userId: 'user-queue'),
         isEmpty,

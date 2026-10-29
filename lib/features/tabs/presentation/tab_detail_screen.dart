@@ -803,9 +803,19 @@ class TabDetailScreen extends ConsumerWidget {
     String label;
 
     if (isPayment) {
-      bg = TabbyColors.brandMintAccent;
-      text = TabbyColors.brandEmerald;
-      label = 'Payment Settled';
+      if (status == TransactionStatus.settled) {
+        bg = TabbyColors.brandMintAccent;
+        text = TabbyColors.brandEmerald;
+        label = 'Payment Settled';
+      } else if (status == TransactionStatus.cancelled) {
+        bg = TabbyColors.bgCanvas;
+        text = TabbyColors.textSecondary;
+        label = 'Payment Rejected';
+      } else {
+        bg = TabbyColors.iconBgBlue;
+        text = TabbyColors.accentBlue;
+        label = 'Awaiting Confirmation';
+      }
     } else {
       switch (status) {
         case TransactionStatus.pending:
@@ -1132,8 +1142,7 @@ class TabDetailScreen extends ConsumerWidget {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content:
-                            Text('Friendly reminder sent to $friendName!'),
+                        content: Text('Friendly reminder sent to $friendName!'),
                         backgroundColor: TabbyColors.brandDarkTeal,
                       ),
                     );
@@ -1158,6 +1167,7 @@ class TabDetailScreen extends ConsumerWidget {
       text: (tab.netBalanceCentavos.abs() / 100).toStringAsFixed(2),
     );
     bool isSubmitting = false;
+    String? paymentError;
 
     showModalBottomSheet(
       context: context,
@@ -1257,10 +1267,16 @@ class TabDetailScreen extends ConsumerWidget {
                       controller: amountController,
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         prefixText: '₱ ',
                         hintText: '0.00',
+                        errorText: paymentError,
                       ),
+                      onChanged: (_) {
+                        if (paymentError != null) {
+                          setModalState(() => paymentError = null);
+                        }
+                      },
                     ),
                     const SizedBox(height: 20),
                     TabbyButton(
@@ -1269,41 +1285,49 @@ class TabDetailScreen extends ConsumerWidget {
                           : 'Submit Payment Proof',
                       variant: TabbyButtonVariant.primary,
                       isLoading: isSubmitting,
-                      onPressed: () {
+                      onPressed: () async {
                         if (isSubmitting) return;
 
                         final centavos = CurrencyFormatter.parseToCentavos(
                             amountController.text);
                         if (centavos <= 0) {
-                          ScaffoldMessenger.of(context).clearSnackBars();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                  'Please enter an amount greater than ₱0.00'),
-                              backgroundColor: TabbyColors.alertRed,
-                            ),
-                          );
+                          setModalState(() => paymentError =
+                              'Please enter an amount greater than ₱0.00');
                           return;
                         }
 
-                        setModalState(() => isSubmitting = true);
+                        setModalState(() {
+                          paymentError = null;
+                          isSubmitting = true;
+                        });
 
-                        ref.read(tabbyProvider.notifier).settleTab(
-                              tabId: tab.id,
-                              amountCentavos: centavos,
-                              method: selectedMethod,
-                              isPayingMe: isPayingMe,
-                            );
-
-                        Navigator.pop(context);
-
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Settlement recorded successfully!'),
-                            backgroundColor: TabbyColors.brandEmerald,
-                          ),
-                        );
+                        final messenger = ScaffoldMessenger.of(context);
+                        try {
+                          await ref.read(tabbyProvider.notifier).settleTab(
+                                tabId: tab.id,
+                                amountCentavos: centavos,
+                                method: selectedMethod,
+                                isPayingMe: isPayingMe,
+                              );
+                          if (!context.mounted) return;
+                          Navigator.pop(context);
+                          messenger.clearSnackBars();
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(isPayingMe
+                                  ? 'Settlement recorded successfully!'
+                                  : 'Payment saved. Awaiting confirmation.'),
+                              backgroundColor: TabbyColors.brandEmerald,
+                            ),
+                          );
+                        } catch (_) {
+                          if (!context.mounted) return;
+                          setModalState(() {
+                            isSubmitting = false;
+                            paymentError =
+                                'Unable to save payment. Please try again.';
+                          });
+                        }
                       },
                     ),
                   ],
@@ -1911,7 +1935,8 @@ class TabDetailScreen extends ConsumerWidget {
         receiptUrl.startsWith('/') ||
         receiptUrl.contains(':/') ||
         receiptUrl.toLowerCase().contains(':\\\\');
-    final looksLikeStoragePath = !looksLikeLocalFile && receiptUrl.contains('/');
+    final looksLikeStoragePath =
+        !looksLikeLocalFile && receiptUrl.contains('/');
 
     if (looksLikeStoragePath &&
         SupabaseConfig.isInitialized &&
@@ -2012,7 +2037,8 @@ class TabDetailScreen extends ConsumerWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(16),
                         child: FutureBuilder<String?>(
-                          future: resolveReceiptImageUrl(entry.receiptUrl ?? ''),
+                          future:
+                              resolveReceiptImageUrl(entry.receiptUrl ?? ''),
                           builder: (context, snapshot) {
                             final remoteUrl = snapshot.data;
                             if (remoteUrl != null) {

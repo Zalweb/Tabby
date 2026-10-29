@@ -105,6 +105,7 @@ CREATE OR REPLACE FUNCTION public.prevent_payment_overpayment()
 RETURNS TRIGGER AS $$
 DECLARE
     v_balance BIGINT;
+    v_outstanding BIGINT;
 BEGIN
     PERFORM pg_advisory_xact_lock(
         hashtextextended(NEW.tab_id::TEXT, 0)
@@ -114,6 +115,22 @@ BEGIN
         RAISE EXCEPTION 'Payment submitter is not a member of this tab';
     END IF;
 
+    -- Payments between a known pair are bounded by what that pair still owes;
+    -- a tab-wide net can be smaller than a genuine bilateral debt.
+    IF NEW.recipient_user_id IS NOT NULL THEN
+        v_outstanding := public.get_pair_outstanding(
+            NEW.tab_id,
+            NEW.submitted_by,
+            NEW.recipient_user_id
+        );
+        IF v_outstanding <= 0 OR NEW.amount_centavos > v_outstanding THEN
+            RAISE EXCEPTION
+                'Payment exceeds the outstanding balance between the two members';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    -- Legacy writers do not name a recipient, so fall back to the tab balance.
     v_balance := public.calculate_user_tab_balance_unchecked(
         NEW.tab_id,
         NEW.submitted_by
