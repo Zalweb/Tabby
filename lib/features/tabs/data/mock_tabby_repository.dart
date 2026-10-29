@@ -18,13 +18,15 @@ class MockTabbyRepository {
 
   /// AGENTS.md Section 8 Canonical Balance Calculation Engine
   /// Net Balance_A = sum(Owed to A) - sum(Owed by A) - sum(Payments Received by A) + sum(Payments Made by A)
-  static int calculateNetBalance(List<LedgerEntry> entries, String currentUserId) {
+  static int calculateNetBalance(
+      List<LedgerEntry> entries, String currentUserId) {
     int netCentavos = 0;
 
     for (final entry in entries) {
       if (entry.status == TransactionStatus.cancelled) continue;
 
       if (entry.isPayment) {
+        if (entry.status != TransactionStatus.settled) continue;
         // Payment record
         if (entry.paidByUserId == currentUserId) {
           // Current user made payment -> reduces what user owes (positive offset)
@@ -81,6 +83,15 @@ class MockTabbyRepository {
             existing.id.isNotEmpty &&
             candidate.id == existing.id) {
           return true;
+        }
+
+        final candidateOperationId =
+            candidate.id.replaceFirst(RegExp(r'^(entry|payment)-'), '');
+        final existingOperationId =
+            existing.id.replaceFirst(RegExp(r'^(entry|payment)-'), '');
+        if (_isServerUuid(candidateOperationId) &&
+            _isServerUuid(existingOperationId)) {
+          return candidateOperationId == existingOperationId;
         }
 
         // Semantic merge rules only bridge an optimistic local entry with
@@ -152,9 +163,7 @@ class MockTabbyRepository {
             receiptUrl: preferred.receiptUrl ??
                 existing.receiptUrl ??
                 candidate.receiptUrl,
-            dueDate: preferred.dueDate ??
-                existing.dueDate ??
-                candidate.dueDate,
+            dueDate: preferred.dueDate ?? existing.dueDate ?? candidate.dueDate,
             note: preferred.note ?? existing.note ?? candidate.note,
           );
         }

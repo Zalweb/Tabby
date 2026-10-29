@@ -1,6 +1,11 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tabby/core/services/receipt_attachment_service.dart';
 import 'package:tabby/features/tabs/application/tabby_providers.dart';
+import 'package:tabby/features/tabs/data/mock_tabby_repository.dart';
+import 'package:tabby/features/tabs/data/tabby_local_cache.dart';
 import 'package:tabby/features/tabs/domain/models.dart';
+import 'package:uuid/uuid.dart';
 
 /// Post-audit flow verification: proves that adding tabs/debts is accurate
 /// (no silent merges, no phantom duplicates), the activity feed never shows
@@ -9,6 +14,162 @@ void main() {
   // Connectivity watching inside TabbyNotifier uses platform EventChannels,
   // which require an initialized binding even in non-widget tests.
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
+  group('Reliable financial synchronization', () {
+    test('pending operations remain durable until individually acknowledged',
+        () async {
+      await TabbyLocalCache.enqueuePendingOp(
+        {'operation_id': 'first', 'type': 'add_expense'},
+        userId: 'alice',
+      );
+      final firstRead = await TabbyLocalCache.loadPendingOps(userId: 'alice');
+      expect(await TabbyLocalCache.loadPendingOps(userId: 'alice'), firstRead);
+      await TabbyLocalCache.enqueuePendingOp(
+        {'operation_id': 'second', 'type': 'settle_payment'},
+        userId: 'alice',
+      );
+      await TabbyLocalCache.acknowledgePendingOp('first', userId: 'alice');
+      expect(
+        (await TabbyLocalCache.loadPendingOps(userId: 'alice'))
+            .map((op) => op['operation_id']),
+        ['second'],
+      );
+    });
+
+    test('concurrent queue writes and retries preserve every operation once',
+        () async {
+      await Future.wait([
+        for (var i = 0; i < 20; i++)
+          TabbyLocalCache.enqueuePendingOp(
+            {'operation_id': '$i', 'type': 'add_expense'},
+            userId: 'alice',
+          ),
+      ]);
+      await Future.wait([
+        TabbyLocalCache.acknowledgePendingOp('0', userId: 'alice'),
+        TabbyLocalCache.enqueuePendingOp(
+          {'operation_id': '20', 'type': 'add_expense'},
+          userId: 'alice',
+        ),
+        TabbyLocalCache.enqueuePendingOp(
+          {'operation_id': '1', 'type': 'add_expense'},
+          userId: 'alice',
+        ),
+      ]);
+      final ops = await TabbyLocalCache.loadPendingOps(userId: 'alice');
+      expect(ops, hasLength(20));
+      expect(ops.map((op) => op['operation_id']).toSet(), hasLength(20));
+      expect(ops.any((op) => op['operation_id'] == '0'), isFalse);
+      expect(ops.any((op) => op['operation_id'] == '20'), isTrue);
+    });
+
+    test(
+        'logging out preserves queued writes without exposing them to another user',
+        () async {
+      await TabbyLocalCache.enqueuePendingOp(
+        {'operation_id': 'expense', 'type': 'add_expense'},
+        userId: 'alice',
+      );
+      await TabbyLocalCache.clearCache(userId: 'alice');
+      expect(await TabbyLocalCache.hasPendingOps(userId: 'alice'), isTrue);
+      expect(await TabbyLocalCache.hasPendingOps(userId: 'bob'), isFalse);
+    });
+
+    test('existing queued records receive a stable replay identity', () async {
+      FlutterSecureStorage.setMockInitialValues({
+        'tabby_pending_ops_alice': '[{"type":"add_expense"}]',
+      });
+      final first = await TabbyLocalCache.loadPendingOps(userId: 'alice');
+      final second = await TabbyLocalCache.loadPendingOps(userId: 'alice');
+      expect(first.single['operation_id'], isNotEmpty);
+      expect(second.single['operation_id'], first.single['operation_id']);
+    });
+
+    test('exact replay identities do not merge unrelated equal-value debts',
+        () {
+      final now = DateTime.now();
+      final firstId = const Uuid().v4();
+      final secondId = const Uuid().v4();
+      final local = LedgerEntry(
+        id: 'entry-$firstId',
+        tabId: 'tab',
+        title: 'Dinner',
+        category: ExpenseCategory.food,
+        totalAmountCentavos: 10001,
+        myShareCentavos: 5000,
+        counterpartShareCentavos: 5001,
+        paidByUserId: 'user-me',
+        paidByName: 'You',
+        date: now,
+      );
+      final entries = MockTabbyRepository.deduplicateLedgerEntries([
+        local.copyWith(id: secondId),
+        local,
+        local.copyWith(id: firstId),
+      ]);
+      expect(entries.map((entry) => entry.id).toSet(), {firstId, secondId});
+      expect(
+          MockTabbyRepository.calculateNetBalance(entries, 'user-me'), 10002);
+    });
+
+    test('a submitted payment keeps the obligation and reminder unchanged',
+        () async {
+      final notifier = TabbyNotifier(loadInitialData: false);
+      addTearDown(notifier.dispose);
+      await notifier.addExpense(
+        counterpartId: 'friend-juan',
+        counterpartName: 'Juan',
+        title: 'Dinner',
+        totalAmountCentavos: 10001,
+        category: ExpenseCategory.food,
+        paidByMe: false,
+        isEqualSplit: true,
+        dueDate: DateTime.now().add(const Duration(days: 1)),
+      );
+      final tab = notifier.state.tabs.single;
+      expect(tab.entries.single.myShareCentavos, 5000);
+      expect(tab.entries.single.counterpartShareCentavos, 5001);
+      await notifier.settleTab(
+        tabId: tab.id,
+        amountCentavos: 5000,
+        method: PaymentMethod.gcash,
+        isPayingMe: false,
+      );
+      expect(notifier.state.tabs.single.netBalanceCentavos, -5000);
+      expect(notifier.state.tabs.single.entries.first.status,
+          TransactionStatus.paymentSubmitted);
+      expect(notifier.state.reminders, hasLength(1));
+    });
+
+    test('cloud receipt paths are preserved without opening a device file',
+        () async {
+      const storagePath = 'alice/expense.png';
+      expect(
+        await ReceiptAttachmentService.uploadPendingReceipt(
+          storagePath,
+          entryKey: 'expense',
+          userId: 'alice',
+        ),
+        storagePath,
+      );
+      expect(
+        await ReceiptAttachmentService.readPendingReceiptBytes(
+          storagePath,
+          userId: 'alice',
+        ),
+        isNull,
+      );
+      await expectLater(
+        ReceiptAttachmentService.uploadPendingReceipt(
+          '/temporary/receipt.png',
+          entryKey: 'expense',
+          userId: 'alice',
+        ),
+        throwsStateError,
+      );
+    });
+  });
 
   group('Audit flow verification - tabs, debts, activity integrity', () {
     test('adding one expense creates exactly one tab, one entry, one activity',
