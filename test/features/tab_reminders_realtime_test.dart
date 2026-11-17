@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,7 +12,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('Realtime Tab Reminders & Debtor Notifications', () {
-    test('TabbyNotificationService initializes and defines showTabReminderAlert', () async {
+    test(
+        'TabbyNotificationService initializes and defines showTabReminderAlert',
+        () async {
       final service = TabbyNotificationService.instance;
       expect(service, isNotNull);
       // Verify calling showTabReminderAlert without initialization does not throw
@@ -34,7 +35,8 @@ void main() {
         type: 'tab_reminder',
         relatedTabId: 'tab-101',
         title: 'Friendly reminder from Maria',
-        body: 'You have a pending balance of ₱250.00 for Lunch. Tap to settle up.',
+        body:
+            'You have a pending balance of ₱250.00 for Lunch. Tap to settle up.',
         isRead: false,
         createdAt: DateTime.now(),
       );
@@ -45,7 +47,9 @@ void main() {
       expect(notif.isRead, isFalse);
     });
 
-    test('UpcomingReminder correctly distinguishes whether user owes or is owed', () {
+    test(
+        'UpcomingReminder correctly distinguishes whether user owes or is owed',
+        () {
       final iOwe = UpcomingReminder(
         id: 'rem-1',
         tabId: 'tab-1',
@@ -70,7 +74,8 @@ void main() {
       expect(theyOwe.isIWhoOwe, isFalse);
     });
 
-    test('TabbyNotifier sendGentleNudge logs activity and sets mascot emotion', () async {
+    test('unavailable reminder never logs sent activity or celebrates',
+        () async {
       final notifier = TabbyNotifier(loadInitialData: false);
       addTearDown(notifier.dispose);
       notifier.state = TabbyDashboardState(
@@ -79,23 +84,20 @@ void main() {
         reminders: MockTabbyRepository.getInitialReminders(),
       );
 
-      await notifier.sendGentleNudge(
+      final result = await notifier.sendGentleNudge(
         tabId: 'tab-juan',
         friendName: 'Juan',
         amountCentavos: 50000,
         description: 'Dinner',
       );
 
-      expect(notifier.state.emotionOverride, MascotEmotion.gentleNudge);
-      expect(
-        notifier.state.activities.first.description,
-        contains('sent friendly reminder to Juan'),
-      );
-      expect(notifier.state.activities.first.amountCentavos, 50000);
-      expect(notifier.state.activities.first.iconData, Icons.send_rounded);
+      expect(result.name, 'unavailable');
+      expect(notifier.state.activities, isEmpty);
+      expect(notifier.state.emotionOverride, isNot(MascotEmotion.gentleNudge));
     });
 
-    test('TabbyNotifier settleTab cancels and filters resolved reminders', () async {
+    test('TabbyNotifier settleTab cancels and filters resolved reminders',
+        () async {
       final notifier = TabbyNotifier(loadInitialData: false);
       addTearDown(notifier.dispose);
 
@@ -131,7 +133,7 @@ void main() {
       await notifier.settleTab(
         tabId: testTab.id,
         amountCentavos: testTab.netBalanceCentavos.abs(),
-        method: PaymentMethod.gcash,
+        method: PaymentMethod.cash,
         isPayingMe: true,
       );
 
@@ -143,7 +145,9 @@ void main() {
       expect(notifier.state.emotionOverride, MascotEmotion.celebrating);
     });
 
-    test('Realtime notification payload on notifications table inserts tab_reminder into debtor state', () async {
+    test(
+        'Realtime notification payload on notifications table inserts tab_reminder into debtor state',
+        () async {
       FlutterSecureStorage.setMockInitialValues({});
       const debtorId = 'user-debtor-test-456';
       SupabaseConfig.debugUserIdOverride = debtorId;
@@ -166,7 +170,8 @@ void main() {
           'recipient_user_id': debtorId,
           'notification_type': 'tab_reminder',
           'title': 'Mateo sent you a friendly reminder',
-          'body': 'You have a pending balance of ₱500.00 for Dinner. Tap to settle up.',
+          'body':
+              'You have a pending balance of ₱500.00 for Dinner. Tap to settle up.',
           'related_tab_id': 'tab-123',
           'created_at': DateTime.now().toIso8601String(),
         },
@@ -195,7 +200,9 @@ void main() {
       expect(notifier.state.unreadNotificationCount, 0);
     });
 
-    test('Realtime debtor notification from Postgres trigger handles expense_added payload', () async {
+    test(
+        'Realtime debtor notification from Postgres trigger handles expense_added payload',
+        () async {
       FlutterSecureStorage.setMockInitialValues({});
       const debtorId = 'user-debtor-test-789';
       SupabaseConfig.debugUserIdOverride = debtorId;

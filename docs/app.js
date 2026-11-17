@@ -53,11 +53,25 @@
   }
 
   /**
-   * Parse simple markdown into clean HTML safe for display
+   * Escape HTML so remote release notes can never inject markup.
+   */
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * Parse simple markdown into clean HTML safe for display. The input is
+   * escaped before any markup is added, so only this function's own tags
+   * reach the DOM.
    */
   function simpleMarkdown(text) {
     if (!text) return '<p>No release notes provided for this build.</p>';
-    return text
+    return escapeHtml(text)
       .replace(/### (.*?)\n/g, '<h4 style="margin: 12px 0 6px; font-weight: 700; color: #1F1F1F;">$1</h4>')
       .replace(/## (.*?)\n/g, '<h3 style="margin: 16px 0 8px; font-weight: 800; color: #1F1F1F;">$1</h3>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')

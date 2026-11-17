@@ -14,6 +14,7 @@ class PaymentMethod {
     this.isDefault = false,
     this.createdAt,
     this.updatedAt,
+    this.revision = 1,
   });
 
   final String id;
@@ -27,6 +28,7 @@ class PaymentMethod {
   final bool isDefault;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final int revision;
 
   factory PaymentMethod.fromMap(Map<String, dynamic> map) {
     return PaymentMethod(
@@ -42,6 +44,7 @@ class PaymentMethod {
       isDefault: _bool(map['is_default'] ?? map['isDefault']),
       createdAt: _date(map['created_at'] ?? map['createdAt']),
       updatedAt: _date(map['updated_at'] ?? map['updatedAt']),
+      revision: (map['revision'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -57,6 +60,7 @@ class PaymentMethod {
         'is_default': isDefault,
         'created_at': createdAt?.toIso8601String(),
         'updated_at': updatedAt?.toIso8601String(),
+        'revision': revision,
       };
 
   PaymentMethod copyWith({
@@ -71,6 +75,7 @@ class PaymentMethod {
     bool? isDefault,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? revision,
   }) {
     return PaymentMethod(
       id: id ?? this.id,
@@ -84,6 +89,7 @@ class PaymentMethod {
       isDefault: isDefault ?? this.isDefault,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      revision: revision ?? this.revision,
     );
   }
 
@@ -173,7 +179,8 @@ class PaymentMethod {
         isActive == other.isActive &&
         isDefault == other.isDefault &&
         createdAt == other.createdAt &&
-        updatedAt == other.updatedAt;
+        updatedAt == other.updatedAt &&
+        revision == other.revision;
   }
 
   @override
@@ -189,6 +196,7 @@ class PaymentMethod {
         isDefault,
         createdAt,
         updatedAt,
+        revision,
       );
 }
 
@@ -201,7 +209,8 @@ class PaymentMethodDraft {
     this.qrBytes,
     this.qrExtension,
     this.qrMimeType,
-    this.generatedQrUrl,
+    this.operationId,
+    this.methodId,
   });
 
   final String provider;
@@ -210,13 +219,10 @@ class PaymentMethodDraft {
   final Uint8List? qrBytes;
   final String? qrExtension;
   final String? qrMimeType;
+  final String? operationId;
+  final String? methodId;
 
-  /// GoQR.me generated QR PNG URL. When set and [qrBytes] is null, the
-  /// repository stores this URL directly as qr_url without uploading to Storage.
-  final String? generatedQrUrl;
-
-  bool get hasQr =>
-      (qrBytes != null && qrBytes!.isNotEmpty) || generatedQrUrl != null;
+  bool get hasQr => qrBytes != null && qrBytes!.isNotEmpty;
 
   bool get isValid =>
       provider.trim().isNotEmpty && displayName.trim().isNotEmpty;

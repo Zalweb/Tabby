@@ -2,179 +2,96 @@ name: Build iOS IPA
 
 on:
   workflow_call:
+    inputs:
+      build_number:
+        type: number
+        default: 23
+    secrets:
+      TABBY_IOS_BUILD_CONFIG:
+        required: true
   workflow_dispatch:
+    inputs:
+      build_number:
+        description: Unsigned iOS build number
+        type: number
+        default: 23
+        required: true
 
 permissions:
-  contents: write
+  contents: read
+  actions: read
 
 jobs:
   build-ios:
-    name: Build IPA (No-Codesign)
-    runs-on: macos-latest
-
+    name: Verify and build unsigned sideload IPA
+    runs-on: macos-15-intel
+    timeout-minutes: 40
+    env:
+      TABBY_BUILD_NUMBER: ${{ inputs.build_number || 23 }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.0'
-          channel: 'stable'
+          flutter-version: '3.47.8'
+          channel: stable
           cache: true
-
-      - name: Flutter doctor
-        run: flutter doctor -v
-
-      - name: Create iOS platform
-        run: flutter create --platforms=ios .
-
-      - name: Get Flutter packages
-        run: flutter pub get
-
-      - name: Generate iOS launcher icons
-        run: dart run flutter_launcher_icons
-
-
-      - name: Create .env from secrets
+      - name: Verify source and configure CocoaPods
+        run: |
+          python3 scripts/ios-prepare.py --verify-source
+          flutter config --no-enable-swift-package-manager
+          flutter doctor -v
+          xcodebuild -version
+      - name: Get locked packages
+        run: flutter pub get --enforce-lockfile
+      - name: Prepare client configuration and native OAuth
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
-          GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
-          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          TABBY_IOS_BUILD_CONFIG: ${{ secrets.TABBY_IOS_BUILD_CONFIG }}
+        run: python3 scripts/ios-prepare.py --client-output "$RUNNER_TEMP/tabby-ios-client.json"
+      - name: Check shared source and platform regressions
         run: |
-          echo "SUPABASE_URL=$SUPABASE_URL" > .env
-          echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
-          echo "GOOGLE_IOS_CLIENT_ID=$GOOGLE_IOS_CLIENT_ID" >> .env
-          echo "GOOGLE_ANDROID_CLIENT_ID=$GOOGLE_ANDROID_CLIENT_ID" >> .env
-          echo "GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID" >> .env
-
-      # ── CRITICAL: Keep native OAuth and media permissions in Info.plist ──
-      # google_sign_in on iOS requires the reversed client ID as a URL scheme
-      # so that Google can redirect back to the app after authentication.
-      - name: Patch Info.plist with Google URL scheme
-        env:
-          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
+          python3 scripts/ios-build-tests.py
+          flutter analyze --fatal-infos lib test integration_test
+          flutter test --no-pub test/features/receiving_qr_export_test.dart test/ios_notification_configuration_test.dart test/platform_configuration_test.dart test/ios_sideload_configuration_test.dart
+      - name: Install native dependencies
+        working-directory: ios
         run: |
-          python3 <<'PY'
-          import os
-          import plistlib
-
-          info_plist = "ios/Runner/Info.plist"
-          client_id = os.environ["GOOGLE_IOS_CLIENT_ID"].strip()
-          if not client_id:
-              raise SystemExit("GOOGLE_IOS_CLIENT_ID is required for iOS OAuth")
-
-          reversed_client_id = ".".join(reversed(client_id.split(".")))
-          with open(info_plist, "rb") as handle:
-              plist = plistlib.load(handle)
-
-          url_types = plist.setdefault("CFBundleURLTypes", [])
-          google_entry = next(
-              (entry for entry in url_types if entry.get("CFBundleURLName") == "google"),
-              None,
-          )
-          if google_entry is None:
-              google_entry = {
-                  "CFBundleTypeRole": "Editor",
-                  "CFBundleURLName": "google",
-                  "CFBundleURLSchemes": [],
-              }
-              url_types.insert(0, google_entry)
-          google_entry["CFBundleTypeRole"] = "Editor"
-          google_entry["CFBundleURLSchemes"] = [reversed_client_id]
-
-          supabase_entry = next(
-              (entry for entry in url_types if entry.get("CFBundleURLName") == "supabase"),
-              None,
-          )
-          if supabase_entry is None:
-              url_types.append({
-                  "CFBundleTypeRole": "Editor",
-                  "CFBundleURLName": "supabase",
-                  "CFBundleURLSchemes": ["io.supabase.tabby"],
-              })
-          elif "io.supabase.tabby" not in supabase_entry.get("CFBundleURLSchemes", []):
-              supabase_entry.setdefault("CFBundleURLSchemes", []).append("io.supabase.tabby")
-
-          plist.update({
-              "NSFaceIDUsageDescription": "Tabby uses Face ID to securely authenticate and protect your financial tabs.",
-              "NSCameraUsageDescription": "Tabby uses the camera to scan and upload QR codes, payment receipts, and profile photos.",
-              "NSPhotoLibraryUsageDescription": "Tabby accesses your photo library to let you upload QR codes, payment receipts, and profile photos.",
-          })
-
-          with open(info_plist, "wb") as handle:
-              plistlib.dump(plist, handle, sort_keys=False)
-          print("Info.plist patched successfully with native OAuth and media permissions.")
-          PY
-
-      - name: Pod install
-        run: |
-          cd ios
           pod install --repo-update
-          cd ..
-
-      - name: Build IPA
+          if git cat-file -e HEAD:ios/Podfile.lock 2>/dev/null; then
+            git diff --exit-code -- Podfile.lock
+          fi
+      - name: Record resolved CocoaPods lock
+        run: |
+          mkdir -p output
+          cp ios/Podfile.lock output/Podfile.lock
+      - name: Reuse matching native smoke evidence
         env:
-          GOOGLE_IOS_CLIENT_ID: ${{ secrets.GOOGLE_IOS_CLIENT_ID }}
-          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/ios-native-evidence.py
+      - name: Boot owned iOS simulator
+        if: env.IOS_NATIVE_SMOKE_REUSED != 'true'
+        run: python3 scripts/ios-simulator.py
+      - name: Check actual iOS channels, Keychain, encryption and images
+        if: env.IOS_NATIVE_SMOKE_REUSED != 'true'
+        run: flutter test --no-pub integration_test/ios_native_smoke_test.dart -d "$IOS_SIMULATOR_UDID" --reporter expanded
+      - name: Stop owned simulator
+        if: always() && env.IOS_SIMULATOR_UDID != ''
+        run: xcrun simctl shutdown "$IOS_SIMULATOR_UDID"
+      - name: Build unsigned archive
         run: |
           flutter build ipa --no-codesign --release \
-            --dart-define=GOOGLE_IOS_CLIENT_ID=$GOOGLE_IOS_CLIENT_ID \
-            --dart-define=GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID \
-            --dart-define=SUPABASE_URL=$SUPABASE_URL \
-            --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
-
-      - name: Package IPA from xcarchive
+            --build-number="$TABBY_BUILD_NUMBER" \
+            --dart-define-from-file="$RUNNER_TEMP/tabby-ios-client.json"
+      - name: Inspect and package IPA
         run: |
-          echo "=== Searching for IPA/xcarchive ==="
-          find build/ios -maxdepth 4 \( -name "*.ipa" -o -name "*.xcarchive" \) 2>/dev/null | sort
-
-          IPA=$(find build/ios -name "*.ipa" | head -1)
-
-          if [ -n "$IPA" ]; then
-            echo "Found IPA: $IPA"
-            mkdir -p output
-            cp "$IPA" output/Tabby.ipa
-          else
-            echo "Packaging from xcarchive..."
-            ARCHIVE=$(find build/ios/archive -name "*.xcarchive" | head -1)
-            echo "Archive: $ARCHIVE"
-            mkdir -p /tmp/Payload
-            cp -R "$ARCHIVE/Products/Applications/Runner.app" /tmp/Payload/
-            cd /tmp && zip -r Tabby.ipa Payload/
-            cd -
-            mkdir -p output
-            cp /tmp/Tabby.ipa output/Tabby.ipa
-          fi
-
-          echo "Final output:"
-          ls -lh output/
-
-      - name: Upload IPA artifact
+          python3 scripts/ios-package.py \
+            --archive build/ios/archive/Runner.xcarchive \
+            --output "output/Tabby-1.0.4+$TABBY_BUILD_NUMBER-unsigned.ipa" \
+            --build-number "$TABBY_BUILD_NUMBER" \
+            --client-config "$RUNNER_TEMP/tabby-ios-client.json"
+      - name: Upload unsigned IPA and evidence
         uses: actions/upload-artifact@v4
         with:
-          name: Tabby-${{ github.ref_name }}-ipa
-          path: output/Tabby.ipa
-          retention-days: 30
-
-      - name: Upload to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: output/Tabby.ipa
-          name: Tabby ${{ github.ref_name }}
-          body: |
-            ## Tabby ${{ github.ref_name }}
-
-            ### Install via Sideloadly
-            1. Download Tabby.ipa below.
-            2. Open Sideloadly on your PC.
-            3. Connect your iPhone via USB.
-            4. Drag the .ipa into Sideloadly and click Start.
-            5. Trust the certificate: Settings > General > VPN and Device Management.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: Tabby-ios-sideload-${{ github.run_number }}
+          path: output/
+          if-no-files-found: error
+          retention-days: 14

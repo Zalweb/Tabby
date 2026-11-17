@@ -34,83 +34,20 @@ void main() {
     );
   });
 
-  testWidgets('login exposes Google OAuth and email credentials',
-      (tester) async {
-    appRouter.go('/login');
-
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: TabbyApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
-    expect(find.text('Sign in'), findsOneWidget);
-    expect(find.text('Create an account'), findsOneWidget);
-  });
-
-  testWidgets('signup collects profile details and password confirmation',
-      (tester) async {
-    appRouter.go('/signup');
-
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: TabbyApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Create your Tabby account'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Full name'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Mobile number'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Confirm password'), findsOneWidget);
-    expect(find.text('Create account'), findsOneWidget);
-  });
-
-  testWidgets('signup rejects mismatched passwords before contacting Supabase',
-      (tester) async {
-    appRouter.go('/signup');
-
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: TabbyApp(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Full name'),
-      'Alex User',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Email'),
-      'alex@example.com',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Mobile number'),
-      '09171234567',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Password'),
-      'Password123',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Confirm password'),
-      'Password321',
-    );
-    final createAccountButton = find.text('Create account');
-    await tester.ensureVisible(createAccountButton);
-    await tester.tap(createAccountButton);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Passwords do not match.'), findsOneWidget);
-  });
-
+  for (final route in ['/login', '/signup', '/onboarding']) {
+    testWidgets('unauthenticated $route offers Google only', (tester) async {
+      appRouter.go(route);
+      await tester.pumpWidget(const ProviderScope(child: TabbyApp(enableUpdateCheck: false)));
+      await tester.pumpAndSettle();
+      expect(find.text('Continue with Google'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Continue Offline'), findsNothing);
+      expect(find.text('Continue with Apple'), findsNothing);
+      expect(find.text('Create an account'), findsNothing);
+      expect(appRouter.routeInformationProvider.value.uri.path, '/login');
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
   testWidgets('authenticated users can open the profile completion screen',
       (tester) async {
     AppState.isAuthenticated.value = true;
@@ -145,14 +82,14 @@ void main() {
       find.widgetWithText(TextField, 'Mobile number'),
       '123',
     );
+    await tester.ensureVisible(find.text('Save and continue'));
     await tester.tap(find.text('Save and continue'));
     await tester.pumpAndSettle();
 
     expect(find.text('Please enter a valid mobile number.'), findsOneWidget);
   });
 
-  testWidgets('profile completion rejects an empty full name',
-      (tester) async {
+  testWidgets('profile completion rejects an empty full name', (tester) async {
     AppState.isAuthenticated.value = true;
     AppState.profileCompletionRequired.value = true;
     appRouter.go('/complete-profile');
@@ -168,6 +105,7 @@ void main() {
       find.widgetWithText(TextField, 'Full name'),
       '',
     );
+    await tester.ensureVisible(find.text('Save and continue'));
     await tester.tap(find.text('Save and continue'));
     await tester.pumpAndSettle();
 

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/tabby_colors.dart';
+
+import '../../core/theme/tabby_palette.dart';
 import '../../core/utils/currency_formatter.dart';
 
 /// Financial balance card highlighting "You Owe" or "You're Owed"
-/// designed with Figma FinWise Reference geometry (20px corner radius,
+/// designed with Tabby warm design system
 /// squircle icon container, capsule status badge).
 class CurrencyCard extends StatelessWidget {
   final String title;
@@ -27,20 +28,21 @@ class CurrencyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // In FinWise reference, expenses / debt highlights use clean blue #0068FF,
-    // while positive / income balances use brand teal / emerald.
-    final themeColor = isDebt ? TabbyColors.accentBlue : TabbyColors.brandEmerald;
-    final bgColor = isDebt ? TabbyColors.iconBgBlue : TabbyColors.iconBgMint;
+    // Warm obligation highlights keep debt distinct from confirmed success.
+    final themeColor = TabbyPalette.of(context).link;
+    final bgColor = isDebt
+        ? TabbyPalette.of(context).accentTint
+        : TabbyPalette.of(context).soft;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: TabbyColors.surfaceWhite,
+          color: TabbyPalette.of(context).surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: TabbyColors.borderMint,
+            color: TabbyPalette.of(context).border,
             width: 1.2,
           ),
           boxShadow: const [
@@ -66,21 +68,18 @@ class CurrencyCard extends StatelessWidget {
                     color: bgColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Center(
-                    child: Icon(
-                      icon,
-                      size: 20,
-                      color: themeColor,
-                    ),
-                  ),
+                  child: Center(child: Icon(icon, size: 20, color: themeColor)),
                 ),
                 const SizedBox(width: 6),
                 // Capsule Status Badge
                 Flexible(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: centavos > 0 ? bgColor : const Color(0xFFF1F5F2),
+                      color: bgColor,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
@@ -91,7 +90,11 @@ class CurrencyCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: centavos > 0 ? themeColor : TabbyColors.textSecondary,
+                        color: centavos > 0
+                            ? (isDebt
+                                  ? TabbyPalette.of(context).link
+                                  : TabbyPalette.of(context).text)
+                            : TabbyPalette.of(context).secondaryText,
                         letterSpacing: 0.2,
                       ),
                       maxLines: 1,
@@ -105,10 +108,10 @@ class CurrencyCard extends StatelessWidget {
             // Card Category Title
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: TabbyColors.textSecondary,
+                color: TabbyPalette.of(context).secondaryText,
                 letterSpacing: 0.5,
               ),
             ),
@@ -123,8 +126,8 @@ class CurrencyCard extends StatelessWidget {
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: isDebt && centavos > 0
-                      ? TabbyColors.accentBlue
-                      : TabbyColors.brandDarkTeal,
+                      ? TabbyPalette.of(context).link
+                      : TabbyPalette.of(context).text,
                   fontFamily: 'Inter',
                   letterSpacing: -0.5,
                 ),
@@ -148,9 +151,9 @@ class CurrencyCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       subtitle!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: TabbyColors.textSecondary,
+                        color: TabbyPalette.of(context).secondaryText,
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,

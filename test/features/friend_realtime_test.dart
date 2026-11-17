@@ -5,8 +5,16 @@ void main() {
   group('Realtime Friend Request & Notification Tests', () {
     test('FriendRequest.copyWith preserves fields and updates status', () {
       final now = DateTime.now();
-      const userA = TabbyUser(id: 'user_a', displayName: 'Alice', email: 'alice@tabby.ph', phone: '09171234567');
-      const userB = TabbyUser(id: 'user_b', displayName: 'Bob', email: 'bob@tabby.ph', phone: '09181234567');
+      const userA = TabbyUser(
+          id: 'user_a',
+          displayName: 'Alice',
+          email: 'alice@tabby.ph',
+          phone: '09171234567');
+      const userB = TabbyUser(
+          id: 'user_b',
+          displayName: 'Bob',
+          email: 'bob@tabby.ph',
+          phone: '09181234567');
 
       final req = FriendRequest(
         id: 'fr_1',
@@ -34,9 +42,20 @@ void main() {
       expect(accepted.otherUser.displayName, 'Alice');
     });
 
-    test('acceptedFriendUserIds recognizes accepted friend request without app reload', () {
-      const userA = TabbyUser(id: 'user_a', displayName: 'Alice', email: 'alice@tabby.ph', phone: '09171234567', friendCode: 'TAB-ABC123');
-      const userB = TabbyUser(id: 'user_b', displayName: 'Bob', email: 'bob@tabby.ph', phone: '09181234567');
+    test(
+        'acceptedFriendUserIds recognizes accepted friend request without app reload',
+        () {
+      const userA = TabbyUser(
+          id: 'user_a',
+          displayName: 'Alice',
+          email: 'alice@tabby.ph',
+          phone: '09171234567',
+          friendCode: 'TAB-ABC123');
+      const userB = TabbyUser(
+          id: 'user_b',
+          displayName: 'Bob',
+          email: 'bob@tabby.ph',
+          phone: '09181234567');
 
       final req = FriendRequest(
         id: 'fr_1',

@@ -1,7 +1,12 @@
+import 'tabby_feedback.dart';
+import '../../core/theme/motion_preferences.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../core/theme/tabby_colors.dart';
+import '../../core/theme/tabby_palette.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../features/tabs/application/tabby_providers.dart';
 import '../../features/tabs/domain/models.dart';
@@ -12,7 +17,8 @@ class NotificationCenterSheet extends ConsumerWidget {
   const NotificationCenterSheet({super.key});
 
   static Future<void> show(BuildContext context) {
-    return showModalBottomSheet(
+    return showTabbyBottomSheet(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -27,11 +33,13 @@ class NotificationCenterSheet extends ConsumerWidget {
     final notifications = dashboardState.notifications;
     final unreadCount = dashboardState.unreadNotificationCount;
     final reminders = dashboardState.reminders;
-    final uniqueActivities =
-        TabbyNotifier.deduplicateActivities(dashboardState.activities);
+    final uniqueActivities = TabbyNotifier.deduplicateActivities(
+      dashboardState.activities,
+    );
     final activities = uniqueActivities.take(6).toList();
 
-    final hasNotifications = notifications.isNotEmpty ||
+    final hasNotifications =
+        notifications.isNotEmpty ||
         reminders.isNotEmpty ||
         activities.isNotEmpty;
 
@@ -40,9 +48,9 @@ class NotificationCenterSheet extends ConsumerWidget {
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-      decoration: const BoxDecoration(
-        color: TabbyColors.surfaceWhite,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      decoration: BoxDecoration(
+        color: TabbyPalette.of(context).surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -53,7 +61,7 @@ class NotificationCenterSheet extends ConsumerWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: TabbyColors.borderMint,
+                color: TabbyPalette.of(context).border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -71,12 +79,12 @@ class NotificationCenterSheet extends ConsumerWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: TabbyColors.iconBgMint,
+                        color: TabbyPalette.of(context).soft,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.notifications_rounded,
-                        color: TabbyColors.brandEmerald,
+                        color: TabbyPalette.of(context).link,
                         size: 20,
                       ),
                     ),
@@ -85,12 +93,12 @@ class NotificationCenterSheet extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Notifications',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
+                              color: TabbyPalette.of(context).text,
                               letterSpacing: -0.3,
                             ),
                           ),
@@ -98,11 +106,11 @@ class NotificationCenterSheet extends ConsumerWidget {
                             unreadCount > 0
                                 ? '$unreadCount unread notification${unreadCount > 1 ? 's' : ''}'
                                 : (reminders.isNotEmpty
-                                    ? '${reminders.length} pending reminder${reminders.length > 1 ? 's' : ''}'
-                                    : 'All caught up'),
-                            style: const TextStyle(
+                                      ? '${reminders.length} pending reminder${reminders.length > 1 ? 's' : ''}'
+                                      : 'All caught up'),
+                            style: TextStyle(
                               fontSize: 11,
-                              color: TabbyColors.textSecondary,
+                              color: TabbyPalette.of(context).secondaryText,
                               fontWeight: FontWeight.w500,
                             ),
                             maxLines: 1,
@@ -122,9 +130,11 @@ class NotificationCenterSheet extends ConsumerWidget {
                     TextButton(
                       onPressed: () => notifier.markAllNotificationsAsRead(),
                       style: TextButton.styleFrom(
-                        foregroundColor: TabbyColors.brandEmerald,
+                        foregroundColor: TabbyPalette.of(context).link,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 4),
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
@@ -139,8 +149,10 @@ class NotificationCenterSheet extends ConsumerWidget {
                     const SizedBox(width: 2),
                   ],
                   IconButton(
-                    icon: const Icon(Icons.close_rounded,
-                        color: TabbyColors.brandDarkTeal),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: TabbyPalette.of(context).text,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -152,31 +164,31 @@ class NotificationCenterSheet extends ConsumerWidget {
           // Content
           Expanded(
             child: !hasNotifications
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        TabbyMascotWidget(
+                        const TabbyMascotWidget(
                           emotion: MascotEmotion.sleeping,
                           size: 70,
                           showBubble: false,
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         Text(
                           'No New Notifications',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
+                            color: TabbyPalette.of(context).text,
                           ),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
                           'You are all caught up! When friends send reminders or make payments, they will appear here.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 12,
-                            color: TabbyColors.textSecondary,
+                            color: TabbyPalette.of(context).secondaryText,
                             height: 1.4,
                           ),
                         ),
@@ -186,20 +198,20 @@ class NotificationCenterSheet extends ConsumerWidget {
                 : ListView(
                     children: [
                       if (notifications.isNotEmpty) ...[
-                        const Text(
+                        Text(
                           'ALERTS & NOTIFICATIONS',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
+                            color: TabbyPalette.of(context).text,
                             letterSpacing: 0.5,
                           ),
                         ),
                         const SizedBox(height: 8),
                         ...notifications.map((notif) {
                           IconData iconData;
-                          Color iconColor = TabbyColors.brandEmerald;
-                          Color iconBg = TabbyColors.iconBgMint;
+                          Color iconColor = TabbyPalette.of(context).link;
+                          Color iconBg = TabbyPalette.of(context).soft;
 
                           if (notif.type == 'payment_confirmed' ||
                               notif.type == 'payment_submitted') {
@@ -209,19 +221,20 @@ class NotificationCenterSheet extends ConsumerWidget {
                             iconData = Icons.receipt_long_rounded;
                           } else if (notif.type == 'friend_request') {
                             iconData = Icons.person_add_rounded;
-                            iconColor = TabbyColors.accentLightBlue;
-                            iconBg = TabbyColors.iconBgBlue;
+                            iconColor = TabbyPalette.of(context).link;
+                            iconBg = TabbyPalette.of(context).accentTint;
                           } else if (notif.type == 'tab_reminder' ||
                               notif.type == 'manual_nudge' ||
                               notif.type == 'reminder') {
                             iconData = Icons.alarm_rounded;
-                            iconColor = TabbyColors.brandDarkTeal;
-                            iconBg = TabbyColors.brandMintAccent;
+                            iconColor = TabbyPalette.of(context).text;
+                            iconBg = TabbyPalette.of(context).soft;
                           } else {
                             iconData = Icons.notifications_active_rounded;
                           }
 
-                          final hasTab = notif.relatedTabId != null &&
+                          final hasTab =
+                              notif.relatedTabId != null &&
                               notif.relatedTabId!.isNotEmpty;
 
                           return InkWell(
@@ -243,15 +256,16 @@ class NotificationCenterSheet extends ConsumerWidget {
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: notif.isRead
-                                    ? TabbyColors.surfaceWhite
-                                    : TabbyColors.brandMintAccent
-                                        .withValues(alpha: 0.45),
+                                    ? TabbyPalette.of(context).surface
+                                    : TabbyPalette.of(context).soft
+                                          .withValues(alpha: 0.45),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
                                   color: notif.isRead
-                                      ? TabbyColors.borderMint
-                                      : TabbyColors.brandEmerald
-                                          .withValues(alpha: 0.5),
+                                      ? TabbyPalette.of(context).border
+                                      : TabbyColors.brandAmber.withValues(
+                                          alpha: 0.5,
+                                        ),
                                   width: notif.isRead ? 1 : 1.5,
                                 ),
                               ),
@@ -287,8 +301,9 @@ class NotificationCenterSheet extends ConsumerWidget {
                                                       ? FontWeight.w600
                                                       : FontWeight.w800,
                                                   fontSize: 13,
-                                                  color: TabbyColors
-                                                      .brandDarkTeal,
+                                                  color: TabbyPalette.of(
+                                                    context,
+                                                  ).text,
                                                 ),
                                               ),
                                             ),
@@ -297,7 +312,8 @@ class NotificationCenterSheet extends ConsumerWidget {
                                                 width: 7,
                                                 height: 7,
                                                 margin: const EdgeInsets.only(
-                                                    left: 6),
+                                                  left: 6,
+                                                ),
                                                 decoration: const BoxDecoration(
                                                   color: TabbyColors.alertRed,
                                                   shape: BoxShape.circle,
@@ -308,18 +324,20 @@ class NotificationCenterSheet extends ConsumerWidget {
                                         const SizedBox(height: 3),
                                         Text(
                                           notif.body,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 11,
-                                            color: TabbyColors.textSecondary,
+                                            color: TabbyPalette.of(context)
+                                                .secondaryText,
                                             height: 1.3,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           _formatTimeAgo(notif.createdAt),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 10,
-                                            color: TabbyColors.textSecondary,
+                                            color: TabbyPalette.of(context)
+                                                .secondaryText,
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
@@ -334,20 +352,24 @@ class NotificationCenterSheet extends ConsumerWidget {
                                         onPressed: () {
                                           if (!notif.isRead) {
                                             notifier.markNotificationAsRead(
-                                                notif.id);
+                                              notif.id,
+                                            );
                                           }
                                           Navigator.pop(context);
                                           context.push(
-                                              '/tabs/${notif.relatedTabId}');
+                                            '/tabs/${notif.relatedTabId}',
+                                          );
                                         },
                                         style: TextButton.styleFrom(
                                           foregroundColor:
-                                              TabbyColors.brandEmerald,
+                                              TabbyColors.brandAmber,
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
+                                            horizontal: 8,
+                                            vertical: 4,
+                                          ),
                                           minimumSize: Size.zero,
-                                          tapTargetSize: MaterialTapTargetSize
-                                              .shrinkWrap,
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
                                         ),
                                         child: const Text(
                                           'View',
@@ -367,73 +389,82 @@ class NotificationCenterSheet extends ConsumerWidget {
                         const SizedBox(height: 16),
                       ],
                       if (reminders.isNotEmpty) ...[
-                        const Text(
+                        Text(
                           'UPCOMING & OVERDUE DUES',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
+                            color: TabbyPalette.of(context).text,
                             letterSpacing: 0.5,
                           ),
                         ),
                         const SizedBox(height: 8),
                         ...reminders.map((reminder) {
-                          final isOverdue = reminder.dueDate.isBefore(DateTime.now());
+                          final isOverdue = reminder.dueDate.isBefore(
+                            DateTime.now(),
+                          );
                           return Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: TabbyColors.brandMintAccent,
+                              color: TabbyPalette.of(context).soft,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: TabbyColors.borderMint),
+                              border: Border.all(
+                                color: TabbyPalette.of(context).border,
+                              ),
                             ),
                             child: Row(
                               children: [
                                 CircleAvatar(
                                   radius: 18,
                                   backgroundColor: reminder.isIWhoOwe
-                                      ? TabbyColors.iconBgBlue
-                                      : TabbyColors.iconBgMint,
+                                      ? TabbyPalette.of(context).accentTint
+                                      : TabbyPalette.of(context).soft,
                                   child: Text(
                                     reminder.friendName.isNotEmpty
-                                        ? reminder.friendName.substring(0, 1).toUpperCase()
+                                        ? reminder.friendName
+                                              .substring(0, 1)
+                                              .toUpperCase()
                                         : '?',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 13,
                                       color: reminder.isIWhoOwe
-                                          ? TabbyColors.accentBlue
-                                          : TabbyColors.brandEmerald,
+                                          ? TabbyPalette.of(context).link
+                                          : TabbyPalette.of(context).link,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         reminder.friendName,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           fontSize: 13,
-                                          color: TabbyColors.brandDarkTeal,
+                                          color: TabbyPalette.of(context).text,
                                         ),
                                       ),
                                       Text(
                                         '${reminder.description} • ${CurrencyFormatter.formatCentavos(reminder.amountCentavos)}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
-                                          color: TabbyColors.textSecondary,
+                                          color: TabbyPalette.of(context)
+                                              .secondaryText,
                                         ),
                                       ),
                                       if (isOverdue)
-                                        const Text(
+                                        Text(
                                           'Past due date',
                                           style: TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w700,
-                                            color: TabbyColors.alertRed,
+                                            color: TabbyPalette.of(context)
+                                                .errorText,
                                           ),
                                         ),
                                     ],
@@ -446,37 +477,80 @@ class NotificationCenterSheet extends ConsumerWidget {
                                       context.push('/tabs/${reminder.tabId}');
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: TabbyColors.brandEmerald,
-                                      foregroundColor: TabbyColors.surfaceWhite,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      backgroundColor: TabbyColors.brandAmber,
+                                      foregroundColor: TabbyColors.brandInk,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                       elevation: 0,
                                     ),
-                                    child: const Text('Pay', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                                    child: const Text(
+                                      'Pay',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   )
                                 else
                                   ElevatedButton(
-                                    onPressed: () {
-                                      notifier.sendGentleNudge(
-                                        tabId: reminder.tabId,
-                                        friendName: reminder.friendName,
-                                        amountCentavos: reminder.amountCentavos,
+                                    onPressed: () async {
+                                      final messenger = TabbyFeedback.of(
+                                        context,
                                       );
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Friendly reminder sent to ${reminder.friendName}!'),
-                                          backgroundColor: TabbyColors.brandDarkTeal,
+                                      messenger.clearSnackBars();
+                                      messenger.showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Waiting for reminder acceptance…',
+                                          ),
                                         ),
+                                      );
+                                      final result = await notifier
+                                          .sendGentleNudge(
+                                            tabId: reminder.tabId,
+                                            recipientUserId:
+                                                reminder.counterparty?.kind ==
+                                                    PartyKind.user
+                                                ? reminder.counterparty!.id
+                                                : null,
+                                            friendName: reminder.friendName,
+                                            amountCentavos:
+                                                reminder.amountCentavos,
+                                          );
+                                      if (!context.mounted) return;
+                                      messenger.clearSnackBars();
+                                      TabbyFeedback.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(content: Text(result.message)),
                                       );
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: TabbyColors.surfaceWhite,
-                                      foregroundColor: TabbyColors.brandDarkTeal,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      backgroundColor: TabbyPalette.of(context)
+                                          .surface,
+                                      foregroundColor: TabbyPalette.of(context)
+                                          .text,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                       elevation: 0,
                                     ),
-                                    child: const Text('Remind', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                                    child: const Text(
+                                      'Remind',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                               ],
                             ),
@@ -485,12 +559,12 @@ class NotificationCenterSheet extends ConsumerWidget {
                         const SizedBox(height: 16),
                       ],
                       if (activities.isNotEmpty) ...[
-                        const Text(
+                        Text(
                           'RECENT ACTIVITY UPDATES',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
+                            color: TabbyPalette.of(context).text,
                             letterSpacing: 0.5,
                           ),
                         ),
@@ -500,9 +574,11 @@ class NotificationCenterSheet extends ConsumerWidget {
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: TabbyColors.surfaceWhite,
+                              color: TabbyPalette.of(context).surface,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: TabbyColors.borderMint),
+                              border: Border.all(
+                                color: TabbyPalette.of(context).border,
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -510,13 +586,14 @@ class NotificationCenterSheet extends ConsumerWidget {
                                   width: 32,
                                   height: 32,
                                   decoration: BoxDecoration(
-                                    color: TabbyColors.iconBgBlue,
+                                    color: TabbyPalette.of(context).accentTint,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Center(
                                     child: Icon(
-                                      act.iconData ?? Icons.notifications_active_outlined,
-                                      color: TabbyColors.accentLightBlue,
+                                      act.iconData ??
+                                          Icons.notifications_active_outlined,
+                                      color: TabbyPalette.of(context).link,
                                       size: 16,
                                     ),
                                   ),
@@ -524,14 +601,15 @@ class NotificationCenterSheet extends ConsumerWidget {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '${(act.actorName == 'You' || act.actorName == ref.watch(currentUserProvider).displayName) ? 'You' : act.actorName} ${act.description}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: TabbyColors.brandDarkTeal,
+                                          color: TabbyPalette.of(context).text,
                                         ),
                                       ),
                                     ],
@@ -539,11 +617,13 @@ class NotificationCenterSheet extends ConsumerWidget {
                                 ),
                                 if (act.amountCentavos > 0)
                                   Text(
-                                    CurrencyFormatter.formatCentavos(act.amountCentavos),
-                                    style: const TextStyle(
+                                    CurrencyFormatter.formatCentavos(
+                                      act.amountCentavos,
+                                    ),
+                                    style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w800,
-                                      color: TabbyColors.brandDarkTeal,
+                                      color: TabbyPalette.of(context).text,
                                     ),
                                   ),
                               ],

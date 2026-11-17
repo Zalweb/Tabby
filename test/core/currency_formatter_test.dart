@@ -16,8 +16,10 @@ void main() {
     });
 
     test('formats with explicit positive sign when requested', () {
-      expect(CurrencyFormatter.formatCentavos(50000, showSign: true), '+₱500.00');
-      expect(CurrencyFormatter.formatCentavos(-50000, showSign: true), '-₱500.00');
+      expect(
+          CurrencyFormatter.formatCentavos(50000, showSign: true), '+₱500.00');
+      expect(
+          CurrencyFormatter.formatCentavos(-50000, showSign: true), '-₱500.00');
       expect(CurrencyFormatter.formatCentavos(0, showSign: true), '₱0.00');
     });
 
@@ -47,7 +49,54 @@ void main() {
       expect(CurrencyFormatter.tryParseToCentavos('10.125'), isNull);
     });
 
-    test('guarantees zero floating-point drift on repeated centavo arithmetic', () {
+    test(
+        'validates the complete PHP amount instead of accepting a valid suffix',
+        () {
+      for (final text in [
+        'abc.50',
+        '1.234',
+        '1e3',
+        '1e2.50',
+        '1,00',
+        '12,34,567.89',
+        '1,,000',
+        'NaN',
+        'Infinity',
+        '--1',
+        '(1',
+        '1)',
+        'PHP',
+        '₱',
+        '1.2.3',
+        '1 000',
+        '1a',
+        'abc',
+        '1e309'
+      ]) {
+        expect(() => CurrencyFormatter.parseToCentavos(text),
+            throwsFormatException,
+            reason: text);
+        expect(CurrencyFormatter.tryParseToCentavos(text), isNull,
+            reason: text);
+      }
+    });
+    test('parses PHP bounds exactly and rejects overflow', () {
+      expect(
+          CurrencyFormatter.parseToCentavos('PHP 999,999,999.99'), 99999999999);
+      expect(CurrencyFormatter.parseToCentavos('₱ 1,250.5'), 125050);
+      expect(CurrencyFormatter.parseToCentavos('.01'), 1);
+      for (final text in [
+        '1,000,000,000.00',
+        '1000000000',
+        '99999999999999999999999999999999.99'
+      ]) {
+        expect(() => CurrencyFormatter.parseToCentavos(text),
+            throwsFormatException);
+      }
+    });
+
+    test('guarantees zero floating-point drift on repeated centavo arithmetic',
+        () {
       int totalCentavos = 0;
       // Add ₱0.10 (10 centavos) 1000 times
       for (int i = 0; i < 1000; i++) {

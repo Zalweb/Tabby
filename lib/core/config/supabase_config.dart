@@ -1,5 +1,10 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'session_scope.dart';
+import '../services/auth_recovery_state.dart';
+import '../services/auth_link_failure.dart';
+import '../services/serialized_pkce_storage.dart';
 
 /// Type-safe Supabase configuration and initialization service for Tabby.
 ///
@@ -7,6 +12,32 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Supports compile-time environment flags `--dart-define` as well as runtime initialization.
 class SupabaseConfig {
   SupabaseConfig._();
+  static final _sessionScope = SessionScope();
+  static final sessionRevision = ValueNotifier<int>(0);
+  static Uri? _authUserEndpoint;
+  static GotrueAsyncStorage? _authPkceStorage;
+  static GotrueAsyncStorage get authPkceStorage =>
+      _authPkceStorage ??= SerializedPkceStorage(
+          delegate: SharedPreferencesGotrueAsyncStorage(),
+          captureCurrent: () {
+            final stamp = captureSession();
+            return () => isCurrentSession(stamp);
+          });
+  static Uri get authUserEndpoint =>
+      _authUserEndpoint ??
+      (throw StateError('Authentication is not initialized.'));
+  static SessionStamp captureSession() => _sessionScope.capture(currentUserId);
+  static bool isCurrentSession(SessionStamp stamp) =>
+      _sessionScope.isCurrent(stamp, currentUserId);
+
+  /// Wait for the public SDK auth-event acknowledgment before capturing a
+  /// successful sign-in. Its queued signedIn event must advance our generation
+  /// before this completion starts, rather than invalidating its own stamp.
+  static Future<SessionStamp?> captureAcknowledgedSession(Session expected) async {
+    await auth.onAuthStateChange.first;
+    if (!identical(auth.currentSession, expected)) return null;
+    return captureSession();
+  }
 
   // --------------------------------------------------------------------------
   // Compile-time environment variable bindings
@@ -62,6 +93,8 @@ class SupabaseConfig {
       'list_payment_methods_for_tab';
   static const String rpcCreateExpenseAtomic = 'create_expense_atomic';
   static const String rpcSubmitPayment = 'submit_payment';
+  static const String rpcCreateExpenseV1 = 'create_expense_v1';
+  static const String rpcSubmitPaymentV1 = 'submit_payment_v1';
   static const String rpcConfirmPayment = 'confirm_payment';
 
   // --------------------------------------------------------------------------
@@ -103,9 +136,38 @@ class SupabaseConfig {
         url: effectiveUrl,
         // ignore: deprecated_member_use
         anonKey: effectiveAnonKey,
+        authOptions:
+            FlutterAuthClientOptions(pkceAsyncStorage: authPkceStorage),
         debug: debug,
       );
       _initialized = true;
+      _authUserEndpoint = Uri.parse(
+          '${effectiveUrl.replaceFirst(RegExp(r'/+$'), '')}/auth/v1/user');
+      _sessionScope.advance(currentUserId);
+      auth.onAuthStateChange.listen((event) {
+        if (event.event == AuthChangeEvent.signedIn ||
+            event.event == AuthChangeEvent.signedOut ||
+            event.event == AuthChangeEvent.passwordRecovery) {
+          _sessionScope.advance(event.session?.user.id);
+          sessionRevision.value++;
+        } else {
+          _sessionScope.capture(event.session?.user.id);
+        }
+        unawaited(AuthRecoveryState.instance.observe(
+            account: event.session?.user.id,
+            session: AuthRecoveryState.sessionIdFromToken(
+                event.session?.accessToken ?? ''),
+            recovery: event.event == AuthChangeEvent.passwordRecovery,
+            signedOut: event.event == AuthChangeEvent.signedOut));
+      }, onError: (Object error, StackTrace stack) {
+        if (isAuthLinkFailure(error)) {
+          AuthRecoveryState.instance.reportInvalidLink();
+        }
+      });
+      await AuthRecoveryState.instance.observe(
+          account: currentUserId,
+          session: AuthRecoveryState.sessionIdFromToken(
+              auth.currentSession?.accessToken ?? ''));
       debugPrint(
           '[SupabaseConfig] Initialized successfully with: $effectiveUrl');
     } catch (e, stackTrace) {
@@ -178,8 +240,9 @@ class SupabaseConfig {
     );
 
     if (response is int) return response;
-    if (response is num) return response.toInt();
-    return int.tryParse(response.toString()) ?? 0;
+    final parsed = int.tryParse(response.toString());
+    if (parsed == null) throw const FormatException('Invalid server balance.');
+    return parsed;
   }
 
   /// Atomically retrieves or creates a canonical 1-on-1 bilateral tab between two users.

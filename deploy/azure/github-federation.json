@@ -1,0 +1,7 @@
+{
+  "name": "tabby-azure-production",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "subject": "repo:Zalweb/Tabby:environment:azure-production",
+  "description": "Deploy Tabby workers from the protected GitHub environment",
+  "audiences": ["api://AzureADTokenExchange"]
+}

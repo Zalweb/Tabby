@@ -1,3 +1,5 @@
+> HISTORICAL RECORD: retained for traceability. Claims apply only to its recorded date; this file is not current instructions or proof of deployment. See [current documentation](../../INDEX.md).
+
 # Shareable Tabby ID Friend Requests
 
 ## Status

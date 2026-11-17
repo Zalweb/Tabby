@@ -1,3 +1,5 @@
+> HISTORICAL RECORD: retained for traceability. Claims apply only to its recorded date; this file is not current instructions or proof of deployment. See [current documentation](../../INDEX.md).
+
 # Profile Settings and Payment Methods Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`) syntax for tracking.

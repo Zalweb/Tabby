@@ -1,0 +1,265 @@
+{
+  "task": "QA-033",
+  "timestamp": "2026-11-17T19:07:11.599Z",
+  "tested_commit": "eb14e3e9b7f0d91bc0d47c66d11140f669da339d",
+  "dirty_tree": true,
+  "candidate_scope": "accepted20 plus QA033 articulated mascot frames only",
+  "source_manifest": "QA-033-source-manifest.json",
+  "source_file_count": 218,
+  "source_drift": [],
+  "generated_art": {
+    "tool": "built-in image_gen",
+    "prompts": "../assets/articulated-mascot-prompts.json",
+    "manifest": "../../assets/branding/mascot/frame-manifest.json",
+    "sheets": 5,
+    "frames": 52,
+    "transparent": true,
+    "originals_unchanged": true,
+    "generated_bytes_unchanged": true,
+    "registration": "Measured fixed-size source windows; ear/paw anchors"
+  },
+  "regression": {
+    "full_passed": 890,
+    "failed": 0,
+    "new_articulation_cases": 11,
+    "prior_pose_motion_cases": 16,
+    "runner_guards_passed": 11,
+    "analysis": "No issues found!",
+    "full_run": {
+      "mode": "full",
+      "started_at": "2026-11-17T18:58:25.791Z",
+      "finished_at": "2026-11-17T19:00:43.980Z",
+      "exit": 0,
+      "signal": null,
+      "candidate": "accepted20 plus QA033 articulated mascot frames only"
+    },
+    "analysis_run": {
+      "mode": "analysis",
+      "started_at": "2026-11-17T18:55:23.863Z",
+      "finished_at": "2026-11-17T18:56:12.702Z",
+      "exit": 0,
+      "signal": null,
+      "candidate": "accepted20 plus QA033 articulated mascot frames only"
+    }
+  },
+  "native": {
+    "suite": "entry",
+    "required_cases": 6,
+    "outcome": "passed",
+    "device": "Lenovo TB321FU API36 ARM64 4KB",
+    "synthetic_fixture": true,
+    "actual_generated_sheets_loaded": true,
+    "actual_eye_source_frame_advancement": true,
+    "financial_owner_fixture": false
+  },
+  "visual_review": {
+    "production_painter_previews": 12,
+    "representative_frames_inspected": true,
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "states": [
+      "rest",
+      "success-wave",
+      "half-blink",
+      "closed-blink",
+      "tail",
+      "wave"
+    ],
+    "font_substitution": "fixture-only system Arial",
+    "owner_financial_screenshots": false
+  },
+  "skill_validation": {
+    "repository": "passed",
+    "installed_default": "passed",
+    "current_account_synchronized": true
+  },
+  "build": {
+    "started_at": "2026-11-17T19:03:33.203Z",
+    "finished_at": "2026-11-17T19:06:01.814Z",
+    "commit": "eb14e3e9b7f0d91bc0d47c66d11140f669da339d",
+    "dirty_tree": true,
+    "frozen_source": true,
+    "candidate_scope": "accepted20 plus QA033 articulated mascot frames only",
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64,android-x64",
+    "build_number": 21,
+    "public_config_fields": 6,
+    "source_changes_during_build": [],
+    "outcome": "passed"
+  },
+  "artifact": {
+    "schema": 1,
+    "commit": "eb14e3e9b7f0d91bc0d47c66d11140f669da339d",
+    "apk_sha256": "2dba9b9ccb85abbe820738cd8c1fdfed8890ed788710ec8c0838f6d146aaf496",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 21,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "install": {
+    "installed_at": "2026-11-17T19:06:37.054Z",
+    "package": "com.zalweb.tabby",
+    "before_version": 20,
+    "installed_version": 21,
+    "device": "Lenovo TB321FU API36 ARM64 4KB",
+    "install_mode": "adb install -r; no clear or uninstall",
+    "first_install_time_preserved": true,
+    "certificate_matches": true,
+    "apk_sha256": "2dba9b9ccb85abbe820738cd8c1fdfed8890ed788710ec8c0838f6d146aaf496",
+    "installed_apk_sha256": "2dba9b9ccb85abbe820738cd8c1fdfed8890ed788710ec8c0838f6d146aaf496",
+    "exact_installed_bytes_match": true,
+    "spare_usbtest_preserved": true,
+    "owner_logout": false,
+    "owner_financial_seed": false,
+    "owner_financial_screenshot": false,
+    "activity_launch": "Status: ok",
+    "candidate_scope": "accepted20 plus QA033 articulated mascot frames only"
+  },
+  "startup": {
+    "observed_at": "2026-11-17T19:07:11.534Z",
+    "version": 21,
+    "package": "com.zalweb.tabby",
+    "application_process_running": true,
+    "current_process_fatal_loader_framework_errors": 0,
+    "raw_logs_saved": false,
+    "temporary_entrytest_removed": true,
+    "spare_usbtest_preserved": true,
+    "owner_screenshot_captured": false,
+    "native_cases_passed": 6
+  },
+  "earlier_failures": [
+    "Focused25/26: incorrect expectation that paused Flutter repaints; timer stop/reset confirmed, frozen-paint/resume assertion corrected, final27/27",
+    "Initial frozen full865 passes/19 failures omitted accepted non-app fixtures; restored exact accepted baseline fixtures, final890/890",
+    "First metadata generator assumed divisible sheet dimensions;1774x887 requires rounded cell boundaries, actual52 frame bounds now pass",
+    "First synthetic preview had unloaded test font; explicitly loaded fixture Arial"
+  ],
+  "excluded_followup": "QA032 root person-replacement/existing-tab post20 follow-up is not part of the immutable21 candidate; preserve for next separately checked version22+",
+  "unverified": [
+    "Independent integration review",
+    "iOS runtime",
+    "Actual screen reader",
+    "Exact21 candidate on16KB runtime",
+    "Live provider/payment/remote-notification acceptance"
+  ],
+  "release_scope": "Private same-key tablet upgrade only; no backend/schema/public release",
+  "repository_handoff": {
+    "timestamp": "2026-11-17T19:11:30.520Z",
+    "branch": "codex/m1-application-fixes",
+    "head": "b840c44f94a01521eb1fb624a9ba99edbc718c8e",
+    "dirty_entries": 745,
+    "unrelated_work_preserved": true,
+    "qa033_committed": false,
+    "memory_plain": "passed",
+    "base_coverage": {
+      "base": "8ba583aa31955fbdfa5a4fcb7c6bb7bbb18166d6",
+      "exit": 1,
+      "uncovered_count": 24,
+      "uncovered": [
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/SKILL.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/antigravity-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/claude-code-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/codex-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/gemini-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/hermes-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/muse-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/pi-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/180eff0e-1c2a-484c-9f7b-1c77ae34501f.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/2b99698d-48f5-4cd1-8746-8fe41d4f2b99.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/2ba19411-1bb9-471a-b719-ae144bfd67b1.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/4106b9b5-5ea7-4e32-bb16-9989400e9e6c.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/5233965d-3541-4745-9fa0-8d4fac80b9b0.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/78b58fa9-f1f3-479b-8fb0-2cda4e5ef69f.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/7b024bb7-4e75-4cff-9984-bd7fb4bccb41.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/7b3a7cd3-b35e-4ae5-8caa-54e9fa486e0b.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/973df76a-7652-4388-8077-49ca83d83ab2.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/97b4ac89-4dd1-447c-8775-88e7c705d10d.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/ab5f9d81-cccc-48ea-b366-686451e2c7f6.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/aced9c36-480e-46cd-9f52-4b624c89a0d6.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/be6e6fa0-dc79-4db9-820c-6866431947e5.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/bf033565-15ee-4bf0-b0f3-7eeeb2774417.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/db4534d5-b0b4-4d29-becc-8d5c6774f912.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: skills-lock.json"
+      ]
+    },
+    "owned_whitespace": "passed",
+    "current_owned_mascot_source_matches_candidate": true
+  }
+}

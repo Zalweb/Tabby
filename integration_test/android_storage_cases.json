@@ -1,0 +1,10 @@
+{
+  "android_storage_seed_test.dart": [
+    "native ledger seeds 100 tabs 10000 entries and durable operations"
+  ],
+  "android_storage_verify_test.dart": [
+    "native ledger survives process restart encrypted and owner isolated",
+    "native missing key rejects open without overwriting ciphertext",
+    "native interrupted legacy import rolls back before durable retry"
+  ]
+}

@@ -1,3 +1,4 @@
+import '../../../core/theme/motion_preferences.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -51,6 +52,8 @@ class _AppUpdatePromptState extends State<AppUpdatePrompt> {
     final availableUpdate = update;
 
     await showDialog<void>(
+      animationStyle:
+          TabbyMotion.style(widget.navigatorKey?.currentContext ?? context),
       context: widget.navigatorKey?.currentContext ?? context,
       barrierDismissible: true,
       builder: (context) => _UpdateDialog(update: availableUpdate),

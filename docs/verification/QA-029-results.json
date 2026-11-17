@@ -1,0 +1,283 @@
+{
+  "task": "QA-029",
+  "timestamp": "2026-11-17T10:27:13.541Z",
+  "tested_commit": "d0d07126da9b05d29dc8860508e44cd752cbda5a",
+  "git_head_at_record": "d0d07126da9b05d29dc8860508e44cd752cbda5a",
+  "dirty_tree": true,
+  "regression": {
+    "full_passed": 826,
+    "failed": 0,
+    "focused_feedback_passed": 7,
+    "full_analysis": "No issues found!",
+    "runner_guard_tests_passed": 10
+  },
+  "native": {
+    "started_at": "2026-11-17T10:24:54.223Z",
+    "suite": "entry",
+    "package": "com.zalweb.tabby.entrytest",
+    "outcome": "passed",
+    "device": {
+      "model": "TB321FU",
+      "api": "36",
+      "page_size": "4096"
+    },
+    "required_cases": 5,
+    "validated_cases": 5,
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed"
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-serial",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-hardware-serial",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-model",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-api",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-page-size",
+        "outcome": "passed"
+      },
+      {
+        "name": "physical-device",
+        "outcome": "passed"
+      },
+      {
+        "name": "production-package-inventory",
+        "outcome": "passed"
+      },
+      {
+        "name": "flutter-version",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-1-android_google_entry_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "verify-package-1-android_google_entry_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-recheck-1-android_google_entry_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-1-android_google_entry_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "notification-permission-1-android_google_entry_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-1-android_google_entry_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-drive-1-android_google_entry_test",
+        "outcome": "passed",
+        "required_cases": 5
+      },
+      {
+        "name": "stop-1-android_google_entry_test",
+        "outcome": "passed"
+      }
+    ],
+    "final_source": true,
+    "synthetic_data": true,
+    "live_backend_acceptance": false
+  },
+  "build": {
+    "started_at": "2026-11-17T10:20:02.220Z",
+    "finished_at": "2026-11-17T10:21:40.215Z",
+    "commit": "d0d07126da9b05d29dc8860508e44cd752cbda5a",
+    "dirty_tree": true,
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64",
+    "build_number": 16,
+    "public_config_fields": [
+      "FIREBASE_API_KEY",
+      "FIREBASE_APP_ID",
+      "FIREBASE_PROJECT_ID",
+      "FIREBASE_SENDER_ID",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL"
+    ],
+    "changed_during_build": [],
+    "outcome": "passed"
+  },
+  "artifact": {
+    "schema": 1,
+    "commit": "d0d07126da9b05d29dc8860508e44cd752cbda5a",
+    "apk_sha256": "02dd7199462e1ffc1b24372aa1e95c8b76a8b893475899982220cd3c9e240f8f",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 16,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "install": {
+    "installed_at": "2026-11-17T10:23:49.701Z",
+    "package": "com.zalweb.tabby",
+    "before_version": 15,
+    "installed_version": 16,
+    "install_mode": "adb install -r; no uninstall/data clear",
+    "first_install_time_preserved": true,
+    "production_certificate_matches": true,
+    "apk_sha256": "02dd7199462e1ffc1b24372aa1e95c8b76a8b893475899982220cd3c9e240f8f",
+    "installed_apk_sha256": "02dd7199462e1ffc1b24372aa1e95c8b76a8b893475899982220cd3c9e240f8f",
+    "exact_installed_bytes_match": true,
+    "activity_launch": "Status: ok",
+    "owner_account_signed_out": false,
+    "owner_financial_seed": false,
+    "reserved_usbtest_and_entrytest_preserved": true,
+    "source_manifest_sha256": "df34578aa5764daaaf79a95105ed99c7cb41b9b5c314906710403348c40ff6c3"
+  },
+  "adoption": {
+    "build_owner": "QA-027 integration owner",
+    "source_stability": "all203 candidate hashes and21 QA-029 lib hashes match",
+    "source_manifest_sha256": "df34578aa5764daaaf79a95105ed99c7cb41b9b5c314906710403348c40ff6c3",
+    "ui_source_manifest_sha256": "443b863db0c7dc1eb5d9695c2362f125da1825079865c9d337a15c1b214ab654",
+    "exact_installed_apk_checked": true,
+    "duplicate_install_performed": false
+  },
+  "cleanup": {
+    "only_entrytest_removed": true,
+    "authenticated_usbtest_preserved": true,
+    "main16_running": true,
+    "main_activity_launch": "Status: ok",
+    "owner_financial_screenshot_captured": false
+  },
+  "previews": {
+    "count": 3,
+    "synthetic": true,
+    "states": [
+      "Home with lower-right Add and balanced nav",
+      "light Add validation above sheet",
+      "dark200% Add validation and scrollable form"
+    ],
+    "font_substitution": "Arial in host fixture only"
+  },
+  "skill": {
+    "source": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+    "already_installed": true,
+    "new_package_installed": false,
+    "updated": "tabby-design",
+    "repository_and_default_copy_validated": true,
+    "user_copies_match": 2
+  },
+  "initial_failures": [
+    {
+      "phase": "Add validation red",
+      "observation": "text existed on background ScaffoldMessenger, absent inside BottomSheet; hit target was covered"
+    },
+    {
+      "phase": "focused46/48",
+      "observation": "receipt/avatar success lost after popping owned scope; fixed by re-resolving current parent/page"
+    },
+    {
+      "phase": "200% keyboard",
+      "observation": "progress and input horizontal overflow plus constrained form vertical overflow; fixed scrolling/flex/stacked control"
+    },
+    {
+      "phase": "first full822/825",
+      "observation": "three test taps did not scroll to newly scrollable content; realistic ensureVisible interactions retain business assertions"
+    },
+    {
+      "phase": "inactive branch red",
+      "observation": "local-current route in offstage branch incorrectly claimed global feedback; enabled TickerMode now required"
+    },
+    {
+      "phase": "normal16 packaging",
+      "observation": "Flutter exit0 rejected by source guard after3 concurrent QA-027 native file changes; no install from this attempt"
+    }
+  ],
+  "memory": {
+    "refresh": "passed",
+    "plain": "passed",
+    "base_commit": "d0d07126da9b05d29dc8860508e44cd752cbda5a",
+    "base_coverage": "failed",
+    "preexisting_uncovered": 24,
+    "groups": [
+      "using-superpowers skill8 files",
+      "supplied introduction reference15 images",
+      "skills-lock.json"
+    ],
+    "qa029_files_uncovered": 0
+  },
+  "limits": [
+    "Independent integration review remains open; task implemented, not complete.",
+    "iOS runtime, real screen reader and exact-candidate16KB runtime unverified.",
+    "QA-027 owns real remote warm/cold notification acceptance.",
+    "Dirty-tree private tablet update, no public release."
+  ]
+}

@@ -11,9 +11,20 @@ void main() {
   }
 
   test('mobile RPC names match the atomic money SQL contract', () {
+    expect(SupabaseConfig.rpcCreateExpenseV1, 'create_expense_v1');
+    expect(SupabaseConfig.rpcSubmitPaymentV1, 'submit_payment_v1');
     expect(SupabaseConfig.rpcCreateExpenseAtomic, 'create_expense_atomic');
     expect(SupabaseConfig.rpcSubmitPayment, 'submit_payment');
     expect(SupabaseConfig.rpcConfirmPayment, 'confirm_payment');
+  });
+
+  test('operation migration and schema snapshot carry the same idempotency contract', () {
+    final migration = File('${projectRoot.path}/supabase/migrations/'
+      '20261031000002_idempotent_money_commands.sql').readAsStringSync().replaceAll('\r\n', '\n');
+    final schema = File('${projectRoot.path}/supabase/schema_all.sql')
+      .readAsStringSync().replaceAll('\r\n', '\n');
+    expect(schema, contains(migration.trim()));
+    expect(migration, contains('PRIMARY KEY (actor_id, operation_id)'));
   });
 
   test('migration and schema expose the same payment RPC signatures', () {
@@ -64,7 +75,40 @@ void main() {
         sql,
         contains('A transaction participant identity may appear only once'),
       );
-      expect(sql, contains('trigger_validate_transaction_participant_identity'));
+      expect(
+          sql, contains('trigger_validate_transaction_participant_identity'));
+      expect(
+        sql,
+        contains('trigger_assert_transaction_participant_identities'),
+      );
+    }
+  });
+
+  test('migration version prefixes are unique', () {
+    // Shipped in main before ordering was enforced; renaming applied
+    // migrations would make the CLI re-run them.
+    const legacyDuplicates = {'20260917000002'};
+
+    final migrations = Directory('${projectRoot.path}/supabase/migrations')
+        .listSync()
+        .whereType<File>()
+        .map((file) => file.uri.pathSegments.last)
+        .where((name) => name.endsWith('.sql'))
+        .toList();
+
+    final versions = <String, List<String>>{};
+    for (final name in migrations) {
+      versions.putIfAbsent(name.split('_').first, () => []).add(name);
+    }
+
+    for (final entry in versions.entries) {
+      if (entry.value.length < 2) continue;
+      expect(
+        legacyDuplicates,
+        contains(entry.key),
+        reason: 'Migration version ${entry.key} is used by '
+            '${entry.value.join(', ')}',
+      );
     }
   });
 }

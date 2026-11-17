@@ -1,3 +1,5 @@
+> HISTORICAL RECORD: retained for traceability. Claims apply only to its recorded date; this file is not current instructions or proof of deployment. See [current documentation](../../INDEX.md).
+
 # Profile Settings, Payment Methods, and Connections Design
 
 **Date:** 2026-09-17  

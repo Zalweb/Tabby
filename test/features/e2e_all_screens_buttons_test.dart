@@ -1,3 +1,7 @@
+import 'package:tabby/shared/widgets/tabby_feedback.dart';
+
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,19 +11,73 @@ import 'package:tabby/main.dart';
 import 'package:tabby/core/config/app_state.dart';
 import 'package:tabby/core/router/app_router.dart';
 import 'package:tabby/core/services/receipt_attachment_service.dart';
+import 'package:tabby/core/services/pin_protection_service.dart';
+import 'package:tabby/features/tabs/application/tabby_providers.dart';
+import 'package:tabby/features/tabs/domain/models.dart';
 import 'package:tabby/features/tabs/presentation/add_expense_modal.dart';
 import 'package:tabby/features/profile/presentation/profile_screen.dart';
 import 'package:tabby/shared/widgets/notification_center_sheet.dart';
 import 'package:tabby/shared/widgets/tabby_button.dart';
 
-/// Installs a fake receipt picker returning a local image path so the
-/// image_picker flow runs end-to-end inside widget tests without launching a
-/// platform camera/gallery intent (Supabase is uninitialized in tests, so the
-/// flow falls back to the local path without any real file I/O).
+/// Supplies a synthetic PNG through the picker boundary; owned secure-storage
+/// bytes are exercised without opening a native camera/gallery.
 void installFakeReceiptPicker() {
-  ReceiptAttachmentService.debugPickImageOverride =
-      (_) async => XFile('test/fixtures/receipt.jpg');
+  ReceiptAttachmentService.debugPickImageOverride = (_) async => XFile.fromData(
+    base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
+    ),
+    name: 'receipt.png',
+    mimeType: 'image/png',
+  );
   addTearDown(() => ReceiptAttachmentService.debugPickImageOverride = null);
+}
+
+class _FailOncePaymentNotifier extends TabbyNotifier {
+  _FailOncePaymentNotifier() : super(loadInitialData: false);
+
+  var failNextPayment = true;
+
+  @override
+  Future<void> settleTab({
+    String? operationId,
+    required String tabId,
+    required int amountCentavos,
+    required PaymentMethod method,
+    required bool isPayingMe,
+    String? note,
+    String? proofPath,
+    String? paymentReference,
+  }) async {
+    if (failNextPayment) {
+      failNextPayment = false;
+      throw StateError('Injected durable save failure');
+    }
+    await super.settleTab(
+      operationId: operationId,
+      tabId: tabId,
+      amountCentavos: amountCentavos,
+      method: method,
+      isPayingMe: isPayingMe,
+      note: note,
+      proofPath: proofPath,
+      paymentReference: paymentReference,
+    );
+  }
+}
+
+// UI wiring uses an in-memory boundary; pin_attempts_test exercises the real
+// background PBKDF2 implementation and persistence separately.
+class _WidgetPinService extends PinProtectionService {
+  String? _pin;
+  @override
+  Future<bool> hasPin(String userId) async => _pin != null;
+  @override
+  Future<void> setPin(String userId, String pin) async {
+    _pin = pin;
+  }
+
+  @override
+  Future<bool> verifyPin(String userId, String pin) async => _pin == pin;
 }
 
 void main() {
@@ -31,1044 +89,1155 @@ void main() {
   });
 
   group('E2E All Screens & Buttons Comprehensive Test Suite', () {
-    testWidgets(
-        'Home Dashboard: Every button and interactive control works without failure',
-        (tester) async {
+    testWidgets('Payment save failure stays inline and permits a safe retry', (
+      tester,
+    ) async {
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/home');
-
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final notifier = _FailOncePaymentNotifier();
+      await notifier.addExpense(
+        counterpartId: 'storage-failure-friend',
+        isConnectedFriend: true,
+        counterpartName: 'Juan',
+        title: 'Dinner',
+        totalAmountCentavos: 10001,
+        category: ExpenseCategory.food,
+        paidByMe: false,
+        isEqualSplit: true,
+      );
+      appRouter.go('/tabs/storage-failure-friend');
       await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
+        ProviderScope(
+          overrides: [tabbyProvider.overrideWith((ref) => notifier)],
+          child: const TabbyApp(),
         ),
       );
       await tester.pumpAndSettle();
-
-      // 1. Notification Center Bell Button
-      final notifBtn = find.byIcon(Icons.notifications_none_rounded);
-      expect(notifBtn, findsWidgets);
-      await tester.tap(notifBtn.first);
+      await tester.tap(find.widgetWithText(TabbyButton, 'I Paid'));
       await tester.pumpAndSettle();
-
-      expect(find.text('Notifications'), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      await tester.pumpAndSettle();
-      expect(find.text('Notifications'), findsNothing);
-
-      // 2. Split-with-friends promo CTA
-      final createTabButton = find.text('Create a Tab');
-      await tester.ensureVisible(createTabButton);
-      await tester.tap(createTabButton);
-      await tester.pumpAndSettle();
-      expect(find.text('Create Tab'), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      await tester.pumpAndSettle();
-
-      // 3. Segmented Filter Buttons (Daily, Weekly, Monthly)
-      final weeklyBtn = find.text('Weekly');
-      await tester.ensureVisible(weeklyBtn);
-      await tester.tap(weeklyBtn);
-      await tester.pumpAndSettle();
-
-      final dailyBtn = find.text('Daily');
-      await tester.ensureVisible(dailyBtn);
-      await tester.tap(dailyBtn);
-      await tester.pumpAndSettle();
-
-      final monthlyBtn = find.text('Monthly');
-      await tester.ensureVisible(monthlyBtn);
-      await tester.tap(monthlyBtn);
-      await tester.pumpAndSettle();
-
-      // 4. Currency Card "YOU OWE" navigation to /tabs
-      final youOweCard = find.text('YOU OWE');
-      await tester.ensureVisible(youOweCard);
-      await tester.tap(youOweCard);
-      await tester.pumpAndSettle();
-      expect(find.text('My Tabs'), findsWidgets);
-
-      // Return to Home
-      appRouter.go('/home');
-      await tester.pumpAndSettle();
-
-      // 5. Currency Card "YOU'RE OWED" navigation to /tabs
-      final youAreOwedCard = find.text("YOU'RE OWED");
-      await tester.ensureVisible(youAreOwedCard);
-      await tester.tap(youAreOwedCard);
-      await tester.pumpAndSettle();
-      expect(find.text('My Tabs'), findsWidgets);
-
-      // Return to Home
-      appRouter.go('/home');
-      await tester.pumpAndSettle();
-
-      // 6. Split-with-friends promo CTA
-      final createTabButtonAgain = find.text('Create a Tab');
-      await tester.ensureVisible(createTabButtonAgain);
-      await tester.tap(createTabButtonAgain);
-      await tester.pumpAndSettle();
-      expect(find.text('Create Tab'), findsOneWidget);
-
-      // Close modal
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      await tester.pumpAndSettle();
-    });
-
-    testWidgets(
-        'Create Tab wizard: Presets, Categories, Payer/Split toggles, Date picker, and Validations',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/home');
-
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
+      final submit = find.widgetWithText(TabbyButton, 'Submit Payment Proof');
+      await tester.enterText(
+        find.byKey(const ValueKey('payment-amount')),
+        'abc.50',
       );
-      await tester.pumpAndSettle();
-
-      // Open Add Expense modal
-      final createTabButton = find.text('Create a Tab');
-      await tester.ensureVisible(createTabButton);
-      await tester.tap(createTabButton);
-      await tester.pumpAndSettle();
-
-      // 1. Validation: continue without selecting or adding a participant
-      final nextBtn = find.text('Next');
-      await tester.ensureVisible(nextBtn);
-      await tester.tap(nextBtn);
+      await tester.tap(submit);
       await tester.pumpAndSettle();
       expect(
-        find.text('Choose at least one friend or add an unregistered person.'),
+        find.textContaining('Enter a valid positive PHP amount'),
         findsOneWidget,
       );
-      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal)))
-          .clearSnackBars();
+      expect(notifier.state.tabs.first.entries, hasLength(1));
+      await tester.enterText(
+        find.byKey(const ValueKey('payment-amount')),
+        '50.00',
+      );
+      await tester.tap(submit);
       await tester.pumpAndSettle();
-
-      // Add an unregistered participant, then continue to details.
-      final unregisteredField =
-          find.byKey(const ValueKey('create-tab-unregistered-name'));
-      await tester.enterText(unregisteredField, 'Samantha Perez');
-      await tester.tap(find.text('Add Person'));
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
-
-      // 2. Validation: create with a 0.00 amount
-      final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
-      await tester.ensureVisible(createBtn);
-      await tester.tap(createBtn);
-      await tester.pumpAndSettle();
-      expect(find.text('Please enter an amount greater than PHP 0.00'),
-          findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal)))
-          .clearSnackBars();
-      await tester.pumpAndSettle();
-
-      // Test quick amount preset chips (+₱500, +₱250).
-      final preset500 = find.text('+₱500');
-      await tester.ensureVisible(preset500);
-      await tester.tap(preset500);
-      await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, '500.00'), findsOneWidget);
-
-      final preset250 = find.text('+₱250');
-      await tester.ensureVisible(preset250);
-      await tester.tap(preset250);
-      await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, '750.00'), findsOneWidget);
-
-      // 3. Category selection: Transportation, Groceries
-      final transportChip = find.widgetWithText(ChoiceChip, 'Transportation');
-      await tester.ensureVisible(transportChip);
-      await tester.tap(transportChip);
-      await tester.pumpAndSettle();
-
-      final groceriesChip = find.widgetWithText(ChoiceChip, 'Groceries');
-      await tester.ensureVisible(groceriesChip);
-      await tester.tap(groceriesChip);
-      await tester.pumpAndSettle();
-
-      // 4. Description and Note inputs
-      final descField = find.byKey(const ValueKey('create-tab-expense-title'));
-      await tester.ensureVisible(descField);
-      await tester.enterText(descField, 'Supermarket run');
-      await tester.pumpAndSettle();
-
-      final noteField = find.byKey(const ValueKey('create-tab-notes'));
-      await tester.ensureVisible(noteField);
-      await tester.enterText(noteField, 'Puregold supplies');
-      await tester.pumpAndSettle();
-
-      // 5. Payer toggle: "They paid" then back to "I paid"
-      final theyPaidBtn = find.text('They paid');
-      await tester.ensureVisible(theyPaidBtn);
-      await tester.tap(theyPaidBtn);
-      await tester.pumpAndSettle();
-
-      final youPaidBtn = find.text('I paid');
-      await tester.ensureVisible(youPaidBtn);
-      await tester.tap(youPaidBtn);
-      await tester.pumpAndSettle();
-
-      // 6. Split mode toggle: "Full share" then back to "Equal"
-      final fullShareBtn = find.text('Full share');
-      await tester.ensureVisible(fullShareBtn);
-      await tester.tap(fullShareBtn);
-      await tester.pumpAndSettle();
-
-      final split5050Btn = find.text('Equal');
-      await tester.ensureVisible(split5050Btn);
-      await tester.tap(split5050Btn);
-      await tester.pumpAndSettle();
-
-      // 7. Due Date picker
-      final setDateBtn = find.text('Set date');
-      await tester.ensureVisible(setDateBtn);
-      await tester.tap(setDateBtn);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('OK'));
-      await tester.pumpAndSettle();
-      expect(find.text('Change'), findsOneWidget);
-
-      // 8. Attach / Remove receipt (real image_picker flow with test override)
-      installFakeReceiptPicker();
-      final attachBtn = find.text('Attach');
-      await tester.ensureVisible(attachBtn);
-      await tester.tap(attachBtn);
-      await tester.pumpAndSettle();
-      // Source chooser sheet renders; pick from gallery.
-      expect(find.text('Add Receipt Photo'), findsOneWidget);
-      await tester.tap(find.text('Choose from Gallery'));
-      await tester.pumpAndSettle();
-      expect(find.text('Receipt attached'), findsOneWidget);
-      expect(find.text('Remove'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(AddExpenseModal)))
-          .clearSnackBars();
-      await tester.pumpAndSettle();
-
-      // 9. Create the tab successfully.
-      final createBtn3 = find.widgetWithText(TabbyButton, 'Create Tab');
-      await tester.ensureVisible(createBtn3);
-      await tester.tap(createBtn3);
+      expect(
+        find.text(
+          'Unable to save payment. Your draft is kept. Please try again.',
+        ),
+        findsOneWidget,
+      );
+      expect(tester.widget<TabbyButton>(submit).isLoading, isFalse);
+      expect(notifier.state.tabs.first.entries, hasLength(1));
+      expect(notifier.state.tabs.first.netBalanceCentavos, -5000);
+      await tester.tap(submit);
       await tester.pump(const Duration(seconds: 4));
       await tester.pumpAndSettle();
-      expect(find.text('Tab created'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
-      await tester.pumpAndSettle();
+      expect(find.text('Record Settlement'), findsNothing);
+      expect(find.text('Awaiting Confirmation'), findsOneWidget);
+      expect(notifier.state.tabs.first.entries, hasLength(2));
+      expect(notifier.state.tabs.first.netBalanceCentavos, -5000);
     });
 
     testWidgets(
-        'Tab Detail: Full Remind nudge, Payment settlement, and QR/Receipt interaction flows',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      'Home Dashboard: Every button and interactive control works without failure',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/home');
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/home');
 
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Create a tab with Mateo
-      final createTabButton = find.text('Create a Tab');
-      await tester.ensureVisible(createTabButton);
-      await tester.tap(createTabButton);
-      await tester.pumpAndSettle();
-
-      final unregisteredField =
-          find.byKey(const ValueKey('create-tab-unregistered-name'));
-      await tester.enterText(unregisteredField, 'Mateo Cruz');
-      await tester.tap(find.text('Add Person'));
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
-
-      final amountField = find.byKey(const ValueKey('create-tab-amount'));
-      await tester.enterText(amountField, '1000.00');
-      await tester.pumpAndSettle();
-
-      final descField = find.byKey(const ValueKey('create-tab-expense-title'));
-      await tester.enterText(descField, 'Samgyupsal Feast');
-      await tester.pumpAndSettle();
-
-      // Create tab (equal split -> Mateo owes ₱500.00)
-      final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
-      await tester.ensureVisible(createBtn);
-      await tester.tap(createBtn);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-
-      // Go to My Tabs
-      appRouter.go('/tabs');
-      await tester.pumpAndSettle();
-
-      // Verify Mateo Cruz appears under THEY OWE YOU
-      final mateoTile = find.text('Mateo Cruz');
-      expect(mateoTile, findsOneWidget);
-      await tester.tap(mateoTile);
-      await tester.pumpAndSettle();
-
-      // 1. In Tab Detail: Header Back Button
-      final backBtn = find.byIcon(Icons.arrow_back);
-      expect(backBtn, findsOneWidget);
-      await tester.tap(backBtn);
-      await tester.pumpAndSettle();
-      expect(find.text('My Tabs'), findsWidgets);
-
-      // Re-enter Mateo's tab
-      await tester.tap(find.text('Mateo Cruz'));
-      await tester.pumpAndSettle();
-
-      // 2. Header QR / Payment Info button
-      final qrBtn = find.byIcon(Icons.qr_code_2_rounded);
-      expect(qrBtn, findsWidgets);
-      await tester.tap(qrBtn.first);
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('Payment Info'), findsOneWidget);
-      expect(find.text('Preferred'), findsOneWidget);
-      expect(find.text('GCash'), findsOneWidget);
-      await tester.tap(find.text('Close').last);
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.pumpAndSettle();
-
-      // 3. Header Receipts button
-      final receiptBtn = find.byIcon(Icons.receipt_long_rounded);
-      expect(receiptBtn, findsWidgets);
-      await tester.tap(receiptBtn.first);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Shared Media & Receipts'), findsOneWidget);
-      // Attach to Latest Transaction button
-      final attachLatestBtn = find.text('Attach to Latest Transaction');
-      if (attachLatestBtn.evaluate().isNotEmpty) {
-        await tester.tap(attachLatestBtn);
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
         await tester.pumpAndSettle();
-        expect(find.textContaining('Receipt attached to'), findsOneWidget);
-        await tester.pump(const Duration(seconds: 4));
+
+        // 1. Notification Center Bell Button
+        final notifBtn = find.byIcon(Icons.notifications_none_rounded);
+        expect(notifBtn, findsWidgets);
+        await tester.tap(notifBtn.first);
         await tester.pumpAndSettle();
-      } else {
+
+        expect(find.text('Notifications'), findsOneWidget);
         await tester.tap(find.byIcon(Icons.close_rounded));
         await tester.pumpAndSettle();
-      }
+        expect(find.text('Notifications'), findsNothing);
 
-      // 4. Remind Button -> Friendly Reminder Nudge Modal
-      final remindBtn = find.text('Remind Mateo Cruz');
-      expect(remindBtn, findsOneWidget);
-      await tester.tap(remindBtn);
-      await tester.pumpAndSettle();
+        // 2. Split-with-friends promo CTA
+        final createTabButton = find.byKey(
+          const ValueKey('navigation-create-tab'),
+        );
+        await tester.ensureVisible(createTabButton);
+        await tester.tap(createTabButton);
+        await tester.pumpAndSettle();
+        expect(find.text('Create Tab'), findsOneWidget);
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Send Friendly Reminder'), findsOneWidget);
-      expect(find.text('Send In-App Reminder'), findsOneWidget);
-      expect(find.text('Share Reminder Link'), findsNothing);
-      await tester.tap(find.text('Send In-App Reminder'));
-      await tester.pumpAndSettle();
+        // 3. Segmented Filter Buttons (Daily, Weekly, Monthly)
+        final weeklyBtn = find.text('Last 7 days');
+        await tester.ensureVisible(weeklyBtn);
+        await tester.tap(weeklyBtn);
+        await tester.pumpAndSettle();
 
-      expect(
-          find.textContaining('Friendly reminder sent to Mateo Cruz!'),
-          findsOneWidget);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
+        final dailyBtn = find.text('Last 24h');
+        await tester.ensureVisible(dailyBtn);
+        await tester.tap(dailyBtn);
+        await tester.pumpAndSettle();
 
-      // 5. Confirm Payment Button -> Settlement Modal
-      final confirmPayBtn = find.text('Confirm Payment');
-      expect(confirmPayBtn, findsOneWidget);
-      await tester.tap(confirmPayBtn);
-      await tester.pumpAndSettle();
+        final monthlyBtn = find.text('This month');
+        await tester.ensureVisible(monthlyBtn);
+        await tester.tap(monthlyBtn);
+        await tester.pumpAndSettle();
 
-      expect(find.text('Confirm Payment Received'), findsOneWidget);
+        // The single useful summary opens the real tab list.
+        await tester.ensureVisible(find.text('Your tabs'));
+        await tester.tap(find.text('Your tabs'));
+        await tester.pumpAndSettle();
+        expect(find.text('My Tabs'), findsWidgets);
+        appRouter.go('/home');
+        await tester.pumpAndSettle();
 
-      // Select Maya payment method chip
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Maya'));
-      await tester.pumpAndSettle();
+        // 6. Split-with-friends promo CTA
+        final createTabButtonAgain = find.byKey(
+          const ValueKey('navigation-create-tab'),
+        );
+        await tester.ensureVisible(createTabButtonAgain);
+        await tester.tap(createTabButtonAgain);
+        await tester.pumpAndSettle();
+        expect(find.text('Create Tab'), findsOneWidget);
 
-      // Confirm payment of ₱500.00
-      await tester.tap(find.text('Confirm Payment').last);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Settlement recorded successfully!'), findsOneWidget);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-
-      // 6. Verify tab is now fully settled!
-      expect(find.text('All settled up'), findsOneWidget);
-      expect(find.text('₱0.00'), findsWidgets);
-      expect(find.text('Log New Expense'), findsOneWidget);
-    });
-
-    testWidgets(
-        'My Tabs: Search bar filtering, clear query, and group tabs handling',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/tabs');
-
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // 1. Header Add Tab button (+)
-      final addTabHeaderBtn = find.byIcon(Icons.add_rounded).first;
-      await tester.tap(addTabHeaderBtn);
-      await tester.pumpAndSettle();
-      expect(find.text('Create Tab'), findsNWidgets(2));
-
-      // Add an unregistered participant and create a tab with "Jessica".
-      final unregisteredField =
-          find.byKey(const ValueKey('create-tab-unregistered-name'));
-      await tester.enterText(unregisteredField, 'Jessica Tan');
-      await tester.tap(find.text('Add Person'));
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
-
-      final amountField = find.byKey(const ValueKey('create-tab-amount'));
-      await tester.enterText(amountField, '300.00');
-      await tester.pumpAndSettle();
-
-      final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
-      await tester.ensureVisible(createBtn);
-      await tester.tap(createBtn);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
-      await tester.pumpAndSettle();
-
-      // Verify Jessica Tan exists in My Tabs
-      expect(find.text('Jessica Tan'), findsOneWidget);
-
-      // 2. Header Notification Bell
-      final notifHeaderBtn =
-          find.byIcon(Icons.notifications_none_rounded).first;
-      await tester.tap(notifHeaderBtn);
-      await tester.pumpAndSettle();
-      expect(find.text('Notifications'), findsOneWidget);
-      await tester.tap(find.text('Close'));
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.pumpAndSettle();
-
-      // 3. Search Bar: Enter non-existent query
-      final searchField = find.byType(TextField).first;
-      await tester.enterText(searchField, 'NonExistentName123');
-      await tester.pumpAndSettle();
-
-      // Jessica should be filtered out
-      expect(find.text('Jessica Tan'), findsNothing);
-      expect(find.text('No Active Tabs'), findsOneWidget);
-
-      // Clear search query via clear icon
-      final clearBtn = find.byIcon(Icons.clear);
-      expect(clearBtn, findsOneWidget);
-      await tester.tap(clearBtn);
-      await tester.pumpAndSettle();
-
-      // Jessica should reappear
-      expect(find.text('Jessica Tan'), findsOneWidget);
-      expect(find.text('No Active Tabs'), findsNothing);
-    });
+        // Leave the full-screen creation form through its guarded Back action.
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+      },
+    );
 
     testWidgets(
-        'Onboarding & Authentication: Complete button, validation, and navigation flows',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      'Create Tab wizard: Presets, Categories, Payer/Split toggles, Date picker, and Validations',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      AppState.isAuthenticated.value = false;
-      AppState.hasSeenOnboarding.value = false;
-      appRouter.go('/onboarding');
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/home');
 
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
+        await tester.pumpAndSettle();
 
-      // Verify Onboarding Screen is active
-      expect(find.text('Keep tabs on every shared expense'), findsOneWidget);
-      expect(find.text('Skip'), findsOneWidget);
+        // Open Add Expense modal
+        final createTabButton = find.byKey(
+          const ValueKey('navigation-create-tab'),
+        );
+        await tester.ensureVisible(createTabButton);
+        await tester.tap(createTabButton);
+        await tester.pumpAndSettle();
 
-      // Tap Skip button -> routes to /login
-      await tester.tap(find.text('Skip'));
-      await tester.pumpAndSettle();
-      expect(AppState.hasSeenOnboarding.value, isTrue);
-      expect(find.text('Continue with Google'), findsOneWidget);
-
-      // Google OAuth and email/password are both authentication entry points.
-      final googleBtn =
-          find.widgetWithText(TabbyButton, 'Continue with Google');
-      expect(googleBtn, findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
-      expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
-      expect(find.text('Create an account'), findsOneWidget);
-      await tester.tap(googleBtn);
-      await tester.pumpAndSettle();
-      expect(AppState.isAuthenticated.value, isFalse);
-      expect(
-          find.text(
-              'Authentication service is unavailable. Please try again when online.'),
-          findsOneWidget);
-
-      AppState.isAuthenticated.value = true;
-      AppState.profileCompletionRequired.value = true;
-      appRouter.go('/complete-profile');
-      await tester.pumpAndSettle();
-      expect(find.text('Complete your profile'), findsOneWidget);
-      expect(find.text('Mobile number'), findsOneWidget);
-    });
-
-    testWidgets(
-        'Home Dashboard: Upcoming dues action buttons and Activity details sheet',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
-
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/home');
-
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // 1. Test Upcoming Reminder Nudge / Remind button
-      final remindBtn = find.widgetWithText(InkWell, 'Remind');
-      if (remindBtn.evaluate().isNotEmpty) {
-        await tester.ensureVisible(remindBtn.first);
-        await tester.tap(remindBtn.first);
+        // 1. Validation: continue without selecting or adding a participant
+        final nextBtn = find.text('Next');
+        await tester.ensureVisible(nextBtn);
+        await tester.tap(nextBtn);
         await tester.pumpAndSettle();
         expect(
-            find.textContaining('Friendly reminder sent to'), findsOneWidget);
-        ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
+          find.text(
+            'Choose at least one friend or add an unregistered person.',
+          ),
+          findsOneWidget,
+        );
+        TabbyFeedback.of(tester.element(find.byType(AddExpenseModal)))
             .clearSnackBars();
         await tester.pumpAndSettle();
-      }
 
-      // 2. Test Recent Activity Tile Tap -> Activity Details Sheet
-      final activityTitle = find.text('Team Lunch');
-      if (activityTitle.evaluate().isNotEmpty) {
-        await tester.ensureVisible(activityTitle.first);
-        await tester.tap(activityTitle.first);
+        // Add an unregistered participant, then continue to details.
+        final unregisteredField = find.byKey(
+          const ValueKey('create-tab-unregistered-name'),
+        );
+        await tester.enterText(unregisteredField, 'Samantha Perez');
+        await tester.tap(find.text('Add Person'));
+        await tester.tap(find.text('Next'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Activity Details'), findsOneWidget);
-        expect(find.text('Close'), findsOneWidget);
-
-        // Tap Close button
-        await tester.tap(find.text('Close'));
+        // 2. Validation: create with a 0.00 amount
+        final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
+        await tester.ensureVisible(createBtn);
+        await tester.tap(createBtn);
         await tester.pumpAndSettle();
-        expect(find.text('Activity Details'), findsNothing);
-      }
-    });
+        expect(
+          find.text('Please enter an amount greater than PHP 0.00'),
+          findsOneWidget,
+        );
+        TabbyFeedback.of(tester.element(find.byType(AddExpenseModal)))
+            .clearSnackBars();
+        await tester.pumpAndSettle();
 
-    testWidgets('Create Tab wizard: Duplicate warning dialog and Preset chips',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+        // Test quick amount preset chips (+₱500, +₱250).
+        final preset500 = find.text('+₱500');
+        await tester.ensureVisible(preset500);
+        await tester.tap(preset500);
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(TextField, '500.00'), findsOneWidget);
 
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/home');
+        final preset250 = find.text('+₱250');
+        await tester.ensureVisible(preset250);
+        await tester.tap(preset250);
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(TextField, '750.00'), findsOneWidget);
 
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+        // 3. Category selection: Transportation, Groceries
+        final transportChip = find.widgetWithText(ChoiceChip, 'Transportation');
+        await tester.ensureVisible(transportChip);
+        await tester.tap(transportChip);
+        await tester.pumpAndSettle();
 
-      // 1. Open Add Expense Modal
-      final createTabButton = find.text('Create a Tab');
-      await tester.ensureVisible(createTabButton);
-      await tester.tap(createTabButton);
-      await tester.pumpAndSettle();
+        final groceriesChip = find.widgetWithText(ChoiceChip, 'Groceries');
+        await tester.ensureVisible(groceriesChip);
+        await tester.tap(groceriesChip);
+        await tester.pumpAndSettle();
 
-      // Add the unregistered participant before entering details.
-      final unregisteredField =
-          find.byKey(const ValueKey('create-tab-unregistered-name'));
-      await tester.enterText(unregisteredField, 'Duplicate Test Friend');
-      await tester.tap(find.text('Add Person'));
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
+        // 4. Description and Note inputs
+        final descField = find.byKey(
+          const ValueKey('create-tab-expense-title'),
+        );
+        await tester.ensureVisible(descField);
+        await tester.enterText(descField, 'Supermarket run');
+        await tester.pumpAndSettle();
 
-      // Test preset chips: +₱100, +₱1000, +₱2000
-      final preset100 = find.text('+₱100');
-      await tester.ensureVisible(preset100);
-      await tester.tap(preset100);
-      await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, '100.00'), findsOneWidget);
+        final noteField = find.byKey(const ValueKey('create-tab-notes'));
+        await tester.ensureVisible(noteField);
+        await tester.enterText(noteField, 'Puregold supplies');
+        await tester.pumpAndSettle();
 
-      final preset1000 = find.text('+₱1000');
-      await tester.ensureVisible(preset1000);
-      await tester.tap(preset1000);
-      await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, '1100.00'), findsOneWidget);
+        // 5. Payer toggle: "They paid" then back to "I paid"
+        final theyPaidBtn = find.text('They paid');
+        await tester.ensureVisible(theyPaidBtn);
+        await tester.tap(theyPaidBtn);
+        await tester.pumpAndSettle();
 
-      final preset2000 = find.text('+₱2000');
-      await tester.ensureVisible(preset2000);
-      await tester.tap(preset2000);
-      await tester.pumpAndSettle();
-      expect(find.widgetWithText(TextField, '3100.00'), findsOneWidget);
+        final youPaidBtn = find.text('I paid');
+        await tester.ensureVisible(youPaidBtn);
+        await tester.tap(youPaidBtn);
+        await tester.pumpAndSettle();
 
-      // Set amount to 450.00
-      final amountField = find.byKey(const ValueKey('create-tab-amount'));
-      await tester.enterText(amountField, '450.00');
-      await tester.pumpAndSettle();
+        // 6. Split mode toggle: "Full share" then back to "Equal"
+        final fullShareBtn = find.text('Full share');
+        await tester.ensureVisible(fullShareBtn);
+        await tester.tap(fullShareBtn);
+        await tester.pumpAndSettle();
 
-      // Create the initial expense.
-      final createBtn1 = find.widgetWithText(TabbyButton, 'Create Tab');
-      await tester.ensureVisible(createBtn1);
-      await tester.tap(createBtn1);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-      expect(find.text('Tab created'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
-      await tester.pumpAndSettle();
+        final split5050Btn = find.text('Equal');
+        await tester.ensureVisible(split5050Btn);
+        await tester.tap(split5050Btn);
+        await tester.pumpAndSettle();
 
-      // Clear SnackBars so it doesn't obstruct the promo CTA
-      ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
-          .clearSnackBars();
-      await tester.pumpAndSettle();
+        // 7. Due Date picker
+        final setDateBtn = find.text('Set date');
+        await tester.ensureVisible(setDateBtn);
+        await tester.tap(setDateBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+        expect(find.text('Change'), findsOneWidget);
 
-      // 2. Open Add Expense Modal again to log the EXACT SAME amount with same friend
-      final createTabButtonAgain = find.text('Create a Tab');
-      await tester.ensureVisible(createTabButtonAgain);
-      await tester.tap(createTabButtonAgain);
-      await tester.pumpAndSettle();
+        // 8. Attach / Remove receipt (real image_picker flow with test override)
+        installFakeReceiptPicker();
+        final attachBtn = find.text('Attach');
+        await tester.ensureVisible(attachBtn);
+        await tester.tap(attachBtn);
+        await tester.pumpAndSettle();
+        // Source chooser sheet renders; pick from gallery.
+        expect(find.text('Add Receipt Photo'), findsOneWidget);
+        await tester.tap(find.text('Choose from Gallery'));
+        await tester.pumpAndSettle();
+        expect(find.text('Receipt attached'), findsOneWidget);
+        expect(find.text('Remove'), findsOneWidget);
+        TabbyFeedback.of(tester.element(find.byType(AddExpenseModal)))
+            .clearSnackBars();
+        await tester.pumpAndSettle();
 
-      final unregisteredField2 =
-          find.byKey(const ValueKey('create-tab-unregistered-name'));
-      await tester.enterText(unregisteredField2, 'Duplicate Test Friend');
-      await tester.tap(find.text('Add Person'));
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
-
-      final amountField2 = find.byKey(const ValueKey('create-tab-amount'));
-      await tester.enterText(amountField2, '450.00');
-      await tester.pumpAndSettle();
-
-      // Tap Create Tab -> should trigger the duplicate warning.
-      final createBtn2 = find.widgetWithText(TabbyButton, 'Create Tab');
-      await tester.ensureVisible(createBtn2);
-      await tester.tap(createBtn2);
-      await tester.pumpAndSettle();
-
-      // Verify Duplicate Dialog appears
-      expect(find.text('Possible Duplicate'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
-      expect(find.text('Create Anyway'), findsOneWidget);
-
-      // Test Cancel: dismisses dialog, modal remains
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.text('Possible Duplicate'), findsNothing);
-      expect(find.widgetWithText(TabbyButton, 'Create Tab'), findsOneWidget);
-
-      // Tap Create Tab again -> dialog reappears
-      await tester.ensureVisible(createBtn2);
-      await tester.tap(createBtn2);
-      await tester.pumpAndSettle();
-      expect(find.text('Possible Duplicate'), findsOneWidget);
-
-      // Test Create Anyway: commits expense
-      await tester.tap(find.text('Create Anyway'));
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Tab created'), findsOneWidget);
-      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
-      await tester.pumpAndSettle();
-    });
+        // 9. Create the tab successfully.
+        final createBtn3 = find.widgetWithText(TabbyButton, 'Create Tab');
+        await tester.ensureVisible(createBtn3);
+        await tester.tap(createBtn3);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+        expect(find.text('Expense recorded'), findsOneWidget);
+        await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.pumpAndSettle();
+      },
+    );
 
     testWidgets(
-        'Tab Detail: User owes (I Paid) settlement, Receipt viewer actions, and Log New Expense',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      'Tab Detail: Full Remind nudge, Payment settlement, and QR/Receipt interaction flows',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/home');
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/home');
 
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // Log an expense where "They paid" so current user owes counterpart.
-      final createTabButton = find.text('Create a Tab');
-      await tester.ensureVisible(createTabButton);
-      await tester.tap(createTabButton);
-      await tester.pumpAndSettle();
-
-      final unregisteredField =
-          find.byKey(const ValueKey('create-tab-unregistered-name'));
-      await tester.enterText(unregisteredField, 'Carlos Dalisay');
-      await tester.tap(find.text('Add Person'));
-      await tester.tap(find.text('Next'));
-      await tester.pumpAndSettle();
-
-      final amountField = find.byKey(const ValueKey('create-tab-amount'));
-      await tester.enterText(amountField, '800.00');
-      await tester.pumpAndSettle();
-
-      // Tap "They paid"
-      final theyPaidBtn = find.text('They paid');
-      await tester.ensureVisible(theyPaidBtn);
-      await tester.tap(theyPaidBtn);
-      await tester.pumpAndSettle();
-
-      final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
-      await tester.ensureVisible(createBtn);
-      await tester.tap(createBtn);
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
-      await tester.pumpAndSettle();
-
-      // Navigate to My Tabs
-      appRouter.go('/tabs');
-      await tester.pumpAndSettle();
-
-      // Tap on Carlos Dalisay
-      final carlosTile = find.text('Carlos Dalisay');
-      expect(carlosTile, findsOneWidget);
-      await tester.tap(carlosTile);
-      await tester.pumpAndSettle();
-
-      // 1. Verify "I Paid" button exists
-      final iPaidBtn = find.widgetWithText(TabbyButton, 'I Paid');
-      expect(iPaidBtn, findsOneWidget);
-
-      // Tap "I Paid" -> opens Record Settlement
-      await tester.tap(iPaidBtn);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Record Settlement'), findsOneWidget);
-      expect(find.text('Submit Payment Proof'), findsOneWidget);
-
-      // Select GCash and tap Submit Payment Proof
-      await tester.tap(find.widgetWithText(ChoiceChip, 'GCash'));
-      await tester.pumpAndSettle();
-
-      await tester
-          .tap(find.widgetWithText(TabbyButton, 'Submit Payment Proof'));
-      await tester.pump(const Duration(seconds: 4));
-      await tester.pumpAndSettle();
-
-      // Tab should now be settled
-      expect(find.text('All settled up'), findsOneWidget);
-      expect(find.text('Log New Expense'), findsOneWidget);
-
-      // 2. Tap Log New Expense -> opens AddExpenseModal
-      await tester.tap(find.text('Log New Expense'));
-      await tester.pumpAndSettle();
-      expect(find.text('Create Tab'), findsOneWidget);
-
-      // Close modal
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      await tester.pumpAndSettle();
-
-      // 3. Tap on a ledger entry without receipt -> test "Attach Receipt Photo"
-      final entryTile = find.text('Food');
-      if (entryTile.evaluate().isNotEmpty) {
-        await tester.tap(entryTile.first);
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
         await tester.pumpAndSettle();
 
-        expect(find.text('Expense Details'), findsOneWidget);
-        final attachPhotoBtn = find.text('Attach Receipt Photo');
-        if (attachPhotoBtn.evaluate().isNotEmpty) {
+        // Create a tab with Mateo
+        final createTabButton = find.byKey(
+          const ValueKey('navigation-create-tab'),
+        );
+        await tester.ensureVisible(createTabButton);
+        await tester.tap(createTabButton);
+        await tester.pumpAndSettle();
+
+        final unregisteredField = find.byKey(
+          const ValueKey('create-tab-unregistered-name'),
+        );
+        await tester.enterText(unregisteredField, 'Mateo Cruz');
+        await tester.tap(find.text('Add Person'));
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+
+        final amountField = find.byKey(const ValueKey('create-tab-amount'));
+        await tester.enterText(amountField, '1000.00');
+        await tester.pumpAndSettle();
+
+        final descField = find.byKey(
+          const ValueKey('create-tab-expense-title'),
+        );
+        await tester.enterText(descField, 'Samgyupsal Feast');
+        await tester.pumpAndSettle();
+
+        // Create tab (equal split -> Mateo owes ₱500.00)
+        final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
+        await tester.ensureVisible(createBtn);
+        await tester.tap(createBtn);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+
+        // The dock opens a root creation sheet; finish it explicitly.
+        await tester.ensureVisible(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.pumpAndSettle();
+
+        // Go to My Tabs
+        appRouter.go('/tabs');
+        await tester.pumpAndSettle();
+
+        // Verify Mateo Cruz appears under THEY OWE YOU
+        final mateoTile = find.text('Mateo Cruz');
+        expect(mateoTile, findsOneWidget);
+        await tester.tap(mateoTile);
+        await tester.pumpAndSettle();
+
+        // 1. In Tab Detail: Header Back Button
+        final backBtn = find.byIcon(Icons.arrow_back);
+        expect(backBtn, findsOneWidget);
+        await tester.tap(backBtn);
+        await tester.pumpAndSettle();
+        expect(find.text('My Tabs'), findsWidgets);
+
+        // Re-enter Mateo's tab
+        await tester.tap(find.text('Mateo Cruz'));
+        await tester.pumpAndSettle();
+
+        // 2. Header QR / Payment Info button
+        final qrBtn = find.byIcon(Icons.qr_code_2_rounded);
+        expect(qrBtn, findsWidgets);
+        await tester.tap(qrBtn.first);
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('Payment Info'), findsOneWidget);
+        expect(find.text('Preferred'), findsOneWidget);
+        expect(find.text('GCash'), findsOneWidget);
+        await tester.tap(find.text('Close').last);
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+
+        // 3. Header Receipts button
+        final receiptBtn = find.byIcon(Icons.receipt_long_rounded);
+        expect(receiptBtn, findsWidgets);
+        await tester.tap(receiptBtn.first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Shared Media & Receipts'), findsOneWidget);
+        // Attach to Latest Transaction button
+        final attachLatestBtn = find.text('Attach to Latest Transaction');
+        if (attachLatestBtn.evaluate().isNotEmpty) {
           installFakeReceiptPicker();
-          await tester.tap(attachPhotoBtn);
+          await tester.tap(attachLatestBtn);
           await tester.pumpAndSettle();
-          // Source chooser sheet renders; pick from gallery.
-          expect(find.text('Add Receipt Photo'), findsOneWidget);
           await tester.tap(find.text('Choose from Gallery'));
           await tester.pumpAndSettle();
           expect(find.textContaining('Receipt image attached'), findsOneWidget);
-          ScaffoldMessenger.of(tester.element(find.byType(Scaffold).first))
+          await tester.pump(const Duration(seconds: 4));
+          await tester.pumpAndSettle();
+        } else {
+          await tester.tap(find.byIcon(Icons.close_rounded));
+          await tester.pumpAndSettle();
+        }
+
+        // 4. Remind Button -> Friendly Reminder Nudge Modal
+        final remindBtn = find.text('Remind Mateo Cruz');
+        expect(remindBtn, findsOneWidget);
+        await tester.tap(remindBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Send Friendly Reminder'), findsOneWidget);
+        expect(find.text('Send In-App Reminder'), findsOneWidget);
+        expect(find.text('Share Reminder Link'), findsNothing);
+        await tester.tap(find.text('Send In-App Reminder'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('Reminders need a registered friend'),
+          findsOneWidget,
+        );
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+
+        // 5. Explicit manual cash receipt, separate from submission decisions.
+        final confirmPayBtn = find.text('Record received cash');
+        expect(confirmPayBtn, findsOneWidget);
+        await tester.tap(confirmPayBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Record received cash'), findsWidgets);
+
+        // An unregistered contact's private ledger records cash explicitly.
+        await tester.tap(find.widgetWithText(ChoiceChip, 'Cash'));
+        await tester.pumpAndSettle();
+
+        // Confirm payment of ₱500.00
+        await tester.tap(find.text('Record Cash Payment').last);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Settlement recorded successfully!'), findsOneWidget);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+
+        // 6. Verify tab is now fully settled!
+        expect(find.text('All settled up'), findsOneWidget);
+        expect(find.text('₱0.00'), findsWidgets);
+        expect(find.text('Log New Expense'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'My Tabs: Search bar filtering, clear query, and group tabs handling',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/tabs');
+
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
+        await tester.pumpAndSettle();
+
+        // 1. Header Add Tab button (+)
+        final addTabHeaderBtn = find.byIcon(Icons.add_rounded).first;
+        await tester.tap(addTabHeaderBtn);
+        await tester.pumpAndSettle();
+        expect(find.text('Create Tab'), findsOneWidget);
+        expect(find.byType(BottomSheet), findsNothing);
+
+        // Add an unregistered participant and create a tab with "Jessica".
+        final unregisteredField = find.byKey(
+          const ValueKey('create-tab-unregistered-name'),
+        );
+        await tester.enterText(unregisteredField, 'Jessica Tan');
+        await tester.tap(find.text('Add Person'));
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+
+        final amountField = find.byKey(const ValueKey('create-tab-amount'));
+        await tester.enterText(amountField, '300.00');
+        await tester.pumpAndSettle();
+
+        final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
+        await tester.ensureVisible(createBtn);
+        await tester.tap(createBtn);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.pumpAndSettle();
+
+        // Verify Jessica Tan exists in My Tabs
+        expect(find.text('Jessica Tan'), findsOneWidget);
+
+        // 2. Header Notification Bell
+        final notifHeaderBtn = find
+            .byIcon(Icons.notifications_none_rounded)
+            .first;
+        await tester.tap(notifHeaderBtn);
+        await tester.pumpAndSettle();
+        expect(find.text('Notifications'), findsOneWidget);
+        await tester.tap(find.text('Close'));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+
+        // 3. Search Bar: Enter non-existent query
+        final searchField = find.byType(TextField).first;
+        await tester.enterText(searchField, 'NonExistentName123');
+        await tester.pumpAndSettle();
+
+        // Jessica should be filtered out
+        expect(find.text('Jessica Tan'), findsNothing);
+        expect(find.text('No Active Tabs'), findsOneWidget);
+
+        // Clear search query via clear icon
+        final clearBtn = find.byIcon(Icons.clear);
+        expect(clearBtn, findsOneWidget);
+        await tester.tap(clearBtn);
+        await tester.pumpAndSettle();
+
+        // Jessica should reappear
+        expect(find.text('Jessica Tan'), findsOneWidget);
+        expect(find.text('No Active Tabs'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Onboarding & Authentication: Complete button, validation, and navigation flows',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        AppState.isAuthenticated.value = false;
+        AppState.hasSeenOnboarding.value = false;
+        appRouter.go('/onboarding');
+
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
+        await tester.pumpAndSettle();
+
+        // First launch and legacy intro deep links offer Google only.
+        expect(find.text('Continue with Google'), findsOneWidget);
+        expect(appRouter.routeInformationProvider.value.uri.path, '/login');
+
+        // Google is the sole public authentication entry point.
+        final googleBtn = find.widgetWithText(
+          TabbyButton,
+          'Continue with Google',
+        );
+        expect(googleBtn, findsOneWidget);
+        expect(find.widgetWithText(TextField, 'Email'), findsNothing);
+        expect(find.widgetWithText(TextField, 'Password'), findsNothing);
+        expect(find.text('Create an account'), findsNothing);
+        await tester.ensureVisible(googleBtn);
+        await tester.tap(googleBtn);
+        await tester.pumpAndSettle();
+        expect(AppState.isAuthenticated.value, isFalse);
+        expect(
+          find.text(
+            'Authentication service is unavailable. Please try again when online.',
+          ),
+          findsOneWidget,
+        );
+
+        AppState.isAuthenticated.value = true;
+        AppState.profileCompletionRequired.value = true;
+        appRouter.go('/complete-profile');
+        await tester.pumpAndSettle();
+        expect(find.text('Complete your profile'), findsOneWidget);
+        expect(find.text('Mobile number'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Home Dashboard: Upcoming dues action buttons and Activity details sheet',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/home');
+
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
+        await tester.pumpAndSettle();
+
+        // 1. Test Upcoming Reminder Nudge / Remind button
+        final remindBtn = find.widgetWithText(InkWell, 'Remind');
+        if (remindBtn.evaluate().isNotEmpty) {
+          await tester.ensureVisible(remindBtn.first);
+          await tester.tap(remindBtn.first);
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('Reminders need a registered friend'),
+            findsOneWidget,
+          );
+          TabbyFeedback.of(tester.element(find.byType(Scaffold).first))
               .clearSnackBars();
           await tester.pumpAndSettle();
         }
 
-        // Close details sheet if still open
-        if (find.byIcon(Icons.close_rounded).evaluate().isNotEmpty) {
-          await tester.tap(find.byIcon(Icons.close_rounded).last);
+        // 2. Test Recent Activity Tile Tap -> Activity Details Sheet
+        final activityTitle = find.text('Team Lunch');
+        if (activityTitle.evaluate().isNotEmpty) {
+          await tester.ensureVisible(activityTitle.first);
+          await tester.tap(activityTitle.first);
           await tester.pumpAndSettle();
+
+          expect(find.text('Activity Details'), findsOneWidget);
+          expect(find.text('Close'), findsOneWidget);
+
+          // Tap Close button
+          await tester.tap(find.text('Close'));
+          await tester.pumpAndSettle();
+          expect(find.text('Activity Details'), findsNothing);
         }
-      }
-    });
+      },
+    );
 
     testWidgets(
-        'Profile Screen: Deep settings sheets, Avatar options, and Form validations',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      'Create Tab wizard: Duplicate warning dialog and Preset chips',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/profile');
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/home');
 
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      // 1. Deep Security Settings Sheet
-      final securityIconBtn = find.byTooltip('Security Settings');
-      expect(securityIconBtn, findsOneWidget);
-      await tester.tap(securityIconBtn);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Security & App Lock'), findsOneWidget);
-      expect(find.text('Biometric Unlock'), findsOneWidget);
-      expect(find.text('Passcode Protection'), findsOneWidget);
-      expect(find.text('Auto-Lock on Exit'), findsOneWidget);
-
-      // Toggle Passcode switch
-      final passcodeSwitch =
-          find.widgetWithText(SwitchListTile, 'Passcode Protection');
-      await tester.tap(passcodeSwitch);
-      await tester.pumpAndSettle();
-
-      // Enabling passcode opens the PIN setup sheet before security settings
-      // can be closed.
-      expect(find.text('Configure PIN'), findsOneWidget);
-      final pinFields = find.byType(TextField);
-      await tester.enterText(
-          pinFields.at(pinFields.evaluate().length - 2), '1234');
-      await tester.enterText(pinFields.last, '1234');
-      await tester.tap(find.widgetWithText(TabbyButton, 'Save PIN'));
-      await tester.pumpAndSettle();
-
-      // Tap Done
-      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
-      await tester.pumpAndSettle();
-      expect(find.text('Security & App Lock'), findsNothing);
-
-      // 2. Deep Notification Preferences Sheet
-      final notifIconBtn = find.byTooltip('Notification Preferences');
-      expect(notifIconBtn, findsOneWidget);
-      await tester.tap(notifIconBtn);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Notification Preferences'), findsOneWidget);
-      expect(find.text('Push Notifications'), findsOneWidget);
-      expect(find.text('Instant Payment Alerts'), findsOneWidget);
-      expect(find.text('Gentle Reminder Nudges'), findsOneWidget);
-
-      // Toggle Instant Payment Alerts
-      final paymentAlertsSwitch =
-          find.widgetWithText(SwitchListTile, 'Instant Payment Alerts');
-      await tester.tap(paymentAlertsSwitch);
-      await tester.pumpAndSettle();
-
-      // Tap Done
-      await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
-      await tester.pumpAndSettle();
-      expect(find.text('Notification Preferences'), findsNothing);
-
-      // 3. Avatar Options Sheet
-      // Ensure page is scrolled back to top
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, 800));
-      await tester.pumpAndSettle();
-
-      final cameraIconBtn = find.byIcon(Icons.camera_alt_rounded);
-      await tester.tap(cameraIconBtn.first);
-      await tester.pumpAndSettle();
-
-      expect(find.text('Profile Photo'), findsOneWidget);
-      expect(find.text('Choose from Gallery'), findsOneWidget);
-      expect(find.text('Take Photo'), findsOneWidget);
-      expect(find.text('Tabby Mascot Style'), findsOneWidget);
-      expect(find.text('Remove Photo'), findsOneWidget);
-
-      // Select Choose from Gallery
-      await tester.tap(find.text('Choose from Gallery'));
-      await tester.pumpAndSettle();
-      expect(find.text('Profile photo updated successfully.'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
-          .clearSnackBars();
-      await tester.pumpAndSettle();
-
-      // Open avatar sheet again -> Select Tabby Mascot Style
-      await tester.tap(find.byIcon(Icons.camera_alt_rounded).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Tabby Mascot Style'));
-      await tester.pumpAndSettle();
-      expect(find.text('Tabby companion avatar applied!'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
-          .clearSnackBars();
-      await tester.pumpAndSettle();
-
-      // Open avatar sheet again -> Remove Photo
-      await tester.tap(find.byIcon(Icons.camera_alt_rounded).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Remove Photo'));
-      await tester.pumpAndSettle();
-      expect(find.text('Avatar reset to default initials.'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
-          .clearSnackBars();
-      await tester.pumpAndSettle();
-
-      // 4. Edit Profile validation: empty name
-      await tester.tap(find.text('Edit Profile'));
-      await tester.pumpAndSettle();
-
-      final editNameField = find
-          .descendant(
-            of: find.byType(BottomSheet),
-            matching: find.byType(TextField),
-          )
-          .first;
-      await tester.enterText(editNameField, '');
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.widgetWithText(TabbyButton, 'Save Changes'));
-      await tester.pumpAndSettle();
-      expect(find.text('Please enter a display name.'), findsOneWidget);
-      ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
-          .clearSnackBars();
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      await tester.pumpAndSettle();
-
-      // 5. Connect Friend flow replaces the old manual friend form.
-      final connectAction = find.text('Connect');
-      await tester.ensureVisible(connectAction);
-      await tester.tap(connectAction);
-      await tester.pumpAndSettle();
-      expect(find.text('Connect with a Friend'), findsOneWidget);
-      expect(find.text('Friend\'s Full Name'), findsNothing);
-      await tester.tap(find.byIcon(Icons.close_rounded).last);
-      await tester.pumpAndSettle();
-
-      // 6. Create Group validation: empty group name
-      final createGroupBtn = find.text('Create a Group');
-      await tester.ensureVisible(createGroupBtn);
-      await tester.pumpAndSettle();
-      if (createGroupBtn.evaluate().isNotEmpty) {
-        await tester.tap(createGroupBtn);
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.widgetWithText(TabbyButton, 'Create Group Tab'));
+        // 1. Open Add Expense Modal
+        final createTabButton = find.byKey(
+          const ValueKey('navigation-create-tab'),
+        );
+        await tester.ensureVisible(createTabButton);
+        await tester.tap(createTabButton);
         await tester.pumpAndSettle();
-        expect(find.text('Please enter a group name.'), findsOneWidget);
-        ScaffoldMessenger.of(tester.element(find.byType(ProfileScreen)))
+
+        // Add the unregistered participant before entering details.
+        final unregisteredField = find.byKey(
+          const ValueKey('create-tab-unregistered-name'),
+        );
+        await tester.enterText(unregisteredField, 'Duplicate Test Friend');
+        await tester.tap(find.text('Add Person'));
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+
+        // Test preset chips: +₱100, +₱1000, +₱2000
+        final preset100 = find.text('+₱100');
+        await tester.ensureVisible(preset100);
+        await tester.tap(preset100);
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(TextField, '100.00'), findsOneWidget);
+
+        final preset1000 = find.text('+₱1000');
+        await tester.ensureVisible(preset1000);
+        await tester.tap(preset1000);
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(TextField, '1100.00'), findsOneWidget);
+
+        final preset2000 = find.text('+₱2000');
+        await tester.ensureVisible(preset2000);
+        await tester.tap(preset2000);
+        await tester.pumpAndSettle();
+        expect(find.widgetWithText(TextField, '3100.00'), findsOneWidget);
+
+        // Set amount to 450.00
+        final amountField = find.byKey(const ValueKey('create-tab-amount'));
+        await tester.enterText(amountField, '450.00');
+        await tester.pumpAndSettle();
+
+        // Create the initial expense.
+        final createBtn1 = find.widgetWithText(TabbyButton, 'Create Tab');
+        await tester.ensureVisible(createBtn1);
+        await tester.tap(createBtn1);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+        expect(find.text('Expense recorded'), findsOneWidget);
+        await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.pumpAndSettle();
+
+        // Clear SnackBars so it doesn't obstruct the promo CTA
+        TabbyFeedback.of(tester.element(find.byType(Scaffold).first))
             .clearSnackBars();
         await tester.pumpAndSettle();
 
-        await tester.tap(find.byIcon(Icons.close_rounded));
+        // Reuse the exact contact identity. A newly typed same name is a
+        // different contact and must never establish ledger identity.
+        final ledger = ProviderScope.containerOf(tester.element(find.byType(TabbyApp)));
+        final existing = ledger.read(tabbyProvider).tabs.firstWhere(
+          (tab) => tab.counterpart.displayName == 'Duplicate Test Friend');
+        AddExpenseModal.show(tester.element(find.byType(Scaffold).first),
+          initialCounterpartId: existing.id);
         await tester.pumpAndSettle();
-      }
-    });
+        await tester.ensureVisible(find.text('Next'));
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
+
+        final amountField2 = find.byKey(const ValueKey('create-tab-amount'));
+        await tester.enterText(amountField2, '450.00');
+        await tester.pumpAndSettle();
+
+        // Tap Create Tab -> should trigger the duplicate warning.
+        final createBtn2 = find.widgetWithText(TabbyButton, 'Add to Tab');
+        await tester.ensureVisible(createBtn2);
+        await tester.tap(createBtn2);
+        await tester.pumpAndSettle();
+
+        // Verify Duplicate Dialog appears
+        expect(find.text('Possible Duplicate Expense'), findsOneWidget);
+        expect(find.text('Cancel'), findsOneWidget);
+        expect(find.text('Add Anyway'), findsOneWidget);
+
+        // Test Cancel: dismisses dialog, modal remains
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(find.text('Possible Duplicate Expense'), findsNothing);
+        expect(find.widgetWithText(TabbyButton, 'Add to Tab'), findsOneWidget);
+
+        // Tap Create Tab again -> dialog reappears
+        await tester.ensureVisible(createBtn2);
+        await tester.tap(createBtn2);
+        await tester.pumpAndSettle();
+        expect(find.text('Possible Duplicate Expense'), findsOneWidget);
+
+        // Test Create Anyway: commits expense
+        await tester.tap(find.text('Add Anyway'));
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Expense recorded'), findsOneWidget);
+        await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.pumpAndSettle();
+      },
+    );
 
     testWidgets(
-        'Notification Center Sheet: Dues interactive Pay and Remind buttons',
-        (tester) async {
-      tester.view.physicalSize = const Size(1080, 2400);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      'Tab Detail: User owes (I Paid) settlement, Receipt viewer actions, and Log New Expense',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/home');
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/home');
 
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
+        await tester.pumpAndSettle();
 
-      // Open Notification Center
-      final notifBtn = find.byIcon(Icons.notifications_none_rounded);
-      await tester.tap(notifBtn.first);
-      await tester.pumpAndSettle();
+        // Log an expense where "They paid" so current user owes counterpart.
+        final createTabButton = find.byKey(
+          const ValueKey('navigation-create-tab'),
+        );
+        await tester.ensureVisible(createTabButton);
+        await tester.tap(createTabButton);
+        await tester.pumpAndSettle();
 
-      expect(find.text('Notifications'), findsOneWidget);
+        final unregisteredField = find.byKey(
+          const ValueKey('create-tab-unregistered-name'),
+        );
+        await tester.enterText(unregisteredField, 'Carlos Dalisay');
+        await tester.tap(find.text('Add Person'));
+        await tester.tap(find.text('Next'));
+        await tester.pumpAndSettle();
 
-      // Check for Remind button inside Notification Center Sheet
-      final remindBtn = find.descendant(
-        of: find.byType(NotificationCenterSheet),
-        matching: find.widgetWithText(ElevatedButton, 'Remind'),
-      );
-      if (remindBtn.evaluate().isNotEmpty) {
-        await tester.tap(remindBtn.first);
+        final amountField = find.byKey(const ValueKey('create-tab-amount'));
+        await tester.enterText(amountField, '800.00');
+        await tester.pumpAndSettle();
+
+        // Tap "They paid"
+        final theyPaidBtn = find.text('They paid');
+        await tester.ensureVisible(theyPaidBtn);
+        await tester.tap(theyPaidBtn);
+        await tester.pumpAndSettle();
+
+        final createBtn = find.widgetWithText(TabbyButton, 'Create Tab');
+        await tester.ensureVisible(createBtn);
+        await tester.tap(createBtn);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.pumpAndSettle();
+
+        // Navigate to My Tabs
+        appRouter.go('/tabs');
+        await tester.pumpAndSettle();
+
+        // Tap on Carlos Dalisay
+        final carlosTile = find.text('Carlos Dalisay');
+        expect(carlosTile, findsOneWidget);
+        await tester.tap(carlosTile);
+        await tester.pumpAndSettle();
+
+        // 1. Verify "I Paid" button exists
+        final iPaidBtn = find.widgetWithText(TabbyButton, 'I Paid');
+        expect(iPaidBtn, findsOneWidget);
+
+        // Tap "I Paid" -> opens Record Settlement
+        await tester.tap(iPaidBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Record Settlement'), findsOneWidget);
+        expect(find.text('Record Cash Payment'), findsOneWidget);
+
+        await tester.tap(find.widgetWithText(ChoiceChip, 'Cash'));
+        await tester.pumpAndSettle();
+        final paymentAmount = find.byKey(const ValueKey('payment-amount'));
+        final originalAmount = tester
+            .widget<TextField>(paymentAmount)
+            .controller!
+            .text;
+        await tester.enterText(paymentAmount, '0');
+        await tester.tap(
+          find.widgetWithText(TabbyButton, 'Record Cash Payment'),
+        );
         await tester.pumpAndSettle();
         expect(
-            find.textContaining('Friendly reminder sent to'), findsOneWidget);
-        ScaffoldMessenger.of(
-                tester.element(find.byType(NotificationCenterSheet)))
-            .clearSnackBars();
-        await tester.pumpAndSettle();
-      }
+          find.text('Please enter an amount greater than ₱0.00'),
+          findsOneWidget,
+        );
+        await tester.enterText(paymentAmount, originalAmount);
 
-      // Check for Pay button inside Notification Center Sheet
-      final payBtn = find.descendant(
-        of: find.byType(NotificationCenterSheet),
-        matching: find.widgetWithText(ElevatedButton, 'Pay'),
-      );
-      if (payBtn.evaluate().isNotEmpty) {
-        await tester.tap(payBtn.first);
+        await tester.tap(
+          find.widgetWithText(TabbyButton, 'Record Cash Payment'),
+        );
+        await tester.pump(const Duration(seconds: 4));
         await tester.pumpAndSettle();
-        // Navigates to Tab Detail screen
-        expect(find.byIcon(Icons.arrow_back), findsOneWidget);
-      } else {
-        await tester.tap(find.byIcon(Icons.close_rounded));
+
+        expect(find.text('All settled up'), findsOneWidget);
+        expect(find.text('Awaiting Confirmation'), findsNothing);
+        expect(find.widgetWithText(TabbyButton, 'I Paid'), findsNothing);
+
+        await tester.tap(find.byTooltip('Add to Tab'));
         await tester.pumpAndSettle();
-      }
-    });
+        expect(find.text('Add to Tab'), findsOneWidget);
+
+        // Leave the full-screen creation form through its guarded Back action.
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+
+        // 3. Tap on a ledger entry without receipt -> test "Attach Receipt Photo"
+        final entryTile = find.text('Food');
+        if (entryTile.evaluate().isNotEmpty) {
+          await tester.tap(entryTile.first);
+          await tester.pumpAndSettle();
+
+          expect(find.text('Expense Details'), findsOneWidget);
+          final attachPhotoBtn = find.text('Attach Receipt Photo');
+          if (attachPhotoBtn.evaluate().isNotEmpty) {
+            installFakeReceiptPicker();
+            await tester.tap(attachPhotoBtn);
+            await tester.pumpAndSettle();
+            // Source chooser sheet renders; pick from gallery.
+            expect(find.text('Add Receipt Photo'), findsOneWidget);
+            await tester.tap(find.text('Choose from Gallery'));
+            await tester.pumpAndSettle();
+            expect(
+              find.textContaining('Receipt image attached'),
+              findsOneWidget,
+            );
+            TabbyFeedback.of(tester.element(find.byType(Scaffold).first))
+                .clearSnackBars();
+            await tester.pumpAndSettle();
+          }
+
+          // Close details sheet if still open
+          if (find.byIcon(Icons.close_rounded).evaluate().isNotEmpty) {
+            await tester.tap(find.byIcon(Icons.close_rounded).last);
+            await tester.pumpAndSettle();
+          }
+        }
+      },
+    );
 
     testWidgets(
-        'App Router 404 Error Screen: Unknown path displays friendly mascot and back button',
-        (tester) async {
-      AppState.isAuthenticated.value = true;
-      appRouter.go('/unknown-route-that-does-not-exist');
+      'Profile Screen: Deep settings sheets, Avatar options, and Form validations',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
 
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: TabbyApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/profile');
 
-      expect(find.text('Page Not Found'), findsOneWidget);
-      expect(
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              userSettingsProvider.overrideWith(
+                (ref) => UserSettingsNotifier(
+                  userId: ref.watch(currentUserProvider).id,
+                  pinProtection: _WidgetPinService(),
+                ),
+              ),
+            ],
+            child: const TabbyApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // 1. Deep Security Settings Sheet
+        final securityIconBtn = find.byTooltip('Security Settings');
+        expect(securityIconBtn, findsOneWidget);
+        await tester.tap(securityIconBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Security & App Lock'), findsOneWidget);
+        expect(find.text('Biometric Unlock'), findsOneWidget);
+        expect(find.text('Passcode Protection'), findsOneWidget);
+        expect(find.text('Auto-Lock on Exit'), findsOneWidget);
+
+        // Toggle Passcode switch
+        final passcodeSwitch = find.widgetWithText(
+          SwitchListTile,
+          'Passcode Protection',
+        );
+        await tester.tap(passcodeSwitch);
+        await tester.pumpAndSettle();
+
+        // Enabling passcode opens the PIN setup sheet before security settings
+        // can be closed.
+        expect(find.text('Configure PIN'), findsOneWidget);
+        final pinFields = find.byType(TextField);
+        await tester.enterText(
+          pinFields.at(pinFields.evaluate().length - 2),
+          '1234',
+        );
+        await tester.enterText(pinFields.last, '1234');
+        await tester.tap(find.widgetWithText(TabbyButton, 'Save PIN'));
+        await tester.pumpAndSettle();
+
+        // Tap Done
+        await tester.ensureVisible(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.pumpAndSettle();
+        expect(find.text('Security & App Lock'), findsNothing);
+
+        // 2. Deep Notification Preferences Sheet
+        final notifIconBtn = find.byTooltip('Notification Preferences');
+        expect(notifIconBtn, findsOneWidget);
+        await tester.tap(notifIconBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Notification Preferences'), findsOneWidget);
+        expect(find.text('Device notifications'), findsOneWidget);
+        expect(find.text('Instant Payment Alerts'), findsOneWidget);
+        expect(find.text('Gentle Reminder Nudges'), findsOneWidget);
+
+        // Toggle Instant Payment Alerts
+        final paymentAlertsSwitch = find.widgetWithText(
+          SwitchListTile,
+          'Instant Payment Alerts',
+        );
+        await tester.tap(paymentAlertsSwitch);
+        await tester.pumpAndSettle();
+
+        // Tap Done
+        await tester.tap(find.widgetWithText(TabbyButton, 'Done'));
+        await tester.pumpAndSettle();
+        expect(find.text('Notification Preferences'), findsNothing);
+
+        // 3. Avatar Options Sheet
+        // Ensure page is scrolled back to top
+        await tester.drag(find.byType(Scrollable).first, const Offset(0, 800));
+        await tester.pumpAndSettle();
+
+        final cameraIconBtn = find.byIcon(Icons.camera_alt_rounded);
+        await tester.tap(cameraIconBtn.first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Profile Photo'), findsOneWidget);
+        expect(find.text('Choose from Gallery'), findsOneWidget);
+        expect(find.text('Take Photo'), findsOneWidget);
+        expect(find.text('Tabby Mascot Style'), findsOneWidget);
+        expect(find.text('Remove Photo'), findsOneWidget);
+
+        // Select Choose from Gallery
+        await tester.tap(find.text('Choose from Gallery'));
+        await tester.pumpAndSettle();
+        // Native picker is cancelled by the explicit test boundary.
+        expect(find.text('Profile photo updated successfully.'), findsNothing);
+        expect(find.text('Profile Photo'), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.close_rounded).last);
+        await tester.pumpAndSettle();
+        TabbyFeedback.of(tester.element(find.byType(ProfileScreen)))
+            .clearSnackBars();
+        await tester.pumpAndSettle();
+
+        // Open avatar sheet again -> Select Tabby Mascot Style
+        await tester.tap(find.byIcon(Icons.camera_alt_rounded).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Tabby Mascot Style'));
+        await tester.pumpAndSettle();
+        expect(find.text('Tabby companion avatar saved.'), findsOneWidget);
+        TabbyFeedback.of(tester.element(find.byType(ProfileScreen)))
+            .clearSnackBars();
+        await tester.pumpAndSettle();
+
+        // Open avatar sheet again -> Remove Photo
+        await tester.tap(find.byIcon(Icons.camera_alt_rounded).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Remove Photo'));
+        await tester.pumpAndSettle();
+        expect(find.text('Avatar reset to default initials.'), findsOneWidget);
+        TabbyFeedback.of(tester.element(find.byType(ProfileScreen)))
+            .clearSnackBars();
+        await tester.pumpAndSettle();
+
+        // 4. Edit Profile validation: empty name
+        await tester.tap(find.text('Edit Profile'));
+        await tester.pumpAndSettle();
+
+        final editNameField = find
+            .descendant(
+              of: find.byKey(const ValueKey('tabby-fullscreen-form')),
+              matching: find.byType(TextField),
+            )
+            .first;
+        await tester.enterText(editNameField, '');
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.widgetWithText(TabbyButton, 'Save profile'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Use a display name between 1 and 80 characters.'),
+          findsOneWidget,
+        );
+        TabbyFeedback.of(
+          tester.element(find.byKey(const ValueKey('tabby-fullscreen-form'))),
+        ).clearSnackBars();
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Keep your profile edits?'), findsOneWidget);
+        await tester.tap(find.text('Discard draft'));
+        await tester.pumpAndSettle();
+
+        // 5. Connect Friend flow replaces the old manual friend form.
+        final connectAction = find.text('Connect');
+        await tester.ensureVisible(connectAction);
+        await tester.tap(connectAction);
+        await tester.pumpAndSettle();
+        expect(find.text('Connect with a Friend'), findsOneWidget);
+        expect(find.text('Friend\'s Full Name'), findsNothing);
+        await tester.tap(find.byIcon(Icons.close_rounded).last);
+        await tester.pumpAndSettle();
+
+        // 6. Create Group validation: empty group name
+        final createGroupBtn = find.text('Create a Group');
+        await tester.ensureVisible(createGroupBtn);
+        await tester.pumpAndSettle();
+        if (createGroupBtn.evaluate().isNotEmpty) {
+          await tester.tap(createGroupBtn);
+          await tester.pumpAndSettle();
+
+          await tester.tap(
+            find.widgetWithText(TabbyButton, 'Create Group Tab'),
+          );
+          await tester.pumpAndSettle();
+          expect(find.text('Please enter a group name.'), findsOneWidget);
+          TabbyFeedback.of(
+            tester.element(find.byKey(const ValueKey('tabby-fullscreen-form'))),
+          ).clearSnackBars();
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byTooltip('Back'));
+          await tester.pumpAndSettle();
+        }
+      },
+    );
+
+    testWidgets(
+      'Notification Center Sheet: Dues interactive Pay and Remind buttons',
+      (tester) async {
+        tester.view.physicalSize = const Size(1080, 2400);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/home');
+
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
+        await tester.pumpAndSettle();
+
+        // Open Notification Center
+        final notifBtn = find.byIcon(Icons.notifications_none_rounded);
+        await tester.tap(notifBtn.first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Notifications'), findsOneWidget);
+
+        // Check for Remind button inside Notification Center Sheet
+        final remindBtn = find.descendant(
+          of: find.byType(NotificationCenterSheet),
+          matching: find.widgetWithText(ElevatedButton, 'Remind'),
+        );
+        if (remindBtn.evaluate().isNotEmpty) {
+          await tester.tap(remindBtn.first);
+          await tester.pumpAndSettle();
+          expect(
+            find.textContaining('Reminders need a registered friend'),
+            findsOneWidget,
+          );
+          TabbyFeedback.of(tester.element(find.byType(NotificationCenterSheet)))
+              .clearSnackBars();
+          await tester.pumpAndSettle();
+        }
+
+        // Check for Pay button inside Notification Center Sheet
+        final payBtn = find.descendant(
+          of: find.byType(NotificationCenterSheet),
+          matching: find.widgetWithText(ElevatedButton, 'Pay'),
+        );
+        if (payBtn.evaluate().isNotEmpty) {
+          await tester.tap(payBtn.first);
+          await tester.pumpAndSettle();
+          // Navigates to Tab Detail screen
+          expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+        } else {
+          await tester.tap(find.byIcon(Icons.close_rounded));
+          await tester.pumpAndSettle();
+        }
+      },
+    );
+
+    testWidgets(
+      'App Router 404 Error Screen: Unknown path displays friendly mascot and back button',
+      (tester) async {
+        AppState.isAuthenticated.value = true;
+        appRouter.go('/unknown-route-that-does-not-exist');
+
+        await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Page Not Found'), findsOneWidget);
+        expect(
           find.text(
-              "The page you're looking for doesn't exist or has been moved."),
-          findsOneWidget);
-      expect(find.widgetWithText(TabbyButton, 'Back to Home'), findsOneWidget);
+            "The page you're looking for doesn't exist or has been moved.",
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.widgetWithText(TabbyButton, 'Back to Home'),
+          findsOneWidget,
+        );
 
-      await tester.tap(find.widgetWithText(TabbyButton, 'Back to Home'));
-      await tester.pumpAndSettle();
-      expect(find.text('Recent Activity'), findsOneWidget);
-    });
+        await tester.tap(find.widgetWithText(TabbyButton, 'Back to Home'));
+        await tester.pumpAndSettle();
+        expect(find.text('Recent Activity'), findsOneWidget);
+      },
+    );
   });
 }

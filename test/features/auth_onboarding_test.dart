@@ -12,45 +12,16 @@ void main() {
     AppState.profileCompletionRequired.value = false;
   });
 
-  testWidgets('App opens Onboarding by default on first launch',
-      (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(() => tester.view.resetPhysicalSize());
-
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: TabbyApp(),
-      ),
-    );
+  testWidgets('First launch opens Google welcome before any introduction', (tester) async {
+    appRouter.go('/onboarding');
+    await tester.pumpWidget(const ProviderScope(child: TabbyApp(enableUpdateCheck: false)));
     await tester.pumpAndSettle();
-
-    // Verify Onboarding slide 1 content
-    expect(find.text('Keep tabs on every shared expense'), findsOneWidget);
-    expect(find.text('Skip'), findsOneWidget);
-    expect(find.text('Next'), findsOneWidget);
-
-    // Tap Next to advance to slide 2
-    await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Always know who owes who'), findsOneWidget);
-
-    // Tap Next to advance to slide 3
-    await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Settle up without the awkwardness'), findsOneWidget);
-    expect(find.text('Get Started'), findsOneWidget);
-
-    // Tap Get Started -> should land on Login screen
-    await tester.tap(find.text('Get Started'));
-    await tester.pumpAndSettle();
-
-    expect(AppState.hasSeenOnboarding.value, isTrue);
     expect(find.text('Tabby'), findsOneWidget);
-    expect(find.text('Keep tabs. Settle up.'), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Next'), findsNothing);
+    expect(appRouter.routeInformationProvider.value.uri.path, '/login');
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets(
@@ -72,11 +43,12 @@ void main() {
 
     // Should be on the Google OAuth screen.
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Email'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Password'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Email'), findsNothing);
+    expect(find.widgetWithText(TextField, 'Password'), findsNothing);
 
     // Tap Google OAuth while the backend is unavailable. Local/mock auth must
     // not unlock the app.
+    await tester.ensureVisible(find.text('Continue with Google'));
     await tester.tap(find.text('Continue with Google'));
     await tester.pumpAndSettle();
 

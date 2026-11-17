@@ -1,46 +1,44 @@
 import 'package:flutter/material.dart';
 
-/// Tabby Brand Design Tokens derived from Figma FinWise Reference (Node 7020:3430)
+/// Fixed brand colors. Theme-dependent UI uses TabbyPalette.
 class TabbyColors {
   TabbyColors._();
-
-  // FinWise Primary Emerald & Forest Teal Palette
-  static const Color brandEmerald     = Color(0xFF00D09E); // FinWise Primary Vibrant Emerald Green
-  static const Color brandDarkTeal    = Color(0xFF093030); // FinWise Deep Dark Teal / Charcoal
-  static const Color brandDeepForest  = Color(0xFF052224); // FinWise Deep Forest Accent
-  static const Color brandMintAccent  = Color(0xFFDFF7E2); // FinWise Soft Mint Card / Input Fill
-  static const Color bgCanvas         = Color(0xFFF1FFF3); // FinWise Light Mint App Canvas Background
-  static const Color surfaceWhite     = Color(0xFFFFFFFF); // Pure Card & Modal Surface
-  static const Color borderMint       = Color(0xFFD6EFE0); // FinWise Subtle Mint Border
-  static const Color borderGray       = Color(0xFFE2E8F0); // Neutral Subtle Border
-
-  // Secondary Accents & Indicators
-  static const Color accentBlue       = Color(0xFF0068FF); // FinWise Expense Blue / Primary KPI Blue
-  static const Color accentLightBlue  = Color(0xFF3299FF); // FinWise Icon Squircle / Secondary Blue
-  static const Color iconBgBlue       = Color(0xFFE9F6FE); // Soft Blue Icon Circle Fill
-  static const Color iconBgMint       = Color(0xFFDFF7E2); // Soft Mint Icon Circle Fill
-  static const Color darkProgressPill = Color(0xFF093030); // FinWise Dark Capsule Progress Indicator
-
-  // Text Hierarchy
-  static const Color textPrimary      = Color(0xFF093030); // High Contrast Dark Teal Text
-  static const Color textSecondary    = Color(0xFF4B6969); // Muted Teal Subtitles & Captions
-  static const Color textMuted        = Color(0xFF6C757D); // Placeholder & Tertiary Text
-  static const Color textLight        = Color(0xFFFFFFFF); // White On Emerald
-
-  // Status & Financial Indicators
-  static const Color successGreen     = Color(0xFF00D09E); // Confirmed settled / positive
-  static const Color successLight     = Color(0xFFDFF7E2); // Soft success background
-  static const Color debtRed          = Color(0xFF0068FF); // Primary expense blue (or red for critical)
-  static const Color alertRed         = Color(0xFFEF4444); // Critical alerts / Overdue commitment
-  static const Color debtLight        = Color(0xFFE9F6FE); // Soft expense highlight background
-  static const Color pendingAmber     = Color(0xFFF59E0B); // Awaiting acknowledgment
-  static const Color pendingLight     = Color(0xFFFEF3C7); // Soft pending background
-  static const Color chipBackground   = Color(0xFFDFF7E2); // FinWise Mint Chip Container
-
-  // Backward-Compatible Aliases for Existing Widget References
-  static const Color primaryCharcoal = brandDarkTeal;
-  static const Color accentAmber      = brandEmerald;
-  static const Color accentAmberDark  = Color(0xFF00A87E);
-  static const Color backgroundLight  = bgCanvas;
-  static const Color secondaryMuted   = textSecondary;
+  static const brandAmber = Color(0xFFFFB342);
+  static const brandInk = Color(0xFF292321);
+  static const deepInk = Color(0xFF1D1917);
+  static const softCream = Color(0xFFFFF0D8);
+  static const canvasCream = Color(0xFFFFFAF2);
+  static const surfaceWhite = Color(0xFFFFFFFF);
+  static const borderWarm = Color(0xFFE7D8C5);
+  static const accentBurnt = Color(0xFF8A4B08);
+  static const textPrimary = brandInk;
+  static const textSecondary = Color(0xFF6B6058);
+  static const textMuted = Color(0xFF75685F);
+  static const textLight = surfaceWhite;
+  static const successGreen = Color(0xFF2D6A4F);
+  static const successLight = Color(0xFFE8F3EA);
+  static const alertRed = Color(0xFFB3261E);
+  static const pendingAmber = accentBurnt;
+  static const pendingLight = softCream;
+  static const debtLight = Color(0xFFFFE8C2);
+  static const chipBackground = softCream;
+  static const darkProgressPill = brandInk;
+  // Compatibility only: these no longer introduce a green/blue brand palette.
+  static const brandEmerald = brandAmber;
+  static const brandDarkTeal = brandInk;
+  static const brandDeepForest = deepInk;
+  static const brandMintAccent = softCream;
+  static const bgCanvas = canvasCream;
+  static const borderMint = borderWarm;
+  static const borderGray = borderWarm;
+  static const accentBlue = accentBurnt;
+  static const accentLightBlue = accentBurnt;
+  static const iconBgBlue = debtLight;
+  static const iconBgMint = softCream;
+  static const debtRed = accentBurnt;
+  static const primaryCharcoal = brandInk;
+  static const accentAmber = brandAmber;
+  static const accentAmberDark = accentBurnt;
+  static const backgroundLight = canvasCream;
+  static const secondaryMuted = textSecondary;
 }

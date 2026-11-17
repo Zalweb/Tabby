@@ -1,0 +1,284 @@
+{
+  "recorded_at": "2026-11-17T09:35:42.795Z",
+  "base_commit": "1f8b0bb7deaa05c3602a1d41c71f194818738fba",
+  "dirty_tree": true,
+  "source_sha256": {
+    "lib/core/services/notification_tap_coordinator.dart": "576070137cfb85c77a7d346069cb18ca6865a41b6523234045367164289d9952",
+    "lib/core/services/tabby_notification_service.dart": "b134b5b4e0bee2606efb1faab5b5a239a39480980a665f9a71100ac40ae6d18f",
+    "lib/main.dart": "22e18a32ec75bdbdbf4f215d6b1cb83eec1a3cb1b3ef78838a34ff13746e6e35",
+    "lib/features/tabs/data/supabase_tabby_repository.dart": "3e05e006d4f4fb4c896f212f7734bcea651bdbdcb2656d90c23dd97d0732b9c6"
+  },
+  "original_user_failure": "actual notification opened Tab not found",
+  "first_change": {
+    "readiness_barrier": true,
+    "focused_tests": 16,
+    "full_tests": 802,
+    "analysis": "passed",
+    "physical_repeat": "failed: user still sees Tab not found",
+    "apk_sha256": "8a604e51c2a35d2973f2d3e125ec6571f5f0ddcef80fd89a98ffdea74542fcf4"
+  },
+  "deeper_cause": {
+    "isolated_runtime_error": "FormatException: Invalid tab cursor",
+    "sdk": "installed postgrest 2.9.1 defaults ascending=false",
+    "original_request": "order=id.desc.nullslast",
+    "loader_contract": "strictly increasing IDs and id > after",
+    "repair": "explicit ascending:true at production header request boundary"
+  },
+  "verification": {
+    "header_transport_red": "same Invalid tab cursor before explicit ascending; initial incomplete fake HTTP response lacked request and was corrected before measuring product regression",
+    "header_transport_green": "101 synthetic UUID headers across two actual SDK HTTP requests; ascending and gt continuation verified",
+    "focused_tests": 24,
+    "scoped_analysis": "passed",
+    "full_analysis_current": "first integrated retry found 2 infos in concurrent QA-028 files; scoped changed source passes; integrated rerun pending",
+    "full_tests_after_cursor_fix": "754 owned source snapshot; concurrent integrated UI run819 passes",
+    "owned_full_tests_after_cursor_fix": 754,
+    "owned_full_analysis": "passed",
+    "owned_focused_tests": 24
+  },
+  "build": {
+    "started_at": "2026-11-17T09:28:30.541Z",
+    "finished_at": "2026-11-17T09:30:04.355Z",
+    "base_commit": "1f8b0bb7deaa05c3602a1d41c71f194818738fba",
+    "dirty_tree": true,
+    "frozen_source": true,
+    "actual_flutter_exit": 0,
+    "target": "lib/main.dart",
+    "application": "isolated .usbtest",
+    "mode": "debug",
+    "public_config_fields": 6,
+    "private_credentials_compiled": false,
+    "source_changes_during_build": [],
+    "apk_sha256": "b1a9edf1dca6b40fc37491cb7ffaa7bf5c32b5b24c75eedcffffbbf98682e576",
+    "outcome": "passed"
+  },
+  "install": {
+    "installed_at": "2026-11-17T09:30:45.310Z",
+    "package": "com.zalweb.tabby.usbtest",
+    "apk_sha256": "b1a9edf1dca6b40fc37491cb7ffaa7bf5c32b5b24c75eedcffffbbf98682e576",
+    "test_first_install_time_preserved": true,
+    "install_mode": "adb install -r; no clear/uninstall",
+    "test_account_data_preserved": true,
+    "normal_main_version_preserved": 14,
+    "normal_main_first_install_time_preserved": true,
+    "owner_signout": false
+  },
+  "background_group_queue": [
+    {
+      "run_id": "fcm-live-20261117T081544Z-347414",
+      "action": "group",
+      "outcome": "passed",
+      "checks": [
+        {
+          "name": "real_google_recipient_and_acknowledged_push_binding",
+          "outcome": "passed"
+        },
+        {
+          "name": "sender_has_exact_synthetic_run_tag",
+          "outcome": "passed"
+        },
+        {
+          "name": "recipient_explicitly_accepted_canonical_pair_in_app",
+          "outcome": "passed"
+        },
+        {
+          "name": "separate_group_created_only_with_accepted_test_friend",
+          "outcome": "passed"
+        },
+        {
+          "name": "integer_centavo_fixture_expense_created",
+          "outcome": "passed"
+        },
+        {
+          "name": "real_notification_trigger_created_exact_pending_device_job",
+          "outcome": "passed"
+        },
+        {
+          "name": "all_preexisting_financial_rows_unchanged",
+          "outcome": "passed"
+        }
+      ],
+      "private_account_ids_tokens_or_rows_logged": false,
+      "sender_authentication": "tagged authenticated-role SQL fixture; not a real sender login",
+      "receiver_authentication": "manual Google/actual app SDK",
+      "scheduler_enabled": false
+    },
+    {
+      "run_id": "fcm-live-20261117T081544Z-347414",
+      "action": "dispatch",
+      "outcome": "passed",
+      "checks": [
+        {
+          "name": "real_google_recipient_and_acknowledged_push_binding",
+          "outcome": "passed"
+        },
+        {
+          "name": "sender_has_exact_synthetic_run_tag",
+          "outcome": "passed"
+        },
+        {
+          "name": "only_explicit_test_job_and_recipient_can_be_dispatched",
+          "outcome": "passed"
+        },
+        {
+          "name": "actual_gateway_worker_accepted_only_one_fixture_message",
+          "outcome": "passed"
+        },
+        {
+          "name": "real_queue_lease_finished_as_provider_accepted",
+          "outcome": "passed"
+        },
+        {
+          "name": "all_preexisting_financial_rows_unchanged",
+          "outcome": "passed"
+        }
+      ],
+      "private_account_ids_tokens_or_rows_logged": false,
+      "sender_authentication": "tagged authenticated-role SQL fixture; not a real sender login",
+      "receiver_authentication": "manual Google/actual app SDK",
+      "scheduler_enabled": false
+    }
+  ],
+  "original_group_native": {
+    "verified_at": "2026-11-17T09:20:40.107Z",
+    "exact_server_event_in_native_posted_cache": true,
+    "server_job_accepted": true,
+    "server_attempts": 1,
+    "server_lease_cleared": true,
+    "raw_event_account_token_or_financial_values_logged": false,
+    "user_actual_tap_result": "pending"
+  },
+  "corrected_tap_probe": {
+    "run_id": "fcm-live-20261117T081544Z-347414",
+    "outcome": "passed",
+    "original_accepted_event_only": false,
+    "direct_transport_probe_new_event": true,
+    "original_queue_event_previously_accepted": true,
+    "transport_replay_provider_accepted": true,
+    "backend_queue_or_financial_rows_modified": false,
+    "new_business_reminder_created": false,
+    "exactly_one_fixture_expense": true,
+    "six_hour_reminder_limit_preserved": true,
+    "event_id_sha256": "649c68fb48e4aa23229249569ea83af1ee86c44983ec7ea40d0a607e19f7b6cd",
+    "private_token_account_or_event_ids_logged": false,
+    "native": {
+      "checked_at": "2026-11-17T09:34:04.447Z",
+      "exact_transport_probe_in_native_posted_cache": true,
+      "transport_provider_accepted": true,
+      "new_queue_job_created": false,
+      "new_financial_rows_created": false,
+      "actual_user_tap": "pending",
+      "raw_account_event_or_token_logged": false
+    },
+    "actual_user_tap": "pending user confirmation after cursor fix; previous readiness-only build failed on the real tablet",
+    "scope": "direct data-only transport event targeting the existing accepted group; no new business reminder, financial row or queue claim"
+  },
+  "measurement_limits": [
+    "First direct probe was provider accepted but not posted; subsequent diagnostics found app resumed. Do not claim foreground at exact send time. Repeated the same stable probe event with app explicitly background; exact posted cache now matches.",
+    "am kill was requested, but PID was still present before dispatch; count background, not verified process death.",
+    "First root rebuild completed Flutter successfully but profile UI changed during build; rejected and not installed. Final build used immutable isolated source copy and no source drift.",
+    "Normal main14 remains untouched and lacks this fix. QA-028 reserves the next normal15 build and must include these exact functional source hashes.",
+    "No iOS runtime, production scheduler activation, independent review or public release claimed."
+  ],
+  "remaining": [
+    "further account/lifecycle checks",
+    "integration review"
+  ],
+  "sender_retirement": {
+    "recorded_at": "2026-11-17T09:38:53.148Z",
+    "run_id": "fcm-live-20261117T081544Z-347414",
+    "action": "retire",
+    "outcome": "passed",
+    "checks": [
+      {
+        "name": "sender_has_exact_synthetic_run_tag",
+        "outcome": "passed"
+      },
+      {
+        "name": "only_tagged_sender_access_retired",
+        "outcome": "passed"
+      },
+      {
+        "name": "all_preexisting_financial_rows_unchanged",
+        "outcome": "passed"
+      }
+    ],
+    "private_account_ids_tokens_or_rows_logged": false,
+    "sender_authentication": "tagged authenticated-role SQL fixture; not a real sender login",
+    "receiver_authentication": "manual Google/actual app SDK",
+    "scheduler_enabled": false,
+    "recipient_account_preserved": true,
+    "financial_history_preserved": true
+  },
+  "normal_main_delivery": {
+    "checked_at": "2026-11-17T09:41:03.127Z",
+    "version_code": 15,
+    "apk_sha256": "1985498fb5508f516c8ce6bb30108cec983e75737e26256778bf3a277b25e15a",
+    "functional_source": {
+      "lib/core/services/notification_tap_coordinator.dart": {
+        "built_matches_fixed_source": true,
+        "current_matches_fixed_source": true
+      },
+      "lib/core/services/tabby_notification_service.dart": {
+        "built_matches_fixed_source": true,
+        "current_matches_fixed_source": true
+      },
+      "lib/main.dart": {
+        "built_matches_fixed_source": true,
+        "current_matches_fixed_source": true
+      },
+      "lib/features/tabs/data/supabase_tabby_repository.dart": {
+        "built_matches_fixed_source": true,
+        "current_matches_fixed_source": true
+      }
+    },
+    "first_install_time": "2026-11-14 16:02:09",
+    "normal_app_cleared_or_signed_out": false,
+    "isolated_spare_app_preserved": true,
+    "production_certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "first_install_time_preserved": true,
+    "certificate_zip_elf_static_verification": "passed",
+    "production_release_approved": false
+  },
+  "native_intent_checkpoint": {
+    "recorded_at": "2026-11-17T10:29:05.386Z",
+    "warm": "passed",
+    "cold": "passed",
+    "current_native_source_sha256": {
+      "android/app/src/main/AndroidManifest.xml": "2ab0819eceffd33f0a9a934d06da0b62021343e96d7e3020a29ee784ac7236e9",
+      "android/app/src/main/kotlin/com/zalweb/tabby/MainActivity.kt": "6d45cf8e9f8488e839f46ddd6a923bcaf91fb9c930a0c9f8165f67d165b37d5b",
+      "android/app/src/main/kotlin/com/zalweb/tabby/PushEnvelope.kt": "1bac489a900d81ce0ee0e723e89eb98a2daa79af8998eb8114fc90494d9808c2",
+      "android/app/src/test/kotlin/com/zalweb/tabby/PushTapDeliveryTest.kt": "c99954669a9bef0176b67a58e412794065d618cf758bd2814de10a2712e1c781"
+    },
+    "normal16_install": {
+      "installed_at": "2026-11-17T10:23:49.701Z",
+      "package": "com.zalweb.tabby",
+      "before_version": 15,
+      "installed_version": 16,
+      "install_mode": "adb install -r; no uninstall/data clear",
+      "first_install_time_preserved": true,
+      "production_certificate_matches": true,
+      "apk_sha256": "02dd7199462e1ffc1b24372aa1e95c8b76a8b893475899982220cd3c9e240f8f",
+      "installed_apk_sha256": "02dd7199462e1ffc1b24372aa1e95c8b76a8b893475899982220cd3c9e240f8f",
+      "exact_installed_bytes_match": true,
+      "activity_launch": "Status: ok",
+      "owner_account_signed_out": false,
+      "owner_financial_seed": false,
+      "reserved_usbtest_and_entrytest_preserved": true,
+      "source_manifest_sha256": "df34578aa5764daaaf79a95105ed99c7cb41b9b5c314906710403348c40ff6c3"
+    },
+    "final_live_integrity": {
+      "outcome": "passed",
+      "all_preexisting_financial_fingerprints_unchanged": true,
+      "tagged_sender_access_still_retired": true,
+      "google_recipient_preserved": true,
+      "existing_group_fixture_expenses": 1,
+      "pending_or_sending_jobs": 0,
+      "read_only": true,
+      "private_ids_rows_or_tokens_logged": false
+    },
+    "source": "QA-027-native-results.json",
+    "agent_observed_actual_destination": true,
+    "user_attestation": false,
+    "scheduler_enabled": false
+  }
+}

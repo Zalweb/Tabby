@@ -1,0 +1,16 @@
+{
+  "checked_at": "2026-11-17T07:02:13.155Z",
+  "mode": "read-only",
+  "firebase_projects_count": 1,
+  "available_cloud_projects_count": 11,
+  "matching_tabby_firebase_projects": [],
+  "previous_candidate": {
+    "project_id": "project-16899afb-9d76-433c-9a2",
+    "available": true,
+    "status": "checked",
+    "billing_enabled": false,
+    "billing_account_attached": false
+  },
+  "resource_or_billing_changes": false,
+  "credentials_saved_in_evidence": false
+}

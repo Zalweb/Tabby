@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/supabase_config.dart';
+import '../../../core/config/session_scope.dart';
 import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
 import '../domain/payment_method.dart';
@@ -39,7 +40,11 @@ class PaymentMethodsNotifier extends StateNotifier<PaymentMethodsState> {
     required this.ownerUserId,
     SupabaseTabbyRepository? repository,
     this.legacyUser,
+    SessionStamp Function()? captureSession,
+    bool Function(SessionStamp)? sessionIsCurrent,
   })  : repository = repository ?? SupabaseTabbyRepository.instance,
+        _captureSession = captureSession ?? SupabaseConfig.captureSession,
+        _sessionIsCurrent = sessionIsCurrent ?? SupabaseConfig.isCurrentSession,
         super(const PaymentMethodsState()) {
     load();
   }
@@ -47,90 +52,153 @@ class PaymentMethodsNotifier extends StateNotifier<PaymentMethodsState> {
   final String ownerUserId;
   final SupabaseTabbyRepository repository;
   final dynamic legacyUser;
+  final SessionStamp Function() _captureSession;
+  final bool Function(SessionStamp) _sessionIsCurrent;
 
-  Future<void> load() async {
+  int _loadGeneration = 0;
+
+  Future<bool> load() async {
+    final session = _captureSession();
+    final generation = ++_loadGeneration;
     state = state.copyWith(isLoading: true, clearError: true);
-    final methods = await repository.fetchPaymentMethods(ownerUserId);
-    if (!mounted) return;
+    try {
+      final methods = await repository.fetchPaymentMethods(ownerUserId);
+      if (!mounted ||
+          !_sessionIsCurrent(session) ||
+          generation != _loadGeneration) {
+        return false;
+      }
 
-    final fallback =
-        methods.isEmpty && !SupabaseConfig.isInitialized && legacyUser != null
-            ? PaymentMethod.fromLegacyUser(legacyUser.toMap())
-            : const <PaymentMethod>[];
-    state = state.copyWith(
-      methods: PaymentMethod.defaultFirst(methods.isEmpty ? fallback : methods),
-      isLoading: false,
-    );
+      final fallback =
+          methods.isEmpty && !SupabaseConfig.isInitialized && legacyUser != null
+              ? PaymentMethod.fromLegacyUser(legacyUser.toMap())
+              : const <PaymentMethod>[];
+      state = state.copyWith(
+        methods:
+            PaymentMethod.defaultFirst(methods.isEmpty ? fallback : methods),
+        isLoading: false,
+      );
+      return true;
+    } catch (_) {
+      if (mounted &&
+          _sessionIsCurrent(session) &&
+          generation == _loadGeneration) {
+        state = state.copyWith(
+            methods: const [],
+            isLoading: false,
+            errorMessage:
+                'Could not refresh payment methods. Try again before using a QR.');
+      }
+      return false;
+    }
   }
 
-  Future<bool> saveDraft(
-    PaymentMethodDraft draft, {
-    required bool makeDefault,
-  }) async {
+  Future<bool> saveDraft(PaymentMethodDraft draft,
+          {required bool makeDefault}) =>
+      _save(draft, makeDefault: makeDefault);
+
+  Future<bool> updateDraft(PaymentMethod current, PaymentMethodDraft draft) =>
+      _save(draft, makeDefault: current.isDefault, current: current);
+
+  Future<bool> _save(PaymentMethodDraft draft,
+      {required bool makeDefault, PaymentMethod? current}) async {
+    if (state.isSaving) return false;
+    final session = _captureSession();
     if (!draft.isValid) {
       state = state.copyWith(
-        isSaving: false,
-        errorMessage: 'Add a payment method name before saving.',
-      );
+          errorMessage: 'Add a payment method name before saving.');
       return false;
     }
-
-    state = state.copyWith(isSaving: true, clearError: true);
-    final saved = await repository.createPaymentMethod(
-      ownerUserId: ownerUserId,
-      draft: draft,
-      makeDefault: makeDefault || state.methods.isEmpty,
-    );
-    if (!mounted) return false;
-
-    if (saved == null) {
+    ++_loadGeneration;
+    state = state.copyWith(isSaving: true, isLoading: false, clearError: true);
+    try {
+      final saved = current == null
+          ? await repository.createPaymentMethod(
+              ownerUserId: ownerUserId,
+              draft: draft,
+              makeDefault: makeDefault || state.methods.isEmpty)
+          : await repository.updatePaymentMethod(
+              current: current, draft: draft);
+      if (!mounted || !_sessionIsCurrent(session)) return false;
+      if (saved == null) {
+        state = state.copyWith(
+            errorMessage:
+                'Could not verify the save. Your draft is kept. Refresh before retrying.');
+        return false;
+      }
       state = state.copyWith(
-        isSaving: false,
-        errorMessage: SupabaseConfig.isInitialized
-            ? 'Payment method could not be saved. Please try again.'
-            : 'Payment methods require an internet connection to save.',
-      );
-      return false;
-    }
-
-    state = state.copyWith(
-      methods: PaymentMethod.defaultFirst([
-        ...state.methods.map((method) => method.copyWith(isDefault: false)),
+          methods: PaymentMethod.defaultFirst([
+        ...state.methods.where((method) => method.id != saved.id).map(
+            (method) =>
+                saved.isDefault ? method.copyWith(isDefault: false) : method),
         saved,
-      ]),
-      isSaving: false,
-    );
-    return true;
-  }
-
-  Future<bool> setPreferred(String methodId) async {
-    final saved = await repository.setPreferredPaymentMethod(methodId);
-    if (!saved || !mounted) return false;
-    state = state.copyWith(
-      methods: PaymentMethod.defaultFirst(state.methods.map(
-        (method) => method.copyWith(isDefault: method.id == methodId),
-      )),
-    );
-    return true;
-  }
-
-  Future<bool> remove(String methodId) async {
-    final removed = await repository.deletePaymentMethod(methodId);
-    if (!removed || !mounted) return false;
-    final remaining =
-        state.methods.where((method) => method.id != methodId).toList();
-    if (remaining.isNotEmpty && !remaining.any((method) => method.isDefault)) {
-      final promoted = remaining.first;
-      await setPreferred(promoted.id);
+      ]));
+      await load();
       return true;
+    } catch (_) {
+      if (mounted && _sessionIsCurrent(session)) {
+        state = state.copyWith(
+            errorMessage:
+                'Payment method could not be saved. Please try again.');
+      }
+      return false;
+    } finally {
+      if (mounted && _sessionIsCurrent(session)) {
+        state = state.copyWith(isSaving: false);
+      }
     }
-    state = state.copyWith(methods: PaymentMethod.defaultFirst(remaining));
-    return true;
+  }
+
+  Future<bool> setPreferred(String methodId) =>
+      _mutate(methodId, remove: false);
+  Future<bool> remove(String methodId) => _mutate(methodId, remove: true);
+
+  Future<bool> _mutate(String methodId, {required bool remove}) async {
+    if (state.isSaving) return false;
+    final session = _captureSession();
+    ++_loadGeneration;
+    state = state.copyWith(isSaving: true, isLoading: false, clearError: true);
+    try {
+      final success = remove
+          ? await repository.deletePaymentMethod(methodId)
+          : await repository.setPreferredPaymentMethod(methodId);
+      if (!mounted || !_sessionIsCurrent(session)) return false;
+      if (!success) {
+        state = state.copyWith(
+            errorMessage:
+                'Payment method could not be updated. Please try again.');
+        return false;
+      }
+      // Remove immediately after acknowledgment; never select from the stale list.
+      state = state.copyWith(
+          methods: PaymentMethod.defaultFirst(state.methods
+              .where((method) => !remove || method.id != methodId)
+              .map((method) => remove
+                  ? method
+                  : method.copyWith(isDefault: method.id == methodId))));
+      await load(); // Read the server's atomic successor/preference and revisions.
+      return mounted && _sessionIsCurrent(session);
+    } catch (_) {
+      if (mounted && _sessionIsCurrent(session)) {
+        state = state.copyWith(
+            errorMessage:
+                'Payment method could not be updated. Refresh and try again.');
+      }
+      return false;
+    } finally {
+      if (mounted && _sessionIsCurrent(session)) {
+        state = state.copyWith(isSaving: false);
+      }
+    }
   }
 }
 
 final paymentMethodsProvider = StateNotifierProvider.family<
     PaymentMethodsNotifier, PaymentMethodsState, String>((ref, ownerUserId) {
+  void sessionChanged() => ref.invalidateSelf();
+  SupabaseConfig.sessionRevision.addListener(sessionChanged);
+  ref.onDispose(
+      () => SupabaseConfig.sessionRevision.removeListener(sessionChanged));
   final user = ref.watch(currentUserProvider);
   return PaymentMethodsNotifier(
     ownerUserId: ownerUserId,
@@ -139,7 +207,9 @@ final paymentMethodsProvider = StateNotifierProvider.family<
 });
 
 class TabPaymentMethodRequest {
-  const TabPaymentMethodRequest(this.tabId, this.payeeUserId);
+  const TabPaymentMethodRequest(this.tabId, this.payeeUserId,
+      {this.sessionKey = ''});
+  final String sessionKey;
 
   final String tabId;
   final String payeeUserId;
@@ -148,18 +218,22 @@ class TabPaymentMethodRequest {
   bool operator ==(Object other) {
     return other is TabPaymentMethodRequest &&
         other.tabId == tabId &&
-        other.payeeUserId == payeeUserId;
+        other.payeeUserId == payeeUserId &&
+        other.sessionKey == sessionKey;
   }
 
   @override
-  int get hashCode => Object.hash(tabId, payeeUserId);
+  int get hashCode => Object.hash(tabId, payeeUserId, sessionKey);
 }
 
-final tabPaymentMethodsProvider =
-    FutureProvider.family<List<PaymentMethod>, TabPaymentMethodRequest>(
-        (ref, request) {
-  return SupabaseTabbyRepository.instance.fetchPaymentMethodsForTab(
+final tabPaymentMethodsProvider = FutureProvider.autoDispose
+    .family<List<PaymentMethod>, TabPaymentMethodRequest>((ref, request) async {
+  ref.watch(currentUserProvider);
+  final session = SupabaseConfig.captureSession();
+  final methods =
+      await SupabaseTabbyRepository.instance.fetchPaymentMethodsForTab(
     tabId: request.tabId,
     payeeUserId: request.payeeUserId,
   );
+  return SupabaseConfig.isCurrentSession(session) ? methods : const [];
 });

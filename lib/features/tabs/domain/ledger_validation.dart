@@ -1,3 +1,7 @@
+import 'models.dart';
+import 'share_allocation.dart';
+import '../../../core/utils/currency_formatter.dart';
+
 class TabValidationException implements Exception {
   final String message;
 
@@ -9,6 +13,73 @@ class TabValidationException implements Exception {
 
 class LedgerValidation {
   LedgerValidation._();
+
+  /// Explicit plain amounts use the existing expense participant contract.
+  /// Include zero-share payers; names never establish financial identity.
+  static List<ParticipantShare> customShares({
+    required int total,
+    required List<TabbyUser> members,
+    required String payerId,
+    required Map<String, int> amounts,
+  }) {
+    final ids = members.map((m) => m.id).toSet();
+    if (total <= 0 ||
+        total > CurrencyFormatter.maxAmountCentavos ||
+        members.length < 2 ||
+        ids.length != members.length ||
+        ids.contains('') ||
+        !ids.contains(payerId) ||
+        amounts.length != ids.length ||
+        !amounts.keys.every(ids.contains) ||
+        amounts.values.any((v) => v < 0) ||
+        amounts.values.fold<int>(0, (a, b) => a + b) != total) {
+      throw const TabValidationException(
+        'Enter an amount for each person. Their shares must add up to the total.',
+      );
+    }
+    return members
+        .map(
+          (m) => ParticipantShare(
+            userId: m.id,
+            name: m.displayName,
+            shareAmountCentavos: amounts[m.id]!,
+            isPayer: m.id == payerId,
+          ),
+        )
+        .toList();
+  }
+
+  static List<ParticipantShare> groupShares({
+    required int total,
+    required List<TabbyUser> members,
+    required String payerId,
+    required bool equalSplit,
+  }) {
+    if (total <= 0 ||
+        total > CurrencyFormatter.maxAmountCentavos ||
+        members.length < 2 ||
+        members.map((m) => m.id).toSet().length != members.length ||
+        members.any((m) => m.id.isEmpty) ||
+        !members.any((m) => m.id == payerId)) {
+      throw const TabValidationException(
+        'Refresh the group and select a member who paid.',
+      );
+    }
+    final shares = allocateEqualShares(
+      total,
+      members.where((m) => equalSplit || m.id != payerId).map((m) => m.id),
+    );
+    return members
+        .map(
+          (m) => ParticipantShare(
+            userId: m.id,
+            name: m.displayName,
+            shareAmountCentavos: shares[m.id] ?? 0,
+            isPayer: m.id == payerId,
+          ),
+        )
+        .toList();
+  }
 
   static void validateExpense({
     required int totalAmountCentavos,
@@ -25,6 +96,11 @@ class LedgerValidation {
         'The expense amount must be greater than PHP 0.00.',
       );
     }
+    if (totalAmountCentavos > CurrencyFormatter.maxAmountCentavos) {
+      throw const TabValidationException(
+        'The maximum amount is PHP 999,999,999.99.',
+      );
+    }
     if (participantCount < 2) {
       throw const TabValidationException(
         'A split must include at least two participants.',
@@ -39,8 +115,9 @@ class LedgerValidation {
       return;
     }
 
-    final selectedPayerId =
-        payerId == null || payerId.trim().isEmpty ? counterpartId : payerId;
+    final selectedPayerId = payerId == null || payerId.trim().isEmpty
+        ? counterpartId
+        : payerId;
     if (selectedPayerId == currentUserId) {
       throw const TabValidationException(
         'The payer must be the other participant when they paid.',
@@ -73,15 +150,18 @@ class LedgerValidation {
     required int netBalanceCentavos,
     required bool isPayingMe,
   }) {
+    if (amountCentavos > CurrencyFormatter.maxAmountCentavos) {
+      throw const TabValidationException(
+        'The maximum amount is PHP 999,999,999.99.',
+      );
+    }
     if (amountCentavos <= 0) {
       throw const TabValidationException(
         'The payment amount must be greater than PHP 0.00.',
       );
     }
     if (netBalanceCentavos == 0) {
-      throw const TabValidationException(
-        'This tab is already settled.',
-      );
+      throw const TabValidationException('This tab is already settled.');
     }
 
     final expectedDirection = netBalanceCentavos > 0;

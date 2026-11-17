@@ -1,0 +1,295 @@
+{
+  "task": "QA-025",
+  "timestamp": "2026-11-17T07:49:02.066Z",
+  "tested_commit": "f8b731463e2dd0efd5f160f82f093fa0c26da1e4",
+  "dirty_tree": true,
+  "build": {
+    "started_at": "2026-11-17T07:42:52.717Z",
+    "finished_at": "2026-11-17T07:44:56.997Z",
+    "commit": "f8b731463e2dd0efd5f160f82f093fa0c26da1e4",
+    "dirty_tree": true,
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64",
+    "build_number": 13,
+    "public_config_fields": [
+      "FIREBASE_API_KEY",
+      "FIREBASE_APP_ID",
+      "FIREBASE_PROJECT_ID",
+      "FIREBASE_SENDER_ID",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL"
+    ],
+    "changed_during_build": [],
+    "outcome": "passed"
+  },
+  "artifact": {
+    "schema": 1,
+    "commit": "f8b731463e2dd0efd5f160f82f093fa0c26da1e4",
+    "apk_sha256": "a7e260f3674572cbc51adc4a31e105d52919b77012df3590a90208f9f291adb9",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 13,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "installation": {
+    "timestamp": "2026-11-17T07:45:04.837Z",
+    "device": "Lenovo TB321FU / API36 / ARM64",
+    "transport": "authorized USB",
+    "hardware_identity_checked": true,
+    "primary_user_checked": true,
+    "before_version": 12,
+    "installed_version": 13,
+    "package": "com.zalweb.tabby",
+    "install_mode": "adb install -r; no uninstall or data clear",
+    "first_install_time_preserved": true,
+    "certificate_matches_previous": true,
+    "apk_sha256": "a7e260f3674572cbc51adc4a31e105d52919b77012df3590a90208f9f291adb9",
+    "installed_apk_sha256": "a7e260f3674572cbc51adc4a31e105d52919b77012df3590a90208f9f291adb9",
+    "exact_installed_bytes_match": true,
+    "activity_launch": "Status: ok",
+    "application_running": true
+  },
+  "native_entry_suite": {
+    "started_at": "2026-11-17T07:40:46.380Z",
+    "suite": "entry",
+    "transport": "usb-only",
+    "package": "com.zalweb.tabby.entrytest",
+    "outcome": "passed",
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed",
+        "duration_ms": 55
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed",
+        "duration_ms": 97
+      },
+      {
+        "name": "device-serial",
+        "outcome": "passed",
+        "duration_ms": 47
+      },
+      {
+        "name": "device-hardware-serial",
+        "outcome": "passed",
+        "duration_ms": 105
+      },
+      {
+        "name": "device-model",
+        "outcome": "passed",
+        "duration_ms": 94
+      },
+      {
+        "name": "device-api",
+        "outcome": "passed",
+        "duration_ms": 103
+      },
+      {
+        "name": "device-page-size",
+        "outcome": "passed",
+        "duration_ms": 103
+      },
+      {
+        "name": "physical-device",
+        "outcome": "passed",
+        "duration_ms": 104
+      },
+      {
+        "name": "production-package-inventory",
+        "outcome": "passed",
+        "duration_ms": 151
+      },
+      {
+        "name": "flutter-version",
+        "outcome": "passed",
+        "duration_ms": 617
+      },
+      {
+        "name": "build-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 40126
+      },
+      {
+        "name": "verify-package-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 35
+      },
+      {
+        "name": "device-recheck-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 98
+      },
+      {
+        "name": "install-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 7272
+      },
+      {
+        "name": "notification-permission-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 89
+      },
+      {
+        "name": "drive-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 18513
+      },
+      {
+        "name": "validate-drive-1-android_google_entry_test",
+        "outcome": "passed",
+        "required_cases": 3
+      },
+      {
+        "name": "stop-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 121
+      }
+    ],
+    "limitations": [
+      "Synthetic device suites do not verify a live backend.",
+      "Matrix delivery probes schedule alarms; notification delivery is not asserted.",
+      "No release, upgrade, production migration or full device acceptance is implied."
+    ],
+    "commit": "f8b731463e2dd0efd5f160f82f093fa0c26da1e4",
+    "dirty_tree": true,
+    "device": {
+      "model": "TB321FU",
+      "api": "36",
+      "page_size": "4096"
+    },
+    "production_package_present": true,
+    "flutter": "Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git\nFramework • revision 737ba8f885 (4 weeks ago) • 2026-10-22 21:37:31 -0700\nEngine • hash dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2 (revision cf636b1dfb) (25 days ago) • 2026-10-23 02:13:38.000Z\nTools • Dart 3.13.7 • DevTools 2.60.0",
+    "finished_at": "2026-11-17T07:41:54.121Z"
+  },
+  "server_provider_policy": {
+    "run_id": "google-registration-20261117T073155Z-d40bbe",
+    "outcome": "passed",
+    "operator_sha256": "504518119c73e0fea7236f9b673a2e61feb45bcb28e8b960e902a8712e7d27f2",
+    "backup_ciphertext_sha256": "bde2294e4b4f50a3d25211ef179bef2cc37b5daae8a263eb421dc140dc858e9d",
+    "backup_recovery_verified": true,
+    "credentials_changed": false,
+    "financial_data_changed": false,
+    "user_accounts_created": false,
+    "restarted_service": "auth",
+    "auth_image": "supabase/gotrue:v2.197.0",
+    "auth_healthy": true,
+    "google_enabled": true,
+    "registration_enabled": true,
+    "other_providers_enabled": false,
+    "disabled_entry_probes": {
+      "email_signup": {
+        "http_status": 400,
+        "error_code": "email_provider_disabled"
+      },
+      "phone_signup": {
+        "http_status": 400,
+        "error_code": "phone_provider_disabled"
+      },
+      "anonymous_signup": {
+        "http_status": 422,
+        "error_code": "anonymous_provider_disabled"
+      },
+      "email_password": {
+        "http_status": 422,
+        "error_code": "email_provider_disabled"
+      }
+    },
+    "policy_persisted": true
+  },
+  "independent_public_probe": {
+    "timestamp": "2026-11-17T07:35:18.301Z",
+    "settings_http": 200,
+    "signup_enabled": true,
+    "google_enabled": true,
+    "other_providers_enabled": false,
+    "google_authorize_http": 302,
+    "google_redirect_host": "accounts.google.com",
+    "accounts_created": false,
+    "real_new_google_registration": "unverified: requires consented new Google identity"
+  },
+  "checks": {
+    "full_flutter_tests_passed": 776,
+    "focused_tests_passed": 83,
+    "registration_routing_tests_passed": 3,
+    "usb_runner_node_tests_passed": 10,
+    "python_google_operator_tests_passed": 9,
+    "preview_fixture_tests_passed": 1,
+    "analysis": "No issues found",
+    "source_hashes_match_at_handoff": true,
+    "entry_fixture_removed": true,
+    "owner_session_and_data_preserved": true,
+    "real_new_google_registration": "unverified",
+    "independent_review": "unverified",
+    "ios_runtime": "unverified",
+    "exact_candidate_16kb_runtime": "unverified",
+    "project_memory": "passed: write and plain validation;79 tasks/45 audit findings/102 verification records",
+    "documentation_base_coverage": "failed: eight pre-existing .agents/skills/using-superpowers files, skills-lock.json and15 user-supplied introduction reference JPEG inputs lack owning updated-task coverage; no QA-025 implementation file uncovered",
+    "git_diff_check": "passed",
+    "final_git_status": "Dirty tree includes earlier mascot/icon, concurrent Firebase, user reference inputs and skill installation; preserved; no commit/public release",
+    "final_source_recheck_at": "2026-11-17T07:50:29.328Z"
+  },
+  "limitations": [
+    "Synthetic physical cases exercise production UI and real encrypted introduction storage, not a live Google identity creation.",
+    "First broad run had four obsolete email/pre-login UI expectations; updated tests then all776 passed. Two earlier profile tests missed the now-scrollable save control; corrected ensureVisible.",
+    "Private dirty-tree device candidate; separate Firebase and earlier branding work retained.",
+    "Existing Cupertino-font/package_info_plus future-KGP/Java native-access build warnings persist.",
+    "Documentation base coverage of unrelated skill/reference inputs remains an independently owned issue."
+  ]
+}

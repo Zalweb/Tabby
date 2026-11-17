@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../theme/tabby_colors.dart';
+import '../theme/tabby_palette.dart';
 
 typedef PackageInfoLoader = Future<PackageInfo> Function();
 
@@ -50,9 +50,9 @@ class _AppVersionFooterState extends State<AppVersionFooter> {
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             child: Text(
               'Version $version',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: TabbyColors.textSecondary,
+                color: TabbyPalette.of(context).secondaryText,
               ),
             ),
           ),

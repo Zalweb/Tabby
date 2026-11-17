@@ -1,0 +1,76 @@
+name: Azure backend workers
+on:
+  pull_request:
+    paths: ['backend/**', 'supabase/functions/**', 'scripts/azure-*', 'deploy/azure/**', '.github/workflows/deploy-azure-workers.yml']
+  push:
+    branches: [main]
+    paths: ['backend/**', 'supabase/functions/**', 'scripts/azure-*', 'deploy/azure/**', '.github/workflows/deploy-azure-workers.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: azure-workers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check worker authorization and transports
+        run: node --test backend/app.test.mjs scripts/test-account-deletion-worker.mjs scripts/test-account-deletion-transport.mjs scripts/test-reminder-push-worker.mjs scripts/test-recurring-worker.mjs
+      - name: Stage credential-free package
+        run: node scripts/azure-package.cjs
+      - name: Smoke-test staged startup
+        run: node --test scripts/azure-package.test.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: azure-workers
+          path: .dart_tool/azure-workers/package/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
+  deploy:
+    needs: validate
+    # Remains inactive until cost/deployment approval, live gates and OIDC setup.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.AZURE_DEPLOY_ENABLED == 'true'
+    environment: azure-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: azure-workers
+          path: worker-package
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          package: worker-package
+      - name: Check readiness and reject unauthenticated worker requests
+        env:
+          APP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+        shell: bash
+        run: |
+          hostname=$(az webapp show --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --query defaultHostName -o tsv --only-show-errors)
+          for attempt in {1..12}; do
+            if node scripts/azure-verify.mjs "https://$hostname"; then exit 0; fi
+            sleep 10
+          done
+          exit 1

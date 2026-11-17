@@ -37,7 +37,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1. Verify Home empty state
-    expect(find.text('Total Balance'), findsOneWidget);
+    expect(find.text('Nothing outstanding'), findsOneWidget);
     expect(find.text('No pending dues. All caught up!'), findsOneWidget);
     expect(find.text('No recent activity yet. Log an expense to get started!'),
         findsOneWidget);
@@ -59,7 +59,7 @@ void main() {
     // 4. Open Add Expense Modal
     await tester.tap(find.text('Home'));
     await tester.pumpAndSettle();
-    final createTabButton = find.widgetWithText(ElevatedButton, 'Create a Tab');
+    final createTabButton = find.byKey(const ValueKey('navigation-create-tab'));
     await tester.drag(
       find.byType(Scrollable).first,
       const Offset(0, -520),
@@ -98,8 +98,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 5. Verify Home dashboard updated with new tab
-    expect(find.text('YOU OWE'), findsOneWidget);
-    expect(find.text("YOU'RE OWED"), findsOneWidget);
+    expect(find.text('NET BALANCE'), findsOneWidget);
+    expect(find.text('Received'), findsOneWidget);
     expect(find.textContaining('250.00'), findsWidgets);
 
     // 6. Navigate to My Tabs and verify Alex tab exists

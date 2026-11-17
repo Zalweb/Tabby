@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import '../domain/models.dart';
+import '../domain/pair_obligations.dart';
 
 @immutable
 class TabbyDashboardState {
+  final String? viewerUserId;
   final List<BilateralTab> tabs;
   final List<TabbyActivity> activities;
   final List<UpcomingReminder> reminders;
@@ -12,6 +14,7 @@ class TabbyDashboardState {
   final String? emotionCustomMessage;
 
   const TabbyDashboardState({
+    this.viewerUserId,
     required this.tabs,
     required this.activities,
     required this.reminders,
@@ -25,11 +28,40 @@ class TabbyDashboardState {
   int get unreadNotificationCount =>
       notifications.where((n) => !n.isRead).length;
 
-  /// Total centavos you owe others across all tabs
+  bool _hasPairDetails(BilateralTab tab) {
+    final members = tab.members.map((member) => member.id).toSet();
+    return viewerUserId != null &&
+        members.contains(viewerUserId) &&
+        tab.entries.isNotEmpty &&
+        tab.entries
+            .where((entry) =>
+                !entry.isPayment &&
+                entry.status != TransactionStatus.cancelled &&
+                entry.status != TransactionStatus.disputed)
+            .every((entry) =>
+                entry.participants.isNotEmpty &&
+                entry.participants
+                    .every((party) => members.contains(party.userId)));
+  }
+
+  bool get hasIncompleteGroupBalances => tabs.any((tab) =>
+      tab.isGroupTab &&
+      !_hasPairDetails(tab) &&
+      (tab.netBalanceCentavos != 0 ||
+          tab.entries.any((entry) =>
+              !entry.isPayment &&
+              entry.status != TransactionStatus.cancelled &&
+              entry.status != TransactionStatus.disputed)));
+
+  /// Outstanding direct payables, retaining known legacy net totals.
   int get youOweCentavos {
     int total = 0;
     for (final tab in tabs) {
-      if (tab.netBalanceCentavos < 0) {
+      if (tab.isGroupTab && _hasPairDetails(tab)) {
+        total += groupObligations(tab)
+            .where((pair) => pair.payerId == viewerUserId)
+            .fold<int>(0, (sum, pair) => sum + pair.amountCentavos);
+      } else if (tab.netBalanceCentavos < 0) {
         total += tab.netBalanceCentavos.abs();
       }
     }
@@ -40,7 +72,11 @@ class TabbyDashboardState {
   int get youAreOwedCentavos {
     int total = 0;
     for (final tab in tabs) {
-      if (tab.netBalanceCentavos > 0) {
+      if (tab.isGroupTab && _hasPairDetails(tab)) {
+        total += groupObligations(tab)
+            .where((pair) => pair.recipientId == viewerUserId)
+            .fold<int>(0, (sum, pair) => sum + pair.amountCentavos);
+      } else if (tab.netBalanceCentavos > 0) {
         total += tab.netBalanceCentavos;
       }
     }
@@ -101,6 +137,7 @@ class TabbyDashboardState {
   }
 
   TabbyDashboardState copyWith({
+    String? viewerUserId,
     List<BilateralTab>? tabs,
     List<TabbyActivity>? activities,
     List<UpcomingReminder>? reminders,
@@ -111,13 +148,17 @@ class TabbyDashboardState {
     String? emotionCustomMessage,
   }) {
     return TabbyDashboardState(
+      viewerUserId: viewerUserId ?? this.viewerUserId,
       tabs: tabs ?? this.tabs,
       activities: activities ?? this.activities,
       reminders: reminders ?? this.reminders,
       friendRequests: friendRequests ?? this.friendRequests,
       notifications: notifications ?? this.notifications,
-      emotionOverride: clearOverride ? null : (emotionOverride ?? this.emotionOverride),
-      emotionCustomMessage: clearOverride ? null : (emotionCustomMessage ?? this.emotionCustomMessage),
+      emotionOverride:
+          clearOverride ? null : (emotionOverride ?? this.emotionOverride),
+      emotionCustomMessage: clearOverride
+          ? null
+          : (emotionCustomMessage ?? this.emotionCustomMessage),
     );
   }
 }

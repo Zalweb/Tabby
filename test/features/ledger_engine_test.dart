@@ -24,7 +24,8 @@ void main() {
         ),
       ];
 
-      final net = MockTabbyRepository.calculateNetBalance(entries, currentUserId);
+      final net =
+          MockTabbyRepository.calculateNetBalance(entries, currentUserId);
       expect(net, 50000); // +₱500.00 (Juan owes Frienzal)
     });
 
@@ -58,7 +59,8 @@ void main() {
         ),
       ];
 
-      final net = MockTabbyRepository.calculateNetBalance(entries, currentUserId);
+      final net =
+          MockTabbyRepository.calculateNetBalance(entries, currentUserId);
       expect(net, 40000); // +₱400.00 (Juan owes Frienzal ₱400.00 net)
     });
 
@@ -82,6 +84,7 @@ void main() {
           id: 'payment-1',
           tabId: 'tab-juan',
           title: 'Juan paid via GCash',
+          recipient: const PartyRef(kind: PartyKind.user, id: currentUserId),
           category: ExpenseCategory.borrowedCash,
           totalAmountCentavos: 20000,
           myShareCentavos: 0,
@@ -94,7 +97,8 @@ void main() {
         ),
       ];
 
-      final net = MockTabbyRepository.calculateNetBalance(entries, currentUserId);
+      final net =
+          MockTabbyRepository.calculateNetBalance(entries, currentUserId);
       expect(net, 30000); // +₱300.00 remaining
     });
 
@@ -108,7 +112,8 @@ void main() {
       expect(counterpartShare, 5001);
     });
 
-    test('Group share allocation preserves every centavo deterministically', () {
+    test('Group share allocation preserves every centavo deterministically',
+        () {
       final shares = MockTabbyRepository.allocateEqualShares(
         10001,
         const ['user-c', 'user-a', 'user-b'],

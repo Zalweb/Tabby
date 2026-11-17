@@ -1,151 +1,115 @@
-// ignore_for_file: depend_on_referenced_packages
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tabby/core/services/tabby_api_services.dart';
+import 'package:tabby/core/utils/qr_code_renderer.dart';
+import 'package:tabby/features/payment_methods/domain/payment_method.dart';
 
 void main() {
   // ─────────────────────────────────────────────────────────────────────────
-  // 1. DiceBear — deterministic avatar URL builder
+  // 1. QR codes — rendered on-device, never through a third-party API
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('TabbyApiServices.dicebearUrl', () {
-    test('returns a valid HTTPS URL', () {
-      final url = TabbyApiServices.dicebearUrl('Juan');
-      expect(url, startsWith('https://api.dicebear.com/7.x/initials/svg'));
+  group('renderQrPng', () {
+    testWidgets('renders PNG bytes for an account number', (tester) async {
+      // Picture.toImage needs the real event loop.
+      final bytes = await tester.runAsync(
+        () => renderQrPng('09171234567', size: 120),
+      );
+      expect(bytes, isNotNull);
+      expect(bytes!.length, greaterThan(100));
     });
 
-    test('encodes the seed in the URL', () {
-      final url = TabbyApiServices.dicebearUrl('Maria Clara');
-      expect(url, contains('Maria'));
-    });
-
-    test('uses "T" seed when displayName is empty', () {
-      final url = TabbyApiServices.dicebearUrl('');
-      expect(url, contains('seed=T'));
-    });
-
-    test('includes brand colour parameters', () {
-      final url = TabbyApiServices.dicebearUrl('test');
-      expect(url, contains('backgroundColor=1b998b'));
-      expect(url, contains('textColor=ffffff'));
+    testWidgets('renders PNG bytes for a payment URI', (tester) async {
+      final bytes = await tester.runAsync(
+        () => renderQrPng('gcash://pay?account=09171234567'),
+      );
+      expect(bytes, isNotNull);
     });
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 2. GoQR.me — QR code URL builder
-  // ─────────────────────────────────────────────────────────────────────────
-
-  group('TabbyApiServices.goQrUrl', () {
-    test('returns a valid HTTPS GoQR URL', () {
-      final url = TabbyApiServices.goQrUrl('09171234567');
-      expect(url, startsWith('https://api.qrserver.com'));
-    });
-
-    test('encodes data in the URL', () {
-      final url = TabbyApiServices.goQrUrl('09171234567');
-      expect(url, contains('09171234567'));
-    });
-
-    test('respects custom size parameter', () {
-      final url = TabbyApiServices.goQrUrl('test', size: 160);
-      expect(url, contains('160x160'));
-    });
-
-    test('uses default 300px size', () {
-      final url = TabbyApiServices.goQrUrl('test');
-      expect(url, contains('300x300'));
-    });
-
-    test('includes PNG format and margin', () {
-      final url = TabbyApiServices.goQrUrl('test');
-      expect(url, contains('format=png'));
-      expect(url, contains('margin=10'));
-    });
-
-    test('handles GCash number with plus sign correctly', () {
-      final url = TabbyApiServices.goQrUrl('+639171234567');
-      // URL encoding should be applied
-      expect(url, isNotEmpty);
-      expect(url, startsWith('https://'));
-    });
-  });
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // 3. Philippine phone validation — offline regex
+  // 2. Philippine phone validation — offline regex
   // ─────────────────────────────────────────────────────────────────────────
 
   group('TabbyApiServices.validatePhilippinePhone (offline regex)', () {
-    Future<String?> validate(String phone) =>
+    String? validate(String phone) =>
         TabbyApiServices.validatePhilippinePhone(phone);
 
-    test('accepts 11-digit 09xx number', () async {
-      expect(await validate('09171234567'), isNull);
+    test('accepts 11-digit 09xx number', () {
+      expect(validate('09171234567'), isNull);
     });
 
-    test('accepts +63 prefixed number', () async {
-      expect(await validate('+639171234567'), isNull);
+    test('accepts +63 prefixed number', () {
+      expect(validate('+639171234567'), isNull);
     });
 
-    test('accepts 63-prefixed 12-digit number (no leading +)', () async {
-      expect(await validate('639171234567'), isNull);
+    test('accepts 63-prefixed 12-digit number (no leading +)', () {
+      expect(validate('639171234567'), isNull);
     });
 
-    test('accepts number with dashes and spaces', () async {
-      expect(await validate('0917 123-4567'), isNull);
+    test('accepts number with dashes and spaces', () {
+      expect(validate('0917 123-4567'), isNull);
     });
 
-    test('rejects too short number', () async {
-      expect(await validate('1234'), isNotNull);
+    test('rejects too short number', () {
+      expect(validate('1234'), isNotNull);
     });
 
-    test('rejects empty string', () async {
-      expect(await validate(''), isNotNull);
+    test('rejects empty string', () {
+      expect(validate(''), isNotNull);
     });
 
-    test('rejects landline-formatted number (02 prefix)', () async {
+    test('rejects landline-formatted number (02 prefix)', () {
       // A Manila landline: 028-123-4567 → 10 digits starting with 2, not 9
-      expect(await validate('0281234567'), isNotNull);
+      expect(validate('0281234567'), isNotNull);
     });
 
-    test('rejects all-zeros', () async {
-      expect(await validate('00000000000'), isNotNull);
+    test('rejects all-zeros', () {
+      expect(validate('00000000000'), isNotNull);
     });
 
-    test('returns null (valid) when number passes', () async {
-      final result = await validate('09991234567');
-      expect(result, isNull);
+    test('returns null (valid) when number passes', () {
+      expect(validate('09991234567'), isNull);
     });
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 4. Disify — email validation (offline / fail-open tests only)
+  // 3. Email — local shape + disposable-domain check
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('TabbyApiServices.isEmailAllowed (offline / fail-open)', () {
-    test('returns false for empty email', () async {
-      expect(await TabbyApiServices.isEmailAllowed(''), isFalse);
+  group('TabbyApiServices.isEmailAcceptable', () {
+    test('rejects empty and whitespace-only input', () {
+      expect(TabbyApiServices.isEmailAcceptable(''), isFalse);
+      expect(TabbyApiServices.isEmailAcceptable('   '), isFalse);
     });
 
-    test('returns false for whitespace-only email', () async {
-      expect(await TabbyApiServices.isEmailAllowed('   '), isFalse);
+    test('rejects malformed addresses', () {
+      expect(TabbyApiServices.isEmailAcceptable('juan'), isFalse);
+      expect(TabbyApiServices.isEmailAcceptable('juan@'), isFalse);
+      expect(TabbyApiServices.isEmailAcceptable('juan@example'), isFalse);
+      expect(TabbyApiServices.isEmailAcceptable('juan @example.com'), isFalse);
     });
 
-    // The real Disify call will timeout in CI — this test confirms the
-    // fail-open behaviour: any network issue must return true so the user
-    // is never blocked from signing up.
-    test('does not throw on timeout or network failure', () async {
-      // We cannot simulate a real timeout in unit tests; just confirm the
-      // method signature is callable and returns a bool.
-      final result = await TabbyApiServices.isEmailAllowed('test@example.com')
-          .timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => true, // fail-open confirmed
+    test('accepts ordinary addresses', () {
+      expect(TabbyApiServices.isEmailAcceptable('juan@example.com'), isTrue);
+      expect(
+        TabbyApiServices.isEmailAcceptable('  Maria.Clara+tabby@yahoo.com  '),
+        isTrue,
       );
-      expect(result, isA<bool>());
+    });
+
+    test('flags known disposable domains case-insensitively', () {
+      expect(
+        TabbyApiServices.isEmailAcceptable('burner@Mailinator.com'),
+        isFalse,
+      );
+      expect(TabbyApiServices.isEmailAcceptable('x@yopmail.com'), isFalse);
     });
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 5. Currency-api — PHP/USD rate and display string
+  // 4. Currency-api — PHP/USD rate and display string
   // ─────────────────────────────────────────────────────────────────────────
 
   group('TabbyApiServices.centavosToUsdDisplay', () {
@@ -158,8 +122,7 @@ void main() {
 
     test('does not throw on network failure (returns null or stale)', () async {
       // In unit tests there is no real network. The method must not throw.
-      final result = await TabbyApiServices.centavosToUsdDisplay(10000)
-          .timeout(
+      final result = await TabbyApiServices.centavosToUsdDisplay(10000).timeout(
         const Duration(seconds: 10),
         onTimeout: () => null,
       );
@@ -179,14 +142,27 @@ void main() {
   });
 
   // ─────────────────────────────────────────────────────────────────────────
-  // 6. PaymentMethodDraft — generatedQrUrl field
+  // 5. PaymentMethodDraft — QR payload carried as bytes
   // ─────────────────────────────────────────────────────────────────────────
 
-  group('PaymentMethodDraft.generatedQrUrl', () {
-    test('hasQr is true when generatedQrUrl is set', () {
-      // Import is from domain — tested indirectly via URL builder logic
-      final url = TabbyApiServices.goQrUrl('09171234567');
-      expect(url, isNotEmpty);
+  group('PaymentMethodDraft.hasQr', () {
+    test('is true when PNG bytes are present', () {
+      final draft = PaymentMethodDraft(
+        provider: 'gcash',
+        displayName: 'My GCash QR',
+        accountLabel: '09171234567',
+        qrBytes: Uint8List.fromList([1, 2, 3]),
+      );
+      expect(draft.hasQr, isTrue);
+    });
+
+    test('is false without bytes', () {
+      const draft = PaymentMethodDraft(
+        provider: 'gcash',
+        displayName: 'My GCash',
+        accountLabel: '09171234567',
+      );
+      expect(draft.hasQr, isFalse);
     });
   });
 }

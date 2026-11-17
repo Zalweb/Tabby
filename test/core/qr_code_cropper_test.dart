@@ -9,7 +9,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('QrCodeCropper Service', () {
-    test('Correctly identifies and crops QR code from simulated screenshot', () async {
+    test('Correctly identifies and crops QR code from simulated screenshot',
+        () async {
       // Create a 400x800 simulated mobile phone screenshot
       // with a 150x150 QR-like pattern in the center
       final recorder = ui.PictureRecorder();
@@ -101,7 +102,8 @@ void main() {
       if (file.existsSync()) {
         final bytes = await file.readAsBytes();
         final format = QrCodeCropper.detectImageFormat(
-          path: 'blob:http://localhost:8088/50785f78-b3ec-4eb0-a5fb-39cf9e504c55',
+          path:
+              'blob:http://localhost:8088/50785f78-b3ec-4eb0-a5fb-39cf9e504c55',
           name: 'media_1790865435232.png',
           bytes: bytes,
         );
@@ -116,9 +118,12 @@ void main() {
       }
     });
 
-    test('detectImageFormat correctly identifies images from Web blob URLs and binary headers', () {
+    test(
+        'detectImageFormat correctly identifies images from Web blob URLs and binary headers',
+        () {
       // 1. Web blob URL with PNG magic bytes
-      final pngBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]);
+      final pngBytes = Uint8List.fromList(
+          [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00]);
       final blobResult = QrCodeCropper.detectImageFormat(
         path: 'blob:http://localhost:8088/a348c47f-855c-4da8-963d-49520cb25d30',
         bytes: pngBytes,
@@ -136,7 +141,8 @@ void main() {
       expect(jpgResult.extension, 'jpg');
 
       // 3. Invalid non-image data
-      final textBytes = Uint8List.fromList('hello world text content'.codeUnits);
+      final textBytes =
+          Uint8List.fromList('hello world text content'.codeUnits);
       final invalidResult = QrCodeCropper.detectImageFormat(
         path: 'blob:http://localhost:8088/some-text-file',
         bytes: textBytes,

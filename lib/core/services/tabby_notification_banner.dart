@@ -1,4 +1,8 @@
+import '../theme/tabby_palette.dart';
+import '../../shared/widgets/tabby_feedback.dart';
+
 import 'package:flutter/material.dart';
+
 import '../router/app_router.dart';
 import '../theme/tabby_colors.dart';
 
@@ -15,9 +19,11 @@ class TabbyNotificationBanner {
   }) {
     final messenger = rootScaffoldMessengerKey.currentState;
     if (messenger == null) return;
+    final context = messenger.context;
+    final feedback = TabbyFeedback.current(messenger);
 
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(
+    feedback.hideCurrentSnackBar();
+    feedback.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.transparent,
@@ -27,9 +33,9 @@ class TabbyNotificationBanner {
         content: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: TabbyColors.surfaceWhite,
+            color: TabbyPalette.of(context).surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: TabbyColors.brandEmerald, width: 1.5),
+            border: Border.all(color: TabbyColors.brandAmber, width: 1.5),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.12),
@@ -44,12 +50,12 @@ class TabbyNotificationBanner {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: TabbyColors.iconBgMint,
+                  color: TabbyPalette.of(context).soft,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   icon,
-                  color: TabbyColors.brandEmerald,
+                  color: TabbyPalette.of(context).link,
                   size: 20,
                 ),
               ),
@@ -61,10 +67,10 @@ class TabbyNotificationBanner {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: TabbyColors.brandDarkTeal,
+                        color: TabbyPalette.of(context).text,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -72,9 +78,9 @@ class TabbyNotificationBanner {
                     const SizedBox(height: 2),
                     Text(
                       body,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: TabbyColors.textSecondary,
+                        color: TabbyPalette.of(context).secondaryText,
                         height: 1.3,
                       ),
                       maxLines: 2,
@@ -87,7 +93,7 @@ class TabbyNotificationBanner {
                 const SizedBox(width: 8),
                 TextButton(
                   onPressed: () {
-                    messenger.hideCurrentSnackBar();
+                    feedback.hideCurrentSnackBar();
                     appRouter.push('/tabs/$tabId');
                   },
                   style: TextButton.styleFrom(
@@ -97,14 +103,11 @@ class TabbyNotificationBanner {
                     ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    foregroundColor: TabbyColors.brandEmerald,
+                    foregroundColor: TabbyPalette.of(context).link,
                   ),
                   child: const Text(
                     'View',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
                   ),
                 ),
               ],

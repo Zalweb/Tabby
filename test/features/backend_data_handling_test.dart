@@ -124,32 +124,28 @@ void main() {
       final resolved = await repo.ensureUserExists('user-alex', 'Alex');
       expect(resolved, equals('user-alex'));
 
-      // Write operations should not throw when uninitialized
-      await expectLater(
-        repo.logExpense(
-          tabId: 'test-tab',
-          title: 'Lunch',
-          totalAmountCentavos: 10000,
-          category: ExpenseCategory.food,
-          paidByUserId: 'user-me',
-          myShareCentavos: 5000,
-          counterpartShareCentavos: 5000,
-          currentUserId: 'user-me',
-          counterpartId: 'user-alex',
-        ),
-        completes,
+      // Writes report failure instead of throwing so callers can queue them.
+      final logged = await repo.logExpense(
+        tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+        title: 'Lunch',
+        totalAmountCentavos: 10000,
+        category: ExpenseCategory.food,
+        paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
+        myShareCentavos: 5000,
+        counterpartShareCentavos: 5000,
+        currentUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
+        counterpartId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5e',
       );
+      expect(logged, isNull);
 
-      await expectLater(
-        repo.recordPayment(
-          tabId: 'test-tab',
-          amountCentavos: 5000,
-          method: PaymentMethod.gcash,
-          paidByUserId: 'user-alex',
-          receivedByUserId: 'user-me',
-        ),
-        completes,
+      final recorded = await repo.recordPayment(
+        tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+        amountCentavos: 5000,
+        method: PaymentMethod.gcash,
+        paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5e',
+        receivedByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5d',
       );
+      expect(recorded, isFalse);
 
       await expectLater(repo.signOut(), completes);
     });
@@ -257,6 +253,7 @@ void main() {
           id: 'pay-1',
           tabId: 'tab-1',
           title: 'Friend paid via GCash',
+          recipient: const PartyRef(kind: PartyKind.user, id: currentUserId),
           category: ExpenseCategory.borrowedCash,
           totalAmountCentavos: 20000,
           myShareCentavos: 0,
@@ -292,6 +289,7 @@ void main() {
           id: 'pay-1',
           tabId: 'tab-1',
           title: 'Friend paid via GCash',
+          recipient: const PartyRef(kind: PartyKind.user, id: currentUserId),
           category: ExpenseCategory.borrowedCash,
           totalAmountCentavos: 50000,
           myShareCentavos: 0,
@@ -528,7 +526,7 @@ void main() {
             'amount_centavos': 10000,
             'payment_method': 'gcash',
             'note': 'Partial via GCash ref #12345',
-            'status': 'settled',
+            'status': 'confirmed',
             'submitted_at': '2026-09-12T09:00:00Z',
           },
         ],
@@ -616,60 +614,92 @@ void main() {
       expect(pay.paymentMethod, equals(PaymentMethod.other));
       expect(pay.paidByName, equals('You'));
       expect(pay.title, equals('You paid'));
+      expect(pay.status, TransactionStatus.paymentSubmitted);
     });
 
-    test(
-        'recordPayment executes safely offline and ignores invalid UUIDs without throwing',
+    test('Only confirmed payments affect parsed balances in either direction',
+        () {
+      const statuses = <String?, TransactionStatus>{
+        'confirmed': TransactionStatus.settled,
+        'submitted': TransactionStatus.paymentSubmitted,
+        'rejected': TransactionStatus.cancelled,
+        'unknown': TransactionStatus.paymentSubmitted,
+        'settled': TransactionStatus.paymentSubmitted,
+        null: TransactionStatus.paymentSubmitted,
+      };
+      for (final paymentByMe in [false, true]) {
+        for (final status in statuses.entries) {
+          final parsed = SupabaseTabbyRepository.parseTabRow({
+            'id': 'tab-payment-status',
+            'tab_members': [
+              {'user_id': currentUserId},
+              {'user_id': counterpartUserId},
+            ],
+            'transactions': [
+              {
+                'id': '00000000-0000-4000-8000-000000000010',
+                'created_by': paymentByMe ? counterpartUserId : currentUserId,
+                'total_amount_centavos': 10000,
+                'status': 'acknowledged',
+                'created_at': '2026-09-10T12:00:00Z',
+              },
+            ],
+            'payments': [
+              {
+                'id': '00000000-0000-4000-8000-000000000011',
+                'submitted_by': paymentByMe ? currentUserId : counterpartUserId,
+                'amount_centavos': 2500,
+                if (status.key != null) 'status': status.key,
+                'submitted_at': '2026-09-12T12:00:00Z',
+                'confirmed_by': paymentByMe ? counterpartUserId : currentUserId,
+                'confirmed_at': '2026-09-12T12:00:00Z',
+              },
+            ],
+          }, currentUserId)!;
+          final payment =
+              parsed.entries.singleWhere((entry) => entry.isPayment);
+          expect(payment.status, status.value);
+          final outstanding = status.key == 'confirmed' ? 7500 : 10000;
+          expect(parsed.netBalanceCentavos,
+              paymentByMe ? -outstanding : outstanding,
+              reason: 'status=${status.key}, paymentByMe=$paymentByMe');
+          expect(
+              MockTabbyRepository.calculateNetBalance(
+                  parsed.entries, currentUserId),
+              parsed.netBalanceCentavos);
+        }
+      }
+    });
+
+    test('recordPayment returns false offline regardless of IDs or confirmer',
         () async {
-      // Offline / synthetic tabId
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          tabId: 'synthetic-tab-123',
+      final cases = <Map<String, String>>[
+        {
+          'tab_id': 'synthetic-tab-123',
+          'paid_by': 'user-juan',
+          'received_by': 'user-me',
+        },
+        {
+          'tab_id': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'paid_by': 'user-synthetic-counterpart',
+          'received_by': 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
+        },
+        {
+          'tab_id': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'paid_by': 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
+          'received_by': 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
+        },
+      ];
+      for (final testCase in cases) {
+        final recorded = await SupabaseTabbyRepository.instance.recordPayment(
+          tabId: testCase['tab_id']!,
           amountCentavos: 15000,
           method: PaymentMethod.gcash,
-          paidByUserId: 'user-juan',
-          receivedByUserId: 'user-me',
-        ),
-        completes,
-      );
-
-      // Valid UUID tabId but synthetic/invalid paidByUserId
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 10000,
-          method: PaymentMethod.gcash,
-          paidByUserId: 'user-synthetic-counterpart',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-        ),
-        completes,
-      );
-
-      // Valid UUID tabId
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 25000,
-          method: PaymentMethod.maya,
-          paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-          confirmedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-        ),
-        completes,
-      );
-
-      // Valid UUID tabId with non-UUID confirmedByUserId
-      await expectLater(
-        SupabaseTabbyRepository.instance.recordPayment(
-          tabId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          amountCentavos: 5000,
-          method: PaymentMethod.cash,
-          paidByUserId: 'c1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c',
-          receivedByUserId: 'd2b3c4d5-e6f7-4a8b-9c0d-1e2f3a4b5c6d',
-          confirmedByUserId: 'user-admin',
-        ),
-        completes,
-      );
+          paidByUserId: testCase['paid_by']!,
+          receivedByUserId: testCase['received_by']!,
+        );
+        expect(recorded, isFalse);
+      }
     });
   });
 
@@ -983,6 +1013,7 @@ void main() {
             'amount_centavos': 50000,
             'payment_method': 'gcash',
             'submitted_by': 'usr-member-carlos',
+            'status': 'confirmed',
             'created_at': DateTime.now().toIso8601String(),
             'confirmed_at': DateTime.now().toIso8601String(),
             'payment_proof_url': 'https://supabase.tabby.ph/proofs/gcash1.jpg',
@@ -993,6 +1024,7 @@ void main() {
             'amount_centavos': 50000,
             'payment_method': 'maya',
             'submitted_by': currentUserId,
+            'status': 'confirmed',
             'created_at': DateTime.now().toIso8601String(),
             'confirmed_at': DateTime.now().toIso8601String(),
             'payment_proof_url': null,
@@ -1139,9 +1171,15 @@ void main() {
 
       await TabbyLocalCache.enqueuePendingOp(operation, userId: 'user-queue');
       final loaded = await TabbyLocalCache.loadPendingOps(userId: 'user-queue');
-      expect(loaded, equals([operation]));
+      expect(loaded, hasLength(1));
+      expect(loaded.single['operation_id'], isNotEmpty);
+      expect(
+        Map<String, dynamic>.from(loaded.single)..remove('operation_id'),
+        equals(operation),
+      );
 
-      await TabbyLocalCache.removePendingOp(operation, userId: 'user-queue');
+      await TabbyLocalCache.removePendingOp(loaded.single,
+          userId: 'user-queue');
       expect(
         await TabbyLocalCache.loadPendingOps(userId: 'user-queue'),
         isEmpty,
@@ -1289,14 +1327,14 @@ void main() {
     });
 
     test(
-        'SupabaseTabbyRepository archiveTab and attachReceipt execute safely offline',
+        'shared archive rejects unsupported writes while receipt boundary stays safe offline',
         () async {
       final repo = SupabaseTabbyRepository.instance;
       expect(repo.isConnected, isFalse);
 
       await expectLater(
         repo.archiveTab('00000000-0000-0000-0000-000000000001'),
-        completes,
+        throwsUnsupportedError,
       );
 
       await expectLater(
@@ -1413,7 +1451,7 @@ void main() {
       expect(deduped.length, equals(1));
       expect(deduped.first.id, equals('act-1'));
 
-      // Test cross-source deduplication: local optimistic activity vs server synthesized activity
+      // Similarity cannot prove a local activity is the same server command.
       final now = DateTime.now();
       final localAct = TabbyActivity(
         id: 'act-1726650000000',
@@ -1432,7 +1470,7 @@ void main() {
 
       final crossSourceDeduped =
           TabbyNotifier.deduplicateActivities([serverAct, localAct]);
-      expect(crossSourceDeduped.length, equals(1));
+      expect(crossSourceDeduped.length, equals(2));
       expect(crossSourceDeduped.first.id,
           equals('550e8400-e29b-41d4-a716-446655440000'));
       expect(crossSourceDeduped.first.description, equals('Dinner'));
@@ -1440,9 +1478,8 @@ void main() {
       // Also when local appears before server candidate
       final crossSourceDedupedReversed =
           TabbyNotifier.deduplicateActivities([localAct, serverAct]);
-      expect(crossSourceDedupedReversed.length, equals(1));
-      expect(crossSourceDedupedReversed.first.id,
-          equals('550e8400-e29b-41d4-a716-446655440000'));
+      expect(crossSourceDedupedReversed.length, equals(2));
+      expect(crossSourceDedupedReversed.first.id, equals(localAct.id));
 
       // Test payment activity deduplication
       final localPay = TabbyActivity(
@@ -1464,7 +1501,7 @@ void main() {
 
       final payDeduped =
           TabbyNotifier.deduplicateActivities([serverPay, localPay]);
-      expect(payDeduped.length, equals(1));
+      expect(payDeduped.length, equals(2));
       expect(
           payDeduped.first.id, equals('770e8400-e29b-41d4-a716-446655440000'));
 
@@ -1488,7 +1525,7 @@ void main() {
           TabbyNotifier.deduplicateActivities([morningCoffee, afternoonCoffee]);
       expect(separateDeduped.length, equals(2));
 
-      // Test non-financial activity deduplication (zero amounts within 30s)
+      // Distinct reminder events also retain their exact identities.
       final nudge1 = TabbyActivity(
         id: 'act-nudge-1',
         actorName: 'You',
@@ -1506,11 +1543,11 @@ void main() {
 
       final nudgeDeduped =
           TabbyNotifier.deduplicateActivities([nudge1, nudge2]);
-      expect(nudgeDeduped.length, equals(1));
+      expect(nudgeDeduped.length, equals(2));
     });
 
     test(
-        'deduplicateLedgerEntries merges semantic duplicates and prioritizes server UUIDs',
+        'deduplicateLedgerEntries preserves similar records without an identity mapping',
         () {
       final now = DateTime.now();
 
@@ -1546,17 +1583,14 @@ void main() {
       final deduped = TabbyNotifier.deduplicateLedgerEntries(
           [serverEntry, localOptimisticEntry]);
 
-      expect(deduped.length, equals(1));
-      expect(deduped.first.id, equals('84003d99-472f-424a-94cd-d4d2a357c661'));
-      expect(deduped.first.title, equals('utang nabilin'));
-      expect(deduped.first.totalAmountCentavos, equals(5400));
+      expect(deduped.map((entry) => entry.id).toSet(),
+          {serverEntry.id, localOptimisticEntry.id});
 
       // Test reverse order: local entry before server entry
       final dedupedReverse = TabbyNotifier.deduplicateLedgerEntries(
           [localOptimisticEntry, serverEntry]);
-      expect(dedupedReverse.length, equals(1));
-      expect(dedupedReverse.first.id,
-          equals('84003d99-472f-424a-94cd-d4d2a357c661'));
+      expect(dedupedReverse.map((entry) => entry.id).toSet(),
+          {serverEntry.id, localOptimisticEntry.id});
 
       // Test duplicate exact ID
       final exactDuplicate =
@@ -1577,7 +1611,7 @@ void main() {
 
     test(
         'deduplicateLedgerEntries never merges two distinct server UUID entries '
-        'but still merges temp+server pairs', () {
+        'and preserves unmapped temp+server pairs', () {
       final now = DateTime.now();
 
       LedgerEntry buildEntry({
@@ -1632,8 +1666,7 @@ void main() {
           TabbyNotifier.deduplicateLedgerEntries([serverC, serverD]);
       expect(sameTitleDeduped.length, equals(2));
 
-      // 3. Temp local ID + server UUID with same amount/title -> merged to 1,
-      //    server entry kept.
+      // 3. Equal content cannot establish a local/server identity mapping.
       final tempEntry = buildEntry(
         id: 'entry-123',
         title: 'Milk tea',
@@ -1646,9 +1679,8 @@ void main() {
       );
       final tempServerDeduped =
           TabbyNotifier.deduplicateLedgerEntries([tempEntry, serverEntry]);
-      expect(tempServerDeduped.length, equals(1));
-      expect(tempServerDeduped.first.id,
-          equals('84003d99-472f-424a-94cd-d4d2a357c661'));
+      expect(tempServerDeduped.map((entry) => entry.id).toSet(),
+          {tempEntry.id, serverEntry.id});
     });
 
     test(
@@ -1677,7 +1709,7 @@ void main() {
       expect(serverOnlyDeduped.length, equals(2));
 
       // 2. One 'act-...' activity + one server-ID activity with the same
-      //    content -> merged to 1, server activity kept.
+      //    content -> both survive without an explicit result mapping.
       final localAct = TabbyActivity(
         id: 'act-1726650000000',
         actorName: 'You',
@@ -1694,9 +1726,8 @@ void main() {
       );
       final tempServerDeduped =
           TabbyNotifier.deduplicateActivities([localAct, serverAct]);
-      expect(tempServerDeduped.length, equals(1));
-      expect(tempServerDeduped.first.id,
-          equals('550e8400-e29b-41d4-a716-446655440000'));
+      expect(tempServerDeduped.length, equals(2));
+      expect(tempServerDeduped.first.id, equals(localAct.id));
     });
 
     test(
@@ -1771,11 +1802,10 @@ void main() {
       final unifiedTab = dedupedTabs.first;
       expect(unifiedTab.id, equals('f1b8bf25-04fc-47cf-a156-43ae2d5672e9'));
       expect(unifiedTab.counterpart.displayName, equals('Jana Crizzia Gagno'));
-      expect(unifiedTab.entries.length, equals(1));
-      expect(unifiedTab.entries.first.id,
-          equals('84003d99-472f-424a-94cd-d4d2a357c661'));
-      expect(unifiedTab.itemCount, equals(1));
-      expect(unifiedTab.netBalanceCentavos, equals(-5400));
+      expect(unifiedTab.entries.map((entry) => entry.id).toSet(),
+          {serverTab.entries.single.id, localContactTab.entries.single.id});
+      expect(unifiedTab.itemCount, equals(2));
+      expect(unifiedTab.netBalanceCentavos, equals(-10800));
     });
   });
 }

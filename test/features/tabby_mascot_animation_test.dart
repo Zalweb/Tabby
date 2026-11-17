@@ -5,7 +5,8 @@ import 'package:tabby/shared/widgets/tabby_mascot_widget.dart';
 
 void main() {
   group('TabbyMascotWidget Animation and Emotion Engine', () {
-    testWidgets('Renders properly for all 9 MascotEmotion states without errors',
+    testWidgets(
+        'Renders properly for all 9 MascotEmotion states without errors',
         (tester) async {
       for (final emotion in MascotEmotion.values) {
         await tester.pumpWidget(
@@ -31,7 +32,8 @@ void main() {
       }
     });
 
-    testWidgets('Smoothly transitions between emotions and updates speech bubble',
+    testWidgets(
+        'Smoothly transitions between emotions and updates speech bubble',
         (tester) async {
       var currentEmotion = MascotEmotion.idleNeutral;
 

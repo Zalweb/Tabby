@@ -30,7 +30,8 @@ void main() {
   });
 
   group('FriendRequest', () {
-    test('parses an incoming request and exposes only relationship metadata', () {
+    test('parses an incoming request and exposes only relationship metadata',
+        () {
       final request = FriendRequest.fromMap(const {
         'id': 'request-1',
         'requester_id': 'user-alex',

@@ -1,6 +1,10 @@
+import '../theme/tabby_palette.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../config/app_state.dart';
+import '../config/supabase_config.dart';
 import '../../features/home/presentation/home_dashboard_screen.dart';
 import '../../features/navigation/presentation/main_scaffold.dart';
 import '../../features/profile/presentation/profile_screen.dart';
@@ -10,24 +14,26 @@ import '../../features/tabs/presentation/tab_detail_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/auth/presentation/complete_profile_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
-import '../../features/auth/presentation/signup_screen.dart';
-import '../../features/classroom/presentation/classroom_tasks_screen.dart';
+import '../../features/auth/presentation/registration_check_screen.dart';
+import '../../features/auth/presentation/auth_help_screen.dart';
+import '../../features/auth/presentation/reset_password_screen.dart';
+import '../services/auth_recovery_state.dart';
+import '../services/auth_email_assistance.dart';
 
-import '../theme/tabby_colors.dart';
-import '../../features/tabs/domain/models.dart';
 import '../../shared/widgets/tabby_button.dart';
 import '../../shared/widgets/tabby_mascot_widget.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey =
-    GlobalKey<NavigatorState>(debugLabel: 'root');
-final GlobalKey<NavigatorState> _homeNavigatorKey =
-    GlobalKey<NavigatorState>(debugLabel: 'home');
-final GlobalKey<NavigatorState> _tabsNavigatorKey =
-    GlobalKey<NavigatorState>(debugLabel: 'tabs');
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'root',
+);
+final GlobalKey<NavigatorState> _homeNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'home',
+);
+final GlobalKey<NavigatorState> _tabsNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'tabs',
+);
 final GlobalKey<NavigatorState> _profileNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'profile');
-final GlobalKey<NavigatorState> _classroomNavigatorKey =
-    GlobalKey<NavigatorState>(debugLabel: 'classroom');
 final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
     GlobalKey<ScaffoldMessengerState>(debugLabel: 'scaffoldMessenger');
 
@@ -41,17 +47,17 @@ bool _hasAuthenticatedSession() {
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/onboarding',
+  initialLocation: '/login',
   errorBuilder: (context, state) {
     final isAuthenticated = _hasAuthenticatedSession();
     return Scaffold(
-      backgroundColor: TabbyColors.bgCanvas,
+      backgroundColor: TabbyPalette.of(context).canvas,
       appBar: AppBar(
-        backgroundColor: TabbyColors.brandEmerald,
-        title: const Text(
+        backgroundColor: TabbyPalette.of(context).canvas,
+        title: Text(
           'Tabby',
           style: TextStyle(
-            color: TabbyColors.brandDarkTeal,
+            color: TabbyPalette.of(context).text,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -63,27 +69,26 @@ final GoRouter appRouter = GoRouter(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const TabbyMascotWidget(
-                emotion: MascotEmotion.idleNeutral,
+              const TabbyMascotWidget.art(
+                pose: TabbyMascotPose.helpful,
                 size: 90,
-                showBubble: false,
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Page Not Found',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: TabbyColors.brandDarkTeal,
+                  color: TabbyPalette.of(context).text,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 "The page you're looking for doesn't exist or has been moved.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: TabbyColors.textSecondary,
+                  color: TabbyPalette.of(context).secondaryText,
                 ),
               ),
               const SizedBox(height: 24),
@@ -102,52 +107,82 @@ final GoRouter appRouter = GoRouter(
   refreshListenable: Listenable.merge([
     AppState.isAuthenticated,
     AppState.hasSeenOnboarding,
+    AppState.registrationCheckPending,
+    AppState.introductionRequired,
     AppState.profileCompletionRequired,
+    AuthRecoveryState.instance,
+    SupabaseConfig.sessionRevision,
   ]),
   redirect: (context, state) {
     final bool auth = _hasAuthenticatedSession();
-    final bool seenOnboarding = AppState.hasSeenOnboarding.value;
     final String path = state.uri.path;
+    final recovery = AuthRecoveryState.instance;
+    if (auth && recovery.active) {
+      return path == '/reset-password' || path == '/auth-help'
+          ? null
+          : '/reset-password';
+    }
+    if (recovery.linkError != null) {
+      return path == '/auth-help' ? null : '/auth-help';
+    }
+    if (path == '/auth-help' || (!auth && path == '/reset-password')) {
+      return null;
+    }
 
     if (!auth) {
-      if (!seenOnboarding) {
-        if (path == '/onboarding') return null;
-        return '/onboarding';
-      } else {
-        if (path == '/login' || path == '/signup') return null;
-        return '/login';
-      }
+      return path == '/login' ? null : '/login';
     } else {
+      if (AppState.registrationCheckPending.value) {
+        return path == '/account-check' ? null : '/account-check';
+      }
+      if (AppState.introductionRequired.value) {
+        return path == '/onboarding' ? null : '/onboarding';
+      }
       if (AppState.profileCompletionRequired.value) {
         if (path == '/complete-profile') return null;
         return '/complete-profile';
       }
+      if (path == '/account-check') return '/home';
 
       if (path == '/login' ||
           path == '/signup' ||
           path == '/onboarding' ||
-          path == '/complete-profile') {
+          (path == '/complete-profile' &&
+              state.uri.queryParameters['resume'] != 'true')) {
         return '/home';
       }
+      if (path == '/reset-password') return '/home';
     }
     return null;
   },
   routes: [
     GoRoute(
+      path: '/account-check',
+      builder: (_, _) => const RegistrationCheckScreen(),
+    ),
+    GoRoute(
+      path: '/auth-help',
+      builder: (context, state) => AuthHelpScreen(
+        initialKind: state.uri.queryParameters['kind'] == 'confirmation'
+            ? AuthEmailKind.confirmation
+            : AuthEmailKind.recovery,
+      ),
+    ),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) => const ResetPasswordScreen(),
+    ),
+    GoRoute(
       path: '/onboarding',
       builder: (context, state) => const OnboardingScreen(),
     ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const LoginScreen(),
-    ),
-    GoRoute(
-      path: '/signup',
-      builder: (context, state) => const SignUpScreen(),
-    ),
+    GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(path: '/signup', builder: (context, state) => const LoginScreen()),
     GoRoute(
       path: '/complete-profile',
-      builder: (context, state) => const CompleteProfileScreen(),
+      builder: (context, state) => CompleteProfileScreen(
+        key: ValueKey(SupabaseConfig.currentUserId ?? 'offline'),
+      ),
     ),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
@@ -186,18 +221,7 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
 
-        // 3. Classroom Tasks Branch
-        StatefulShellBranch(
-          navigatorKey: _classroomNavigatorKey,
-          routes: [
-            GoRoute(
-              path: '/tasks',
-              builder: (context, state) => const ClassroomTasksScreen(),
-            ),
-          ],
-        ),
-
-        // 4. Profile Branch
+        // 3. Profile Branch
         StatefulShellBranch(
           navigatorKey: _profileNavigatorKey,
           routes: [

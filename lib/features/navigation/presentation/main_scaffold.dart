@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/tabby_colors.dart';
-import '../../classroom/application/classroom_providers.dart';
 
-/// FinWise Custom Floating Rounded Dock Navigation Bar
-class MainScaffold extends ConsumerWidget {
+import '../../../core/theme/tabby_colors.dart';
+import '../../../core/theme/tabby_palette.dart';
+import '../../tabs/presentation/add_expense_modal.dart';
+
+/// Tabby Custom Floating Rounded Dock Navigation Bar
+class MainScaffold extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
-  const MainScaffold({
-    super.key,
-    required this.navigationShell,
-  });
+  const MainScaffold({super.key, required this.navigationShell});
 
   void _onTap(int index) {
     navigationShell.goBranch(
@@ -21,16 +19,26 @@ class MainScaffold extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final currentIndex = navigationShell.currentIndex;
-    final tasksDueToday = ref.watch(tasksDueTodayCountProvider);
+    final path = GoRouterState.of(context).uri.path;
+    final canAdd = path == '/home' || path == '/tabs';
 
     return Scaffold(
-      backgroundColor: TabbyColors.bgCanvas,
+      backgroundColor: TabbyPalette.of(context).canvas,
       body: navigationShell,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: canAdd
+          ? FloatingActionButton(
+              key: const ValueKey('navigation-create-tab'),
+              tooltip: 'Add tab',
+              onPressed: () => AddExpenseModal.show(context),
+              child: const Icon(Icons.add_rounded, size: 30),
+            )
+          : null,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFE8F8EE),
+          color: TabbyPalette.of(context).dock,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           boxShadow: [
             BoxShadow(
@@ -48,6 +56,7 @@ class MainScaffold extends ConsumerWidget {
             children: [
               Expanded(
                 child: _buildNavItem(
+                  context,
                   index: 0,
                   currentIndex: currentIndex,
                   label: 'Home',
@@ -58,6 +67,7 @@ class MainScaffold extends ConsumerWidget {
               ),
               Expanded(
                 child: _buildNavItem(
+                  context,
                   index: 1,
                   currentIndex: currentIndex,
                   label: 'My Tabs',
@@ -68,23 +78,13 @@ class MainScaffold extends ConsumerWidget {
               ),
               Expanded(
                 child: _buildNavItem(
+                  context,
                   index: 2,
-                  currentIndex: currentIndex,
-                  label: 'Tasks',
-                  icon: Icons.task_outlined,
-                  activeIcon: Icons.task_alt_rounded,
-                  badgeCount: tasksDueToday,
-                  onTap: () => _onTap(2),
-                ),
-              ),
-              Expanded(
-                child: _buildNavItem(
-                  index: 3,
                   currentIndex: currentIndex,
                   label: 'Profile',
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
-                  onTap: () => _onTap(3),
+                  onTap: () => _onTap(2),
                 ),
               ),
             ],
@@ -94,13 +94,13 @@ class MainScaffold extends ConsumerWidget {
     );
   }
 
-  Widget _buildNavItem({
+  Widget _buildNavItem(
+    BuildContext context, {
     required int index,
     required int currentIndex,
     required String label,
     required IconData icon,
     required IconData activeIcon,
-    int badgeCount = 0,
     required VoidCallback onTap,
   }) {
     final isSelected = index == currentIndex;
@@ -113,67 +113,29 @@ class MainScaffold extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Active pill / circle highlight matching Figma FinWise dock
+            // Active pill / circle highlight matching Figma Tabby dock
             Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color:
-                    isSelected ? TabbyColors.brandEmerald : Colors.transparent,
+                color: isSelected ? TabbyColors.brandAmber : Colors.transparent,
                 shape: BoxShape.circle,
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color:
-                              TabbyColors.brandEmerald.withValues(alpha: 0.35),
+                          color: TabbyColors.brandAmber.withValues(alpha: 0.35),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
                       ]
                     : null,
               ),
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  Icon(
-                    isSelected ? activeIcon : icon,
-                    size: 24,
-                    color: isSelected
-                        ? TabbyColors.surfaceWhite
-                        : TabbyColors.brandDarkTeal,
-                  ),
-                  if (badgeCount > 0)
-                    Positioned(
-                      top: -5,
-                      right: -8,
-                      child: Container(
-                        constraints:
-                            const BoxConstraints(minWidth: 16, minHeight: 16),
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          color: TabbyColors.alertRed,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isSelected
-                                ? TabbyColors.brandEmerald
-                                : const Color(0xFFE8F8EE),
-                            width: 2,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            badgeCount > 9 ? '9+' : '$badgeCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+              child: Icon(
+                isSelected ? activeIcon : icon,
+                size: 24,
+                color: isSelected
+                    ? TabbyColors.brandInk
+                    : TabbyPalette.of(context).secondaryText,
               ),
             ),
             const SizedBox(height: 3),
@@ -183,8 +145,8 @@ class MainScaffold extends ConsumerWidget {
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                 color: isSelected
-                    ? TabbyColors.brandDarkTeal
-                    : TabbyColors.textSecondary,
+                    ? TabbyPalette.of(context).text
+                    : TabbyPalette.of(context).secondaryText,
                 letterSpacing: 0.2,
               ),
             ),

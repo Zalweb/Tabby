@@ -1,0 +1,30 @@
+name: Project memory
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test documentation validator
+        run: node --test scripts/check-project-memory.test.cjs scripts/android-release.test.cjs scripts/usb-test.test.cjs scripts/azure-full-template.test.cjs scripts/azure-full-seal.test.cjs scripts/azure-full-prepare-export.test.cjs
+      - name: Check project memory and change coverage
+        env:
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        shell: bash
+        run: |
+          if [[ -n "$EVENT_BASE" && ! "$EVENT_BASE" =~ ^0+$ ]]; then
+            node scripts/check-project-memory.cjs --base "$EVENT_BASE"
+          else
+            node scripts/check-project-memory.cjs
+          fi

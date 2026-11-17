@@ -35,6 +35,37 @@ void main() {
     expect(pinProtection.lastUserId, 'user-a');
     notifier.dispose();
   });
+
+  test(
+      'cancelled fresh device authentication preserves existing PIN on change and reset',
+      () async {
+    final pin = FakePinProtectionService();
+    final notifier = UserSettingsNotifier(
+        userId: 'user-a',
+        auth: FakeDeviceAuthService(supported: true, result: false),
+        pinProtection: pin);
+    await notifier.ready;
+    expect(await notifier.setPin('1234'), isTrue);
+    expect(await notifier.setPin('5678'), isFalse);
+    expect(await notifier.clearPin(), isFalse);
+    expect(await notifier.verifyPin('1234'), isTrue);
+    expect(notifier.state.passcodeEnabled, isTrue);
+    notifier.dispose();
+  });
+
+  test('fresh device authentication allows local PIN recovery', () async {
+    final pin = FakePinProtectionService();
+    final notifier = UserSettingsNotifier(
+        userId: 'user-a',
+        auth: FakeDeviceAuthService(supported: true, result: true),
+        pinProtection: pin);
+    await notifier.ready;
+    expect(await notifier.setPin('1234'), isTrue);
+    expect(await notifier.clearPin(), isTrue);
+    expect(await pin.hasPin('user-a'), isFalse);
+    expect(notifier.state.passcodeEnabled, isFalse);
+    notifier.dispose();
+  });
 }
 
 class FakeDeviceAuthService implements DeviceAuthService {

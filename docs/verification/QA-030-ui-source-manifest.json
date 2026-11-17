@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-11-17T13:36:07.082Z",
+  "base_commit": "e3ff9042b48fb2b77e9ea1ca0e9581658344ee78",
+  "files": {
+    ".agents/skills/tabby-design/SKILL.md": "b2525648fd9183e3542fc8b06aee74db3f61977bbeba2741a94564f560b4bca3",
+    "integration_test/android_google_entry_test.dart": "b35405c31d57fb44d42ec19e1e343d077e25c19630917d23bc02203e4ba89583",
+    "lib/core/theme/tabby_theme.dart": "cadc89815f78bb60a47632bc659bd82050f4ee3f37344e2a80db53af6eab3e2f",
+    "lib/features/auth/presentation/complete_profile_screen.dart": "57345c7931de4bd36fc2bc1738d9021b2c75af0f0721e1492e0cbdae4fe5d6f0",
+    "lib/features/connections/presentation/connections_screen.dart": "1dc3245b602edeaed4b8cb87320132bdda73ce917f68db05450b7907ede66631",
+    "lib/features/payment_methods/presentation/payment_methods_sheet.dart": "e6b7bd5c2d38ad3cfbbfe54b37b3d32085c73c26d1d39e629bff97e99711b72a",
+    "lib/features/profile/presentation/profile_edit_sheet.dart": "58a6faa5415662a94170b195c7d659cbb7a007696d0ea5a77955caa73647908a",
+    "lib/features/profile/presentation/profile_screen.dart": "281d232ff215a8968e969b0f62819d53ae765012eabf31a0016df32c225938cf",
+    "lib/features/tabs/presentation/add_expense_modal.dart": "40dbcc1901182ed7e9fe9b5271368fa87a3c32a9f2cb14e92a3e0f448663490e",
+    "lib/features/tabs/presentation/payment_draft_form.dart": "30e8af589367834298a11c27c865411b39c69602a82fb7c00e641a0356bd7453",
+    "lib/features/tabs/presentation/tab_detail_screen.dart": "fc159f642961bb29e7ff2a4acce7b090c09a37bd570aab8bba771332d654aa6b",
+    "lib/shared/widgets/tabby_feedback.dart": "87744a1786677925b16d90bf9582b3c5ff316f6d4f5d283902c6428ff4085b9c",
+    "test/features/e2e_all_screens_buttons_test.dart": "08169b2b9436cac061998c93a52d0199834f55cfb9f81c4892cadebb3192202a",
+    "test/features/interactive_features_test.dart": "8fa0690500b2629336e1641b984d527ac0af41a3da0fedf4f3cc14d3e62e7154",
+    "test/features/presentation_routes_test.dart": "17972d0f6010a78f8d8e096aa490facda8494a1e3d6f27f27369e461b3b91eeb",
+    "test/features/sheet_feedback_test.dart": "d64d56f58dbe297f617b8a6908cab45b0b5d5d2de603ed3dbc31d380e446f284"
+  }
+}

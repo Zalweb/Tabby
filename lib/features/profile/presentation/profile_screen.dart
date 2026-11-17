@@ -1,35 +1,46 @@
+import '../../../shared/widgets/tabby_feedback.dart';
+import 'privacy_controls_screen.dart';
+import '../../../core/theme/motion_preferences.dart';
+import 'profile_avatar.dart';
+import 'profile_avatar_sheet.dart';
+import 'profile_edit_sheet.dart';
+
 import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../../../core/services/background_reminder_service.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/config/app_state.dart';
 import '../../../core/config/supabase_config.dart';
-import '../../../core/services/tabby_api_services.dart';
+import '../../../core/config/session_scope.dart';
+import '../../../core/widgets/account_draft_guard.dart';
 import '../../../core/theme/tabby_colors.dart';
+import '../../../core/theme/tabby_palette.dart';
 import '../../../core/widgets/app_version_footer.dart';
 import '../../../shared/widgets/notification_center_sheet.dart';
 import '../../../shared/widgets/tabby_button.dart';
-import '../../../shared/widgets/tabby_mascot_widget.dart';
 import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
-import '../../tabs/data/tabby_local_cache.dart';
 import '../../tabs/domain/models.dart';
 import '../../payment_methods/application/payment_methods_provider.dart';
 import '../../payment_methods/presentation/payment_methods_sheet.dart';
 import '../../app_update/data/app_update_service.dart';
 import '../../app_update/domain/app_update_models.dart';
-import '../../classroom/application/classroom_providers.dart';
-import '../../classroom/domain/classroom_models.dart';
-import '../../classroom/presentation/classroom_connect_sheet.dart';
 import '../application/sync_diagnostics_provider.dart';
 import 'sync_diagnostics_sheet.dart';
+
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 typedef FriendLookup = Future<TabbyUser?> Function(String friendCode);
 typedef FriendRequestSubmitter = Future<FriendRequest?> Function(
-    String friendCode);
+  String friendCode,
+);
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -46,8 +57,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final settingsNotifier = ref.read(userSettingsProvider.notifier);
     final paymentMethods = ref.watch(paymentMethodsProvider(user.id));
     final syncDiagnostics = ref.watch(syncDiagnosticsProvider);
-    final classroomConnection = ref.watch(classroomConnectionProvider);
-    final classroomCourses = ref.watch(classroomCoursesProvider);
     final pendingRequestsCount = ref
         .watch(tabbyProvider)
         .friendRequests
@@ -57,33 +66,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     void updateBiometrics(bool value) async {
       final enabled = await settingsNotifier.toggleBiometrics(value);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(enabled
-                ? (value
-                    ? 'Biometric security enabled.'
-                    : 'Biometric security disabled.')
-                : 'This device could not verify biometric security.'),
-          ),
-        );
-    }
-
-    void updateNotifications(bool value) {
-      settingsNotifier.update(notificationsEnabled: value);
-      ScaffoldMessenger.of(context)
+      TabbyFeedback.of(context)
         ..clearSnackBars()
         ..showSnackBar(
           SnackBar(
             content: Text(
-                value ? 'Notifications enabled.' : 'Notifications disabled.'),
+              enabled
+                  ? (value
+                        ? 'Biometric security enabled.'
+                        : 'Biometric security disabled.')
+                  : 'This device could not verify biometric security.',
+            ),
+          ),
+        );
+    }
+
+    Future<void> updateNotifications(bool value) async {
+      final saved = await settingsNotifier.toggleNotifications(value);
+      if (!context.mounted) return;
+      TabbyFeedback.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              saved
+                  ? (value
+                        ? 'Notifications enabled.'
+                        : 'Notifications disabled.')
+                  : ref.read(userSettingsProvider).notificationError ??
+                        'Notification settings could not be updated.',
+            ),
           ),
         );
     }
 
     return Scaffold(
-      backgroundColor: TabbyColors.brandEmerald,
+      backgroundColor: TabbyPalette.of(context).canvas,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -91,9 +109,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _buildProfileOuterHeader(context),
             Expanded(
               child: Material(
-                color: TabbyColors.bgCanvas,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(36)),
+                color: TabbyPalette.of(context).canvas,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(36),
+                ),
                 clipBehavior: Clip.antiAlias,
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 18, 20, 100),
@@ -108,45 +127,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         rows: [
                           _buildSettingsRow(
                             icon: Icons.account_balance_wallet_outlined,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'Payment Methods',
                             subtitle: paymentMethods.methods.isEmpty
                                 ? 'Add a payment method'
                                 : '${paymentMethods.methods.first.displayName} · ${paymentMethods.methods.length} saved',
-                            trailing: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 124),
-                                  child: Text(
-                                    paymentMethods.isLoading
-                                        ? 'Loading payment methods'
-                                        : paymentMethods.methods.isEmpty
-                                            ? 'GCash / Maya / Bank'
-                                            : paymentMethods
-                                                .methods.first.provider,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.end,
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                      color: TabbyColors.brandEmerald,
-                                    ),
-                                  ),
-                                ),
-                                const Text(
-                                  'Manage Payment QR Code',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: TabbyColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
+
                             onTap: () => PaymentMethodsSheet.show(
                               context,
                               ownerUserId: user.id,
@@ -154,8 +141,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           _buildSettingsRow(
                             icon: Icons.security_outlined,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'Security',
                             subtitle: settings.biometricsEnabled
                                 ? 'Biometric security active'
@@ -172,8 +159,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           _buildSettingsRow(
                             icon: Icons.people_alt_outlined,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'Manage Friends',
                             subtitle: pendingRequestsCount > 0
                                 ? '$pendingRequestsCount pending request${pendingRequestsCount > 1 ? "s" : ""}'
@@ -181,17 +168,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             trailing: pendingRequestsCount > 0
                                 ? Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 4),
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: TabbyColors.brandMintAccent,
+                                      color: TabbyPalette.of(context).soft,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
                                       '$pendingRequestsCount new',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w800,
-                                        color: TabbyColors.brandDarkTeal,
+                                        color: TabbyPalette.of(context).text,
                                       ),
                                     ),
                                   )
@@ -200,30 +189,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           _buildSettingsRow(
                             icon: Icons.person_add_alt_1_outlined,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'Connect by Tabby ID',
                             subtitle: 'Add friend using their Tabby ID',
                             trailing: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: TabbyColors.brandMintAccent,
+                                color: TabbyPalette.of(context).soft,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.person_add_rounded,
-                                      size: 14,
-                                      color: TabbyColors.brandEmerald),
-                                  SizedBox(width: 4),
+                                  Icon(
+                                    Icons.person_add_rounded,
+                                    size: 14,
+                                    color: TabbyPalette.of(context).link,
+                                  ),
+                                  const SizedBox(width: 4),
                                   Text(
                                     'Connect',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
-                                      color: TabbyColors.brandEmerald,
+                                      color: TabbyPalette.of(context).link,
                                     ),
                                   ),
                                 ],
@@ -233,23 +226,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           _buildSettingsRow(
                             icon: Icons.groups_outlined,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'Create a Group',
                             subtitle: 'Shared barkada or roommate tabs',
                             onTap: () => _showCreateGroupSheet(context),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      _buildSectionHeading('Connected Apps'),
-                      const SizedBox(height: 8),
-                      _buildSettingsCard(
-                        rows: [
-                          _buildClassroomRow(
-                            context,
-                            classroomConnection,
-                            classroomCourses.length,
                           ),
                         ],
                       ),
@@ -259,19 +240,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       _buildSettingsCard(
                         rows: [
                           _buildSettingsRow(
-                            icon: Icons.currency_exchange_rounded,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
-                            title: 'Currency Precision',
-                            subtitle: settings.currencyCode == 'USD'
-                                ? 'US Dollar (USD) · Display only'
-                                : 'Philippine Peso (PHP) · Integer Centavos',
-                            onTap: () => _showCurrencyPrecisionSheet(context),
-                          ),
-                          _buildSettingsRow(
                             icon: Icons.notifications_none_rounded,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'Notifications',
                             subtitle: 'Settings',
                             trailing: _buildSwitchWithDetails(
@@ -282,26 +253,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   _showNotificationPreferencesSheet(context),
                             ),
                             onTap: () => updateNotifications(
-                                !settings.notificationsEnabled),
+                              !settings.notificationsEnabled,
+                            ),
                           ),
                           _buildSettingsRow(
                             icon: Icons.palette_outlined,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'Appearance',
                             subtitle:
                                 '${settings.darkModeEnabled ? 'Dark' : 'Light'} mode · ${settings.motionEnabled ? 'Motion on' : 'Motion off'}',
                             onTap: () => _showAppearanceSheet(context),
-                          ),
-                          _buildSettingsRow(
-                            icon: Icons.language_rounded,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
-                            title: 'Language',
-                            subtitle: settings.languageCode == 'fil'
-                                ? 'Filipino'
-                                : 'English',
-                            onTap: () => _showLanguageSheet(context),
                           ),
                         ],
                       ),
@@ -312,8 +274,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         rows: [
                           _buildSettingsRow(
                             icon: Icons.cloud_done_outlined,
-                            iconBackground: TabbyColors.iconBgBlue,
-                            iconColor: TabbyColors.accentLightBlue,
+                            iconBackground: TabbyPalette.of(context).accentTint,
+                            iconColor: TabbyColors.accentBurnt,
                             title: 'Sync & Offline',
                             subtitle: 'Offline cache and server status',
                             trailing: Row(
@@ -321,41 +283,58 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 7, vertical: 3),
+                                    horizontal: 7,
+                                    vertical: 3,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: TabbyColors.brandMintAccent,
+                                    color: TabbyPalette.of(context).soft,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     syncStatusLabel(syncDiagnostics),
                                     style: TextStyle(
-                                      color: syncDiagnostics.status ==
+                                      color:
+                                          syncDiagnostics.status ==
                                               SyncStatus.offline
-                                          ? TabbyColors.alertRed
-                                          : TabbyColors.brandEmerald,
+                                          ? TabbyPalette.of(context).errorText
+                                          : TabbyPalette.of(context).link,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right_rounded,
-                                    color: TabbyColors.textSecondary),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: TabbyPalette.of(context).secondaryText,
+                                ),
                               ],
                             ),
                             onTap: () => SyncDiagnosticsSheet.show(context),
                           ),
                           _buildSettingsRow(
+                            icon: Icons.privacy_tip_outlined,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
+                            title: 'Privacy & Your Data',
+                            subtitle: 'Visibility and a profile copy',
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const PrivacyControlsScreen(),
+                              ),
+                            ),
+                          ),
+                          _buildSettingsRow(
                             icon: Icons.headset_mic_outlined,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'Help Center',
                             subtitle: 'Customer support and FAQ',
                             onTap: () => _showHelpCenterSheet(context),
                           ),
                           _buildSettingsRow(
                             icon: Icons.info_outline_rounded,
-                            iconBackground: TabbyColors.iconBgMint,
-                            iconColor: TabbyColors.brandEmerald,
+                            iconBackground: TabbyPalette.of(context).soft,
+                            iconColor: TabbyPalette.of(context).link,
                             title: 'About Tabby',
                             subtitle: 'Version and app information',
                             onTap: () => _showAboutTabbySheet(context),
@@ -370,9 +349,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           icon: const Icon(Icons.logout_rounded, size: 17),
                           label: const Text('Log Out'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: TabbyColors.alertRed,
+                            foregroundColor: TabbyPalette.of(context).errorText,
                             side: const BorderSide(
-                                color: TabbyColors.alertRed, width: 1.2),
+                              color: TabbyColors.alertRed,
+                              width: 1.2,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -381,7 +362,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Center(
+                      Center(
                         child: Column(
                           children: [
                             Text(
@@ -389,18 +370,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: TabbyColors.textSecondary,
+                                color: TabbyPalette.of(context).secondaryText,
                               ),
                             ),
-                            SizedBox(height: 2),
-                            AppVersionFooter(),
-                            SizedBox(height: 2),
+                            const SizedBox(height: 2),
+                            const AppVersionFooter(),
+                            const SizedBox(height: 2),
                             Text(
                               'Keep tabs. Settle up.',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontStyle: FontStyle.italic,
-                                color: TabbyColors.textSecondary,
+                                color: TabbyPalette.of(context).secondaryText,
                               ),
                             ),
                           ],
@@ -419,18 +400,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildProfileOuterHeader(BuildContext context) {
     return Container(
-      color: TabbyColors.brandEmerald,
+      color: TabbyPalette.of(context).canvas,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               'Profile & Settings',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
-                color: TabbyColors.brandDarkTeal,
+                color: TabbyPalette.of(context).text,
                 letterSpacing: -0.5,
               ),
               maxLines: 1,
@@ -442,7 +423,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: TabbyColors.surfaceWhite,
+              color: TabbyPalette.of(context).surface,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
@@ -472,7 +453,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ? Icons.notifications_active_rounded
                       : Icons.notifications_none_rounded,
                   size: 22,
-                  color: TabbyColors.brandDarkTeal,
+                  color: TabbyPalette.of(context).text,
                 ),
               ),
               onPressed: () => NotificationCenterSheet.show(context),
@@ -485,188 +466,175 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildProfileIdentity(BuildContext context, TabbyUser user) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        GestureDetector(
-          onTap: () => _showAvatarOptionsSheet(context, user),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: TabbyColors.brandEmerald,
-                    width: 2.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+    final avatar = GestureDetector(
+      onTap: () => _showAvatarOptionsSheet(context, user),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: TabbyColors.brandAmber, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
                 ),
-                child: ClipOval(
-                  child: Container(
-                    color: TabbyColors.brandEmerald,
-                    alignment: Alignment.center,
-                    child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
-                        ? (user.avatarUrl == 'asset:mascot'
-                            ? const Icon(Icons.pets_rounded,
-                                size: 30, color: TabbyColors.surfaceWhite)
-                            : user.avatarUrl == 'asset:cat_cool'
-                                ? const Icon(
-                                    Icons.sentiment_very_satisfied_rounded,
-                                    size: 30,
-                                    color: TabbyColors.surfaceWhite)
-                                : user.avatarUrl == 'asset:camera_snap'
-                                    ? const Icon(Icons.camera_alt_rounded,
-                                        size: 30,
-                                        color: TabbyColors.surfaceWhite)
-                                    : const Icon(Icons.account_circle_rounded,
-                                        size: 34,
-                                        color: TabbyColors.surfaceWhite))
-                        // DiceBear initials — deterministic, brand-coloured.
-                        : Image.network(
-                            TabbyApiServices.dicebearUrl(user.displayName),
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            // Graceful offline fallback: first initial letter.
-                            errorBuilder: (_, __, ___) => Text(
-                              user.displayName.isNotEmpty
-                                  ? user.displayName
-                                      .substring(0, 1)
-                                      .toUpperCase()
-                                  : 'T',
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w900,
-                                color: TabbyColors.surfaceWhite,
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: TabbyColors.brandDarkTeal,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_rounded,
-                    size: 12,
-                    color: TabbyColors.surfaceWhite,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: TabbyColors.brandDarkTeal,
-                ),
-              ),
-              const SizedBox(height: 3),
-              const Text(
-                'Your Tabby ID',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: TabbyColors.textSecondary,
-                ),
-              ),
-              Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      user.friendCode ?? 'Not available yet',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: TabbyColors.brandEmerald,
-                        letterSpacing: 0.3,
-                      ),
+              ],
+            ),
+            child: ClipOval(
+              child: ColoredBox(
+                color: TabbyColors.brandAmber,
+                child: DefaultTextStyle.merge(
+                  style: const TextStyle(color: TabbyColors.brandInk),
+                  child: IconTheme(
+                    data: const IconThemeData(color: TabbyColors.brandInk),
+                    child: ProfileAvatar(
+                      key: ValueKey(user.id),
+                      reference: user.avatarUrl,
+                      name: user.displayName,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.copy_rounded, size: 15),
-                    color: TabbyColors.textSecondary,
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 26, minHeight: 26),
-                    tooltip: 'Copy Tabby ID',
-                    onPressed: user.friendCode == null
-                        ? null
-                        : () {
-                            Clipboard.setData(
-                                ClipboardData(text: user.friendCode!));
-                            ScaffoldMessenger.of(context)
-                              ..clearSnackBars()
-                              ..showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('Tabby ID copied to clipboard.'),
-                                ),
-                              );
-                          },
-                  ),
-                ],
+                ),
               ),
-            ],
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
-        OutlinedButton.icon(
-          onPressed: () => _showEditProfileSheet(context, user),
-          icon: const Icon(Icons.edit_outlined, size: 14),
-          label: const Text('Edit Profile'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: TabbyColors.brandEmerald,
-            side: const BorderSide(color: TabbyColors.brandEmerald),
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
-            textStyle: const TextStyle(
-              fontSize: 11,
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: TabbyColors.brandInk,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                size: 12,
+                color: TabbyColors.surfaceWhite,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    final details = Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            user.displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 16,
               fontWeight: FontWeight.w800,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              color: TabbyPalette.of(context).text,
             ),
           ),
+          const SizedBox(height: 3),
+          Text(
+            'Your Tabby ID',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: TabbyPalette.of(context).secondaryText,
+            ),
+          ),
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  user.friendCode ?? 'Not available yet',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: TabbyPalette.of(context).link,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 15),
+                color: TabbyPalette.of(context).secondaryText,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+                tooltip: 'Copy Tabby ID',
+                onPressed: user.friendCode == null
+                    ? null
+                    : () {
+                        Clipboard.setData(
+                          ClipboardData(text: user.friendCode!),
+                        );
+                        TabbyFeedback.of(context)
+                          ..clearSnackBars()
+                          ..showSnackBar(
+                            const SnackBar(
+                              content: Text('Tabby ID copied to clipboard.'),
+                            ),
+                          );
+                      },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    final edit = OutlinedButton.icon(
+      onPressed: () => _showEditProfileSheet(context, user),
+      icon: const Icon(Icons.edit_outlined, size: 14),
+      label: const Text('Edit Profile'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: TabbyPalette.of(context).link,
+        side: BorderSide(color: TabbyPalette.of(context).controlBorder),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+        textStyle: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
         ),
-      ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+    return LayoutBuilder(
+      builder: (context, c) {
+        final compact =
+            c.maxWidth < 330 || MediaQuery.textScalerOf(context).scale(16) > 22;
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(children: [avatar, const SizedBox(width: 12), details]),
+              const SizedBox(height: 12),
+              Align(alignment: Alignment.centerRight, child: edit),
+            ],
+          );
+        }
+        return Row(
+          children: [
+            avatar,
+            const SizedBox(width: 10),
+            details,
+            const SizedBox(width: 6),
+            edit,
+          ],
+        );
+      },
     );
   }
 
   Widget _buildSectionHeading(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w800,
-        color: TabbyColors.brandDarkTeal,
+        color: TabbyPalette.of(context).text,
         letterSpacing: 0.1,
       ),
     );
@@ -680,10 +648,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
 
     return Material(
-      color: TabbyColors.surfaceWhite,
+      color: TabbyPalette.of(context).surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: TabbyColors.borderMint),
+        side: BorderSide(color: TabbyPalette.of(context).border),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(children: children),
@@ -714,72 +682,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w800,
-          color: TabbyColors.brandDarkTeal,
+          color: TabbyPalette.of(context).text,
         ),
       ),
       subtitle: Text(
         subtitle,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 10,
-          color: TabbyColors.textSecondary,
+          color: TabbyPalette.of(context).secondaryText,
         ),
       ),
-      trailing: trailing ??
-          const Icon(Icons.chevron_right_rounded,
-              color: TabbyColors.textSecondary, size: 20),
+      trailing:
+          trailing ??
+          Icon(
+            Icons.chevron_right_rounded,
+            color: TabbyPalette.of(context).secondaryText,
+            size: 20,
+          ),
       onTap: onTap,
-    );
-  }
-
-  Widget _buildClassroomRow(
-    BuildContext context,
-    ClassroomConnection? connection,
-    int courseCount,
-  ) {
-    final isConnected = connection?.isActive == true;
-    return _buildSettingsRow(
-      icon: Icons.school_outlined,
-      iconBackground:
-          isConnected ? TabbyColors.iconBgMint : TabbyColors.iconBgBlue,
-      iconColor:
-          isConnected ? TabbyColors.brandEmerald : TabbyColors.textSecondary,
-      title: 'Google Classroom',
-      subtitle:
-          isConnected ? 'Connected · $courseCount courses' : 'Not connected',
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isConnected)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: TabbyColors.brandMintAccent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Active',
-                style: TextStyle(
-                  color: TabbyColors.brandEmerald,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          const Icon(Icons.chevron_right_rounded,
-              color: TabbyColors.textSecondary),
-        ],
-      ),
-      onTap: () => showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: TabbyColors.surfaceWhite,
-        builder: (_) => const ClassroomConnectSheet(),
-      ),
     );
   }
 
@@ -792,18 +717,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Switch(
-          value: value,
-          activeThumbColor: TabbyColors.brandEmerald,
-          onChanged: onChanged,
-        ),
+        Switch(value: value, onChanged: onChanged),
         IconButton(
           tooltip: tooltip,
           onPressed: onDetails,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-          icon: const Icon(Icons.chevron_right_rounded,
-              color: TabbyColors.textSecondary, size: 20),
+          icon: Icon(
+            Icons.chevron_right_rounded,
+            color: TabbyPalette.of(context).secondaryText,
+            size: 20,
+          ),
         ),
       ],
     );
@@ -812,23 +736,51 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget _buildPreferenceChoice({
     required String title,
     required bool selected,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     String? subtitle,
   }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle),
-      trailing: Icon(
-        selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
-        color: selected ? TabbyColors.brandEmerald : TabbyColors.textSecondary,
+    final p = TabbyPalette.of(context);
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: BorderSide(
+        color: selected ? p.link : p.border,
+        width: selected ? 1.5 : 1,
       ),
-      onTap: onTap,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: selected ? p.soft : p.surface,
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          selected: selected,
+          enabled: onTap != null,
+          shape: shape,
+          selectedTileColor: Colors.transparent,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 6,
+          ),
+          title: Text(title),
+          subtitle: subtitle == null ? null : Text(subtitle),
+          trailing: Icon(
+            selected
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked,
+            color: selected
+                ? TabbyPalette.of(context).link
+                : TabbyPalette.of(context).secondaryText,
+          ),
+          onTap: onTap,
+        ),
+      ),
     );
   }
 
   void _showAboutTabbySheet(BuildContext context) {
-    showModalBottomSheet<void>(
+    showTabbyBottomSheet<void>(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -836,7 +788,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         builder: (context, setState) {
           final checker = AppUpdateService();
           return Material(
-            color: TabbyColors.surfaceWhite,
+            color: TabbyPalette.of(context).surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SafeArea(
               child: Padding(
@@ -862,12 +814,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       children: [
                         Row(
                           children: [
-                            const Expanded(
-                              child: Text('About Tabby',
-                                  style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      color: TabbyColors.brandDarkTeal)),
+                            Expanded(
+                              child: Text(
+                                'About Tabby',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: TabbyPalette.of(context).text,
+                                ),
+                              ),
                             ),
                             IconButton(
                               onPressed: () => Navigator.pop(sheetContext),
@@ -882,20 +837,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             final pkg = pkgSnapshot.data;
                             final displayVer = pkg != null
                                 ? (pkg.buildNumber.isEmpty
-                                    ? pkg.version
-                                    : '${pkg.version}+${pkg.buildNumber}')
+                                      ? pkg.version
+                                      : '${pkg.version}+${pkg.buildNumber}')
                                 : '1.0.3+4';
                             return Text(
                               'Version $displayVer',
-                              style: const TextStyle(fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
                             );
                           },
                         ),
                         const SizedBox(height: 8),
-                        Text(statusText,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                color: TabbyColors.textSecondary)),
+                        Text(
+                          statusText,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: TabbyPalette.of(context).secondaryText,
+                          ),
+                        ),
                         if (result?.update != null) ...[
                           const SizedBox(height: 12),
                           Text(
@@ -906,26 +866,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           Text(result.update!.release.releaseNotes),
                         ],
                         const SizedBox(height: 20),
-                        if (result?.status == AppUpdateStatus.updateAvailable) ...[
+                        if (result?.status ==
+                            AppUpdateStatus.updateAvailable) ...[
                           TabbyButton(
                             label: 'Update on Website',
                             onPressed: () async {
                               final url = Uri.parse(
-                                  'https://tabby-web-fawn.vercel.app/#download');
+                                'https://tabby-web-fawn.vercel.app/#download',
+                              );
                               try {
-                                await launchUrl(url,
-                                    mode: LaunchMode.externalApplication);
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
                               } catch (_) {}
                             },
                           ),
                           const SizedBox(height: 10),
                         ] else ...[
                           TabbyButton(
-                            label: snapshot.connectionState ==
+                            label:
+                                snapshot.connectionState ==
                                     ConnectionState.waiting
                                 ? 'Checking...'
                                 : 'Check for Updates',
-                            onPressed: snapshot.connectionState ==
+                            onPressed:
+                                snapshot.connectionState ==
                                     ConnectionState.waiting
                                 ? null
                                 : () => setState(() {}),
@@ -936,19 +902,46 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           child: TextButton.icon(
                             onPressed: () async {
                               final url = Uri.parse(
-                                  'https://tabby-web-fawn.vercel.app');
+                                'https://tabby-web-fawn.vercel.app',
+                              );
                               try {
-                                await launchUrl(url,
-                                    mode: LaunchMode.externalApplication);
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
                               } catch (_) {}
                             },
-                            icon: const Icon(Icons.language_rounded,
-                                size: 16, color: TabbyColors.brandDarkTeal),
-                            label: const Text(
+                            icon: Icon(
+                              Icons.language_rounded,
+                              size: 16,
+                              color: TabbyPalette.of(context).text,
+                            ),
+                            label: Text(
                               'Visit Tabby Website',
                               style: TextStyle(
-                                  color: TabbyColors.brandDarkTeal,
-                                  fontWeight: FontWeight.w600),
+                                color: TabbyPalette.of(context).text,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Center(
+                          child: TextButton(
+                            onPressed: () async {
+                              final url = Uri.parse('https://icons8.com');
+                              try {
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              } catch (_) {}
+                            },
+                            child: Text(
+                              'App icon by Icons8',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: TabbyPalette.of(context).secondaryText,
+                              ),
                             ),
                           ),
                         ),
@@ -971,54 +964,70 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _showAppearanceSheet(BuildContext context) {
-    showModalBottomSheet<void>(
+    showTabbyBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      sheetAnimationStyle: AnimationStyle.noAnimation,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => Consumer(
         builder: (context, ref, _) {
-          final settings = ref.watch(userSettingsProvider);
-          final notifier = ref.read(userSettingsProvider.notifier);
+          final settings = ref.watch(userSettingsProvider),
+              notifier = ref.read(userSettingsProvider.notifier);
           return Material(
-            color: TabbyColors.surfaceWhite,
+            color: TabbyPalette.of(context).surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
             child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('Appearance',
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal)),
-                    const SizedBox(height: 12),
+                    Text(
+                      'Appearance',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: TabbyPalette.of(context).text,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     _buildPreferenceChoice(
                       title: 'Light mode',
                       selected: !settings.darkModeEnabled,
-                      onTap: () => notifier.update(darkModeEnabled: false),
+                      onTap: settings.appearanceBusy
+                          ? null
+                          : () =>
+                                notifier.setAppearancePreferences(dark: false),
                     ),
                     _buildPreferenceChoice(
                       title: 'Dark mode',
                       selected: settings.darkModeEnabled,
-                      onTap: () => notifier.update(darkModeEnabled: true),
+                      onTap: settings.appearanceBusy
+                          ? null
+                          : () => notifier.setAppearancePreferences(dark: true),
                     ),
-                    const Divider(),
                     SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: TabbyColors.brandEmerald,
                       title: const Text('Motion effects'),
-                      subtitle:
-                          const Text('Animate Tabby transitions and feedback'),
+                      subtitle: const Text(
+                        'System reduced motion always takes priority.',
+                      ),
                       value: settings.motionEnabled,
-                      onChanged: (value) =>
-                          notifier.update(motionEnabled: value),
+                      onChanged: settings.appearanceBusy
+                          ? null
+                          : (value) => notifier.setAppearancePreferences(
+                              motion: value,
+                            ),
                     ),
+                    if (settings.appearanceBusy)
+                      const LinearProgressIndicator(),
+                    if (settings.appearanceError != null)
+                      Text(settings.appearanceError!),
                     TabbyButton(
                       label: 'Done',
-                      onPressed: () => Navigator.pop(sheetContext),
+                      onPressed: settings.appearanceBusy
+                          ? null
+                          : () => Navigator.pop(sheetContext),
                     ),
                   ],
                 ),
@@ -1030,402 +1039,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showLanguageSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => Consumer(
-        builder: (context, ref, _) {
-          final settings = ref.watch(userSettingsProvider);
-          final notifier = ref.read(userSettingsProvider.notifier);
-          return Material(
-            color: TabbyColors.surfaceWhite,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const ListTile(
-                    leading: Icon(Icons.language_rounded,
-                        color: TabbyColors.brandEmerald),
-                    title: Text('Language',
-                        style: TextStyle(fontWeight: FontWeight.w800)),
-                  ),
-                  _buildPreferenceChoice(
-                    title: 'English',
-                    selected: settings.languageCode == 'en',
-                    onTap: () => notifier.update(languageCode: 'en'),
-                  ),
-                  _buildPreferenceChoice(
-                    title: 'Filipino',
-                    selected: settings.languageCode == 'fil',
-                    onTap: () => notifier.update(languageCode: 'fil'),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 4, 24, 20),
-                    child: Text(
-                      'More languages can be added without changing your financial records.',
-                      style: TextStyle(
-                          fontSize: 12, color: TabbyColors.textSecondary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // 1. Avatar Options Modal Sheet
   void _showAvatarOptionsSheet(BuildContext context, TabbyUser user) {
-    showModalBottomSheet(
+    showTabbyBottomSheet<void>(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Material(
-          color: TabbyColors.surfaceWhite,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Profile Photo',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: TabbyColors.brandDarkTeal,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: TabbyColors.iconBgMint,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.photo_library_rounded,
-                          color: TabbyColors.brandEmerald, size: 20),
-                    ),
-                    title: const Text('Choose from Gallery',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text('Upload a photo from your camera roll',
-                        style: TextStyle(fontSize: 12)),
-                    onTap: () {
-                      ref
-                          .read(currentUserProvider.notifier)
-                          .updateProfile(avatarUrl: 'asset:cat_cool');
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Profile photo updated successfully.'),
-                          backgroundColor: TabbyColors.brandEmerald,
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: TabbyColors.iconBgBlue,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.camera_alt_rounded,
-                          color: TabbyColors.accentBlue, size: 20),
-                    ),
-                    title: const Text('Take Photo',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text(
-                        'Use your device camera to take a picture',
-                        style: TextStyle(fontSize: 12)),
-                    onTap: () {
-                      ref
-                          .read(currentUserProvider.notifier)
-                          .updateProfile(avatarUrl: 'asset:camera_snap');
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Camera snapshot applied to profile.'),
-                          backgroundColor: TabbyColors.brandEmerald,
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: TabbyColors.brandMintAccent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.pets_rounded,
-                          color: TabbyColors.brandDarkTeal, size: 20),
-                    ),
-                    title: const Text('Tabby Mascot Style',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14)),
-                    subtitle: const Text(
-                        'Use official Tabby cat companion as avatar',
-                        style: TextStyle(fontSize: 12)),
-                    onTap: () {
-                      ref
-                          .read(currentUserProvider.notifier)
-                          .updateProfile(avatarUrl: 'asset:mascot');
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Tabby companion avatar applied!'),
-                          backgroundColor: TabbyColors.brandEmerald,
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEE2E2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.delete_outline_rounded,
-                          color: TabbyColors.alertRed, size: 20),
-                    ),
-                    title: const Text('Remove Photo',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: TabbyColors.alertRed)),
-                    subtitle: const Text(
-                        'Revert back to default avatar initials',
-                        style: TextStyle(fontSize: 12)),
-                    onTap: () {
-                      ref
-                          .read(currentUserProvider.notifier)
-                          .updateProfile(avatarUrl: '');
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Avatar reset to default initials.'),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+      builder: (_) => ProfileAvatarSheet(user: user),
     );
   }
 
   // 2. Edit Profile Modal Sheet
   void _showEditProfileSheet(BuildContext context, TabbyUser user) {
-    final nameController = TextEditingController(text: user.displayName);
-    final phoneController = TextEditingController(text: user.phone);
-    final emailController = TextEditingController(text: user.email);
-    final gcashController = TextEditingController(text: user.gcashNumber);
-    final mayaController = TextEditingController(text: user.mayaNumber);
-
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
+    showTabbyFormPage<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: Material(
-                color: TabbyColors.surfaceWhite,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(32)),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Edit Profile',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: TabbyColors.brandDarkTeal,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        _buildInputField(
-                          label: 'Display Name',
-                          controller: nameController,
-                          icon: Icons.person_outline_rounded,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'Email Address',
-                          controller: emailController,
-                          icon: Icons.email_outlined,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'Phone Number',
-                          controller: phoneController,
-                          icon: Icons.phone_outlined,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'GCash Number',
-                          controller: gcashController,
-                          icon: Icons.account_balance_wallet_outlined,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildInputField(
-                          label: 'Maya Number',
-                          controller: mayaController,
-                          icon: Icons.credit_card_outlined,
-                          keyboardType: TextInputType.phone,
-                        ),
-                        const SizedBox(height: 24),
-                        TabbyButton(
-                          label: 'Save Changes',
-                          isLoading: isSubmitting,
-                          onPressed: () {
-                            if (isSubmitting) return;
-
-                            final newName = nameController.text.trim();
-                            final newEmail = emailController.text.trim();
-                            final newPhone = phoneController.text.trim();
-                            final newGcash = gcashController.text.trim();
-                            final newMaya = mayaController.text.trim();
-
-                            if (newName.isEmpty) {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please enter a display name.'),
-                                  backgroundColor: TabbyColors.alertRed,
-                                ),
-                              );
-                              return;
-                            }
-
-                            if (newEmail.isNotEmpty &&
-                                (!newEmail.contains('@') ||
-                                    !newEmail.contains('.'))) {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Please enter a valid email address.'),
-                                  backgroundColor: TabbyColors.alertRed,
-                                ),
-                              );
-                              return;
-                            }
-
-                            final phoneDigits =
-                                newPhone.replaceAll(RegExp(r'[^0-9]'), '');
-                            if (newPhone.isNotEmpty && phoneDigits.length < 7) {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                      'Please enter a valid phone number.'),
-                                  backgroundColor: TabbyColors.alertRed,
-                                ),
-                              );
-                              return;
-                            }
-
-                            setModalState(() => isSubmitting = true);
-
-                            ref
-                                .read(currentUserProvider.notifier)
-                                .updateProfile(
-                                  displayName: newName,
-                                  email: newEmail,
-                                  phone: newPhone,
-                                  gcashNumber: newGcash,
-                                  mayaNumber: newMaya,
-                                );
-
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    'Profile details updated successfully!'),
-                                backgroundColor: TabbyColors.brandEmerald,
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => ProfileEditSheet(user: user),
     );
   }
 
   // 3b. Security & App Lock Sheet
   void _showSecuritySettingsSheet(BuildContext context) {
-    showModalBottomSheet(
+    showTabbyBottomSheet(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1435,9 +1072,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             final settings = ref.watch(userSettingsProvider);
             final notifier = ref.read(userSettingsProvider.notifier);
             return Material(
-              color: TabbyColors.surfaceWhite,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(32)),
+              color: TabbyPalette.of(context).surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: SingleChildScrollView(
@@ -1448,13 +1086,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'Security & App Lock',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
-                                color: TabbyColors.brandDarkTeal,
+                                color: TabbyPalette.of(context).text,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1469,13 +1107,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const SizedBox(height: 16),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        activeThumbColor: TabbyColors.brandEmerald,
-                        title: const Text(
+                        title: Text(
                           'Biometric Unlock',
                           style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: TabbyColors.brandDarkTeal),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyPalette.of(context).text,
+                          ),
                         ),
                         subtitle: FutureBuilder<String>(
                           future: notifier.biometricLabel(),
@@ -1483,8 +1121,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             settings.biometricsEnabled
                                 ? '${snapshot.data ?? 'Biometric'} active'
                                 : (snapshot.data ?? 'Checking device support'),
-                            style: const TextStyle(
-                                fontSize: 12, color: TabbyColors.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: TabbyPalette.of(context).secondaryText,
+                            ),
                           ),
                         ),
                         value: settings.biometricsEnabled,
@@ -1495,25 +1135,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const Divider(height: 1),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        activeThumbColor: TabbyColors.brandEmerald,
-                        title: const Text(
+                        title: Text(
                           'Passcode Protection',
                           style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: TabbyColors.brandDarkTeal),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyPalette.of(context).text,
+                          ),
                         ),
-                        subtitle: const Text(
+                        subtitle: Text(
                           'Require a security PIN to access ledgers',
                           style: TextStyle(
-                              fontSize: 12, color: TabbyColors.textSecondary),
+                            fontSize: 12,
+                            color: TabbyPalette.of(context).secondaryText,
+                          ),
                         ),
                         value: settings.passcodeEnabled,
                         onChanged: (val) async {
                           if (val) {
                             _showPinSetupSheet(context);
                           } else {
-                            await notifier.clearPin();
+                            final cleared = await notifier.clearPin();
+                            if (!cleared && context.mounted) {
+                              TabbyFeedback.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Device authentication is required to remove your PIN.',
+                                  ),
+                                ),
+                              );
+                            }
                           }
                         },
                       ),
@@ -1529,18 +1180,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const Divider(height: 1),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        activeThumbColor: TabbyColors.brandEmerald,
-                        title: const Text(
+                        title: Text(
                           'Auto-Lock on Exit',
                           style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: TabbyColors.brandDarkTeal),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyPalette.of(context).text,
+                          ),
                         ),
-                        subtitle: const Text(
+                        subtitle: Text(
                           'Lock Tabby immediately when backgrounded',
                           style: TextStyle(
-                              fontSize: 12, color: TabbyColors.textSecondary),
+                            fontSize: 12,
+                            color: TabbyPalette.of(context).secondaryText,
+                          ),
                         ),
                         value: settings.autoLockEnabled,
                         onChanged: (val) {
@@ -1551,21 +1204,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: TabbyColors.brandMintAccent,
+                          color: TabbyPalette.of(context).soft,
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.shield_outlined,
-                                color: TabbyColors.brandEmerald, size: 20),
-                            SizedBox(width: 10),
+                            Icon(
+                              Icons.shield_outlined,
+                              color: TabbyPalette.of(context).link,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 'Financial records are stored locally with AES-256 device encryption and synced via TLS 1.3 to Supabase with Row Level Security.',
                                 style: TextStyle(
-                                    fontSize: 11,
-                                    color: TabbyColors.brandDarkTeal,
-                                    height: 1.3),
+                                  fontSize: 11,
+                                  color: TabbyPalette.of(context).text,
+                                  height: 1.3,
+                                ),
                               ),
                             ),
                           ],
@@ -1588,7 +1245,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _showPinSetupSheet(BuildContext context) {
-    showModalBottomSheet<void>(
+    showTabbyBottomSheet<void>(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1598,7 +1256,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // 3c. Notification Preferences Sheet
   void _showNotificationPreferencesSheet(BuildContext context) {
-    showModalBottomSheet(
+    showTabbyBottomSheet(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -1608,9 +1267,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             final settings = ref.watch(userSettingsProvider);
             final notifier = ref.read(userSettingsProvider.notifier);
             return Material(
-              color: TabbyColors.surfaceWhite,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(32)),
+              color: TabbyPalette.of(context).surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: SingleChildScrollView(
@@ -1621,13 +1281,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Expanded(
+                          Expanded(
                             child: Text(
                               'Notification Preferences',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
-                                color: TabbyColors.brandDarkTeal,
+                                color: TabbyPalette.of(context).text,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1642,67 +1302,100 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const SizedBox(height: 16),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        activeThumbColor: TabbyColors.brandEmerald,
-                        title: const Text(
-                          'Push Notifications',
+                        title: Text(
+                          'Device notifications',
                           style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: TabbyColors.brandDarkTeal),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyPalette.of(context).text,
+                          ),
                         ),
-                        subtitle: const Text(
+                        subtitle: Text(
                           'Master switch for all device notifications',
                           style: TextStyle(
-                              fontSize: 12, color: TabbyColors.textSecondary),
+                            fontSize: 12,
+                            color: TabbyPalette.of(context).secondaryText,
+                          ),
                         ),
                         value: settings.notificationsEnabled,
                         onChanged: (val) {
-                          notifier.update(notificationsEnabled: val);
+                          notifier.toggleNotifications(val);
                         },
                       ),
+                      if (settings.notificationError != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            settings.notificationError!,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      if (settings.notificationsEnabled &&
+                          settings.reminderNudgesEnabled)
+                        ValueListenableBuilder<bool>(
+                          valueListenable:
+                              BackgroundReminderService.instance.readyNotifier,
+                          builder: (context, ready, child) => ready
+                              ? const SizedBox.shrink()
+                              : const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 8),
+                                  child: Text(
+                                    'Background reminders are unavailable. You can still review reminders in Tabby.',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                        ),
                       const Divider(height: 1),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        activeThumbColor: TabbyColors.brandEmerald,
-                        title: const Text(
+                        title: Text(
                           'Instant Payment Alerts',
                           style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: TabbyColors.brandDarkTeal),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyPalette.of(context).text,
+                          ),
                         ),
-                        subtitle: const Text(
+                        subtitle: Text(
                           'Notify when friends record or confirm a payment',
                           style: TextStyle(
-                              fontSize: 12, color: TabbyColors.textSecondary),
+                            fontSize: 12,
+                            color: TabbyPalette.of(context).secondaryText,
+                          ),
                         ),
                         value: settings.paymentAlertsEnabled,
                         onChanged: settings.notificationsEnabled
                             ? (val) {
-                                notifier.update(paymentAlertsEnabled: val);
+                                notifier.setNotificationPreferences(
+                                  payments: val,
+                                );
                               }
                             : null,
                       ),
                       const Divider(height: 1),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        activeThumbColor: TabbyColors.brandEmerald,
-                        title: const Text(
+                        title: Text(
                           'Gentle Reminder Nudges',
                           style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: TabbyColors.brandDarkTeal),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyPalette.of(context).text,
+                          ),
                         ),
-                        subtitle: const Text(
+                        subtitle: Text(
                           'Notify when due dates approach or tabs remain open',
                           style: TextStyle(
-                              fontSize: 12, color: TabbyColors.textSecondary),
+                            fontSize: 12,
+                            color: TabbyPalette.of(context).secondaryText,
+                          ),
                         ),
                         value: settings.reminderNudgesEnabled,
                         onChanged: settings.notificationsEnabled
                             ? (val) {
-                                notifier.update(reminderNudgesEnabled: val);
+                                notifier.setNotificationPreferences(
+                                  reminders: val,
+                                );
                               }
                             : null,
                       ),
@@ -1723,225 +1416,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // 4. Currency Precision Info Sheet
-  void _showCurrencyPrecisionSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Material(
-          color: TabbyColors.surfaceWhite,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Integer Centavo Precision',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.pop(sheetContext),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Consumer(
-                    builder: (context, ref, _) {
-                      final settings = ref.watch(userSettingsProvider);
-                      final notifier = ref.read(userSettingsProvider.notifier);
-                      return Column(
-                        children: [
-                          _buildPreferenceChoice(
-                            title: 'Philippine Peso (PHP)',
-                            subtitle: 'Primary ledger currency',
-                            selected: settings.currencyCode == 'PHP',
-                            onTap: () => notifier.update(currencyCode: 'PHP'),
-                          ),
-                          _buildPreferenceChoice(
-                            title: 'US Dollar (USD)',
-                            subtitle: 'Display conversion preference',
-                            selected: settings.currencyCode == 'USD',
-                            onTap: () => notifier.update(currencyCode: 'USD'),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const Divider(height: 24),
-                  const TabbyMascotWidget(
-                    emotion: MascotEmotion.calculating,
-                    size: 50,
-                    showBubble: false,
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'ADR-001 Financial Standard',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: TabbyColors.brandDarkTeal),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Tabby computes and stores all currency internally as integer centavos (1 PHP = 100 centavos). This guarantees absolute mathematical accuracy and eliminates IEEE-754 floating-point rounding errors when splitting odd bills across multiple friends.',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: TabbyColors.textSecondary,
-                        height: 1.5),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: TabbyColors.brandMintAccent,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.verified_outlined,
-                            color: TabbyColors.brandEmerald, size: 24),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Example: ₱1,000.00 is stored as 100000 centavos. A 3-way split divides exactly into 33334¢, 33333¢, and 33333¢ with zero lost centavos.',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: TabbyColors.brandDarkTeal),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TabbyButton(
-                    label: 'Got it',
-                    variant: TabbyButtonVariant.primary,
-                    onPressed: () => Navigator.pop(sheetContext),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 
-  // 5. Backend & Offline Sync Diagnostics Sheet
-  // ignore: unused_element
-  void _showSyncDiagnosticsSheet(BuildContext context) {
-    final messenger = ScaffoldMessenger.of(context);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return Material(
-          color: TabbyColors.surfaceWhite,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Backend & Offline Sync',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: TabbyColors.brandDarkTeal,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () => Navigator.pop(sheetContext),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDiagnosticsRow(
-                    icon: Icons.cloud_done_rounded,
-                    title: 'Supabase BaaS',
-                    subtitle: 'PostgreSQL 15+ relational database with RLS',
-                    status: 'Connected',
-                    statusColor: TabbyColors.brandEmerald,
-                  ),
-                  const Divider(height: 20),
-                  _buildDiagnosticsRow(
-                    icon: Icons.storage_rounded,
-                    title: 'Drift Local Cache',
-                    subtitle: 'Offline-first SQLite local store on device',
-                    status: 'Synchronized',
-                    statusColor: TabbyColors.brandEmerald,
-                  ),
-                  const Divider(height: 20),
-                  _buildDiagnosticsRow(
-                    icon: Icons.security_rounded,
-                    title: 'Row Level Security',
-                    subtitle: 'Audited user-scoped permissions active',
-                    status: 'Enforced',
-                    statusColor: TabbyColors.accentBlue,
-                  ),
-                  const SizedBox(height: 24),
-                  TabbyButton(
-                    label: 'Sync Data Now',
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      ref.read(tabbyProvider.notifier).refreshTabs();
-                      messenger.clearSnackBars();
-                      messenger.showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                              'All tabs and transactions are fully synchronized.'),
-                          backgroundColor: TabbyColors.brandEmerald,
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // 6. Help Center & FAQ Sheet
   void _showHelpCenterSheet(BuildContext context) {
-    showModalBottomSheet(
+    showTabbyBottomSheet(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Material(
-          color: TabbyColors.surfaceWhite,
+          color: TabbyPalette.of(context).surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           clipBehavior: Clip.antiAlias,
           child: Container(
@@ -1956,13 +1440,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Help Center & FAQ',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
-                          color: TabbyColors.brandDarkTeal,
+                          color: TabbyPalette.of(context).text,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1980,68 +1464,68 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     children: [
                       _buildFaqItem(
                         question: 'What is a Tab in Tabby?',
-                        answer:
-                            'A Tab is the complete running bilateral financial ledger between two people. Regardless of how many meals, rides, or bills you share, there is only one running balance between you.',
+                        answer: 'A Tab is the complete running bilateral financial ledger between two people. Regardless of how many meals, rides, or bills you share, there is only one running balance between you.',
                         initiallyExpanded: true,
                       ),
                       _buildFaqItem(
                         question: 'How does Bill Splitting work?',
-                        answer:
-                            'You can choose a 50/50 Split for equal halves or Full Share if one person covered the whole item. Centavo-accurate rounding ensures exact balances.',
+                        answer: 'You can choose a 50/50 Split for equal halves or Full Share if one person covered the whole item. Centavo-accurate rounding ensures exact balances.',
                       ),
                       _buildFaqItem(
                         question: 'How do I settle up?',
-                        answer:
-                            'You can pay using GCash, Maya, Cash, or Bank Transfer. Once payment is recorded in the tab, Tabby updates your net balance immediately.',
+                        answer: 'You can pay using GCash, Maya, Cash, or Bank Transfer. Once payment is recorded in the tab, Tabby updates your net balance immediately.',
                       ),
                       _buildFaqItem(
                         question: 'What is a Friendly Reminder?',
-                        answer:
-                            'Instead of awkward texts, Tabby provides a cute mascot reminder card that you can share with your friend to defuse any tension.',
+                        answer: 'Instead of awkward texts, Tabby provides a cute mascot reminder card that you can share with your friend to defuse any tension.',
                       ),
                       const SizedBox(height: 16),
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: TabbyColors.brandMintAccent,
+                          color: TabbyPalette.of(context).soft,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Still have questions?',
                               style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: TabbyColors.brandDarkTeal),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: TabbyPalette.of(context).text,
+                              ),
                             ),
                             const SizedBox(height: 4),
-                            const Text(
+                            Text(
                               'Our support team is always happy to assist you.',
                               style: TextStyle(
-                                  fontSize: 11,
-                                  color: TabbyColors.textSecondary),
+                                fontSize: 11,
+                                color: TabbyPalette.of(context).secondaryText,
+                              ),
                             ),
                             const SizedBox(height: 10),
                             OutlinedButton.icon(
                               onPressed: () {
-                                Clipboard.setData(const ClipboardData(
-                                    text: 'support@tabby.ph'));
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                Clipboard.setData(
+                                  const ClipboardData(text: 'support@tabby.ph'),
+                                );
+                                TabbyFeedback.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                        'Support email copied to clipboard: support@tabby.ph'),
-                                    backgroundColor: TabbyColors.brandDarkTeal,
+                                      'Support email copied to clipboard: support@tabby.ph',
+                                    ),
                                   ),
                                 );
                               },
                               icon: const Icon(Icons.copy_rounded, size: 16),
                               label: const Text('Copy support@tabby.ph'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: TabbyColors.brandDarkTeal,
+                                foregroundColor: TabbyPalette.of(context).text,
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                             ),
                           ],
@@ -2066,7 +1550,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // 7. Connect by Tabby ID Modal Sheet
   void _showConnectByIdSheet(BuildContext context) {
-    showModalBottomSheet(
+    showTabbyBottomSheet(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -2081,59 +1566,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // 7e. Create Group Sheet
   void _showCreateGroupSheet(BuildContext context) {
-    ScaffoldMessenger.of(context).clearSnackBars();
+    TabbyFeedback.of(context).clearSnackBars();
     final nameController = TextEditingController();
     final friends = ref.read(friendsProvider);
     final selectedFriendIds = <String>{};
     bool isSubmitting = false;
 
-    showModalBottomSheet(
+    showTabbyFormPage(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return Padding(
               padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom),
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Material(
-                color: TabbyColors.surfaceWhite,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(32)),
+                color: TabbyPalette.of(context).surface,
+                borderRadius: BorderRadius.zero,
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: SingleChildScrollView(
+                  child: TabbyFormBody(
+                    header: TabbyFormHeader(
+                      title: 'Create New Group Tab',
+                      onBack: isSubmitting
+                          ? null
+                          : () => Navigator.maybePop(sheetContext),
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Create New Group Tab',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: TabbyColors.brandDarkTeal,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed: () => Navigator.pop(sheetContext),
-                            ),
-                          ],
-                        ),
                         const SizedBox(height: 8),
-                        const Text(
+                        Text(
                           'Keep tabs for barkada meals, roommates, or shared road trips.',
                           style: TextStyle(
-                              fontSize: 12, color: TabbyColors.textSecondary),
+                            fontSize: 12,
+                            color: TabbyPalette.of(context).secondaryText,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         _buildInputField(
@@ -2142,38 +1612,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           icon: Icons.groups_rounded,
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Select Members from Friends',
                           style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: TabbyColors.brandDarkTeal),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: TabbyPalette.of(context).text,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         if (friends.isEmpty)
-                          const Text(
+                          Text(
                             'No accepted friends yet. Connect with a friend first.',
                             style: TextStyle(
-                                fontSize: 12, color: TabbyColors.textSecondary),
+                              fontSize: 12,
+                              color: TabbyPalette.of(context).secondaryText,
+                            ),
                           )
                         else
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: friends.map((friend) {
-                              final isSelected =
-                                  selectedFriendIds.contains(friend.id);
+                              final isSelected = selectedFriendIds.contains(
+                                friend.id,
+                              );
                               return FilterChip(
                                 label: Text(friend.displayName),
                                 selected: isSelected,
-                                selectedColor: TabbyColors.brandMintAccent,
-                                checkmarkColor: TabbyColors.brandEmerald,
+                                selectedColor: TabbyPalette.of(context).soft,
+                                checkmarkColor: TabbyPalette.of(context).link,
                                 labelStyle: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: isSelected
-                                      ? TabbyColors.brandEmerald
-                                      : TabbyColors.brandDarkTeal,
+                                      ? TabbyPalette.of(context).link
+                                      : TabbyPalette.of(context).text,
                                 ),
                                 onSelected: (val) {
                                   setModalState(() {
@@ -2189,34 +1663,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         const SizedBox(height: 24),
                         TabbyButton(
-                          label:
-                              isSubmitting ? 'Creating...' : 'Create Group Tab',
+                          label: isSubmitting
+                              ? 'Creating...'
+                              : 'Create Group Tab',
                           isLoading: isSubmitting,
                           onPressed: isSubmitting
                               ? null
                               : () {
                                   final groupName = nameController.text.trim();
                                   if (groupName.isEmpty) {
-                                    ScaffoldMessenger.of(context)
-                                        .clearSnackBars();
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    TabbyFeedback.of(context).clearSnackBars();
+                                    TabbyFeedback.of(context).showSnackBar(
                                       const SnackBar(
-                                        content:
-                                            Text('Please enter a group name.'),
-                                        backgroundColor: TabbyColors.alertRed,
+                                        content: Text(
+                                          'Please enter a group name.',
+                                        ),
                                       ),
                                     );
                                     return;
                                   }
 
                                   if (selectedFriendIds.isEmpty) {
-                                    ScaffoldMessenger.of(context)
-                                        .clearSnackBars();
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    TabbyFeedback.of(context).clearSnackBars();
+                                    TabbyFeedback.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                            'Select at least one accepted friend.'),
-                                        backgroundColor: TabbyColors.alertRed,
+                                          'Select at least one accepted friend.',
+                                        ),
                                       ),
                                     );
                                     return;
@@ -2234,21 +1707,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     }
                                   }
 
-                                  ref.read(tabbyProvider.notifier).addGroupTab(
+                                  ref
+                                      .read(tabbyProvider.notifier)
+                                      .addGroupTab(
                                         groupName: groupName,
                                         memberNames: memberNames,
-                                        memberUserIds:
-                                            selectedFriendIds.toList(),
+                                        memberUserIds: selectedFriendIds
+                                            .toList(),
                                       );
 
                                   Navigator.pop(sheetContext);
-                                  ScaffoldMessenger.of(context)
-                                      .clearSnackBars();
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                  TabbyFeedback.of(context).clearSnackBars();
+                                  TabbyFeedback.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                          'Group "$groupName" created successfully!'),
-                                      backgroundColor: TabbyColors.brandEmerald,
+                                        'Group "$groupName" created successfully!',
+                                      ),
                                     ),
                                   );
                                 },
@@ -2268,36 +1742,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // 8. Logout Confirmation Dialog
   void _showLogoutConfirmation(BuildContext context) {
     showDialog(
+      animationStyle: TabbyMotion.style(context),
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
             children: [
-              Icon(Icons.logout_rounded, color: TabbyColors.alertRed, size: 22),
-              SizedBox(width: 8),
-              Text(
+              Icon(
+                Icons.logout_rounded,
+                color: TabbyPalette.of(context).errorText,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              const Text(
                 'Log Out',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
             ],
           ),
-          content: const Text(
+          content: Text(
             'Are you sure you want to log out of your Tabby account?',
-            style: TextStyle(fontSize: 14, color: TabbyColors.textSecondary),
+            style: TextStyle(
+              fontSize: 14,
+              color: TabbyPalette.of(context).secondaryText,
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel',
-                  style: TextStyle(color: TabbyColors.textSecondary)),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: TabbyPalette.of(context).secondaryText),
+              ),
             ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(dialogContext);
                 // 1. Immediately invalidate auth flag — router redirects to /login
-                final userId = SupabaseConfig.currentUserId;
+                final session = SupabaseConfig.captureSession();
                 AppState.isAuthenticated.value = false;
                 // 2. Clear in-memory providers
                 ref.read(currentUserProvider.notifier).reset();
@@ -2306,17 +1791,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 if (context.mounted) context.go('/login');
                 // 4. Clear local cache and sign out in background
                 try {
-                  if (userId != null) {
-                    await TabbyLocalCache.clearCache(userId: userId);
-                  }
-                  await SupabaseTabbyRepository.instance.signOut();
+                  await SupabaseTabbyRepository.instance.signOut(
+                    expectedSession: session,
+                  );
                 } catch (_) {}
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: TabbyColors.alertRed,
                 foregroundColor: TabbyColors.surfaceWhite,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               child: const Text('Log Out'),
             ),
@@ -2334,88 +1819,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: TabbyColors.brandMintAccent,
+        color: TabbyPalette.of(context).soft,
         borderRadius: BorderRadius.circular(14),
       ),
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: TabbyColors.brandDarkTeal,
+          color: TabbyPalette.of(context).text,
         ),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle:
-              const TextStyle(fontSize: 12, color: TabbyColors.textSecondary),
-          prefixIcon: Icon(icon, size: 20, color: TabbyColors.textSecondary),
+          labelStyle: TextStyle(
+            fontSize: 12,
+            color: TabbyPalette.of(context).secondaryText,
+          ),
+          prefixIcon: Icon(
+            icon,
+            size: 20,
+            color: TabbyPalette.of(context).secondaryText,
+          ),
           border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDiagnosticsRow({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required String status,
-    required Color statusColor,
+  Widget _buildFaqItem({
+    required String question,
+    required String answer,
+    bool initiallyExpanded = false,
   }) {
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: TabbyColors.iconBgMint,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 18, color: TabbyColors.brandDarkTeal),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: TabbyColors.brandDarkTeal),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                    fontSize: 11, color: TabbyColors.textSecondary),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: statusColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            status,
-            style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: statusColor),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFaqItem(
-      {required String question,
-      required String answer,
-      bool initiallyExpanded = false}) {
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
@@ -2423,18 +1863,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         tilePadding: EdgeInsets.zero,
         title: Text(
           question,
-          style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: TabbyColors.brandDarkTeal),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: TabbyPalette.of(context).text,
+          ),
         ),
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               answer,
-              style: const TextStyle(
-                  fontSize: 12, color: TabbyColors.textSecondary, height: 1.4),
+              style: TextStyle(
+                fontSize: 12,
+                color: TabbyPalette.of(context).secondaryText,
+                height: 1.4,
+              ),
             ),
           ),
         ],
@@ -2465,6 +1909,9 @@ class ConnectByIdSheet extends StatefulWidget {
 
 class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
   late final TextEditingController _codeController;
+  late final SessionStamp _session;
+  String? _lookedUpCode;
+  bool get _current => mounted && SupabaseConfig.isCurrentSession(_session);
   TabbyUser? _foundUser;
   String? _message;
   bool _isLookingUp = false;
@@ -2475,6 +1922,7 @@ class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
   @override
   void initState() {
     super.initState();
+    _session = SupabaseConfig.captureSession();
     _codeController = TextEditingController();
   }
 
@@ -2486,7 +1934,7 @@ class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
   }
 
   Future<void> _findFriend() async {
-    if (_isLookingUp) return;
+    if (!_current || _isLookingUp || _isSending) return;
 
     final normalized = normalizeFriendCode(_codeController.text);
     if (normalized == null) {
@@ -2501,20 +1949,23 @@ class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
     setState(() {
       _isLookingUp = true;
       _foundUser = null;
+      _lookedUpCode = null;
       _message = null;
     });
 
     try {
       final user = await widget.findFriend(normalized);
-      if (!mounted || lookupGeneration != _lookupGeneration) return;
+      if (!_current || lookupGeneration != _lookupGeneration) return;
       setState(() {
         _isLookingUp = false;
         _foundUser = user;
-        _message =
-            user == null ? 'No Tabby account was found for that ID.' : null;
+        _lookedUpCode = user == null ? null : normalized;
+        _message = user == null
+            ? 'No Tabby account was found for that ID.'
+            : null;
       });
     } catch (_) {
-      if (!mounted || lookupGeneration != _lookupGeneration) return;
+      if (!_current || lookupGeneration != _lookupGeneration) return;
       setState(() {
         _isLookingUp = false;
         _foundUser = null;
@@ -2524,15 +1975,15 @@ class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
   }
 
   Future<void> _sendRequest() async {
-    if (_isSending || _foundUser == null) return;
+    if (!_current || _isSending || _foundUser == null) return;
 
     final normalized = normalizeFriendCode(_codeController.text);
-    if (normalized == null) return;
+    if (normalized == null || normalized != _lookedUpCode) return;
 
     setState(() => _isSending = true);
     try {
       final request = await widget.sendFriendRequest(normalized);
-      if (!mounted) return;
+      if (!_current) return;
       setState(() {
         _isSending = false;
         _requestSent = request != null;
@@ -2541,7 +1992,7 @@ class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
             : 'Request sent. They can accept it from their Profile.';
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!_current) return;
       setState(() {
         _isSending = false;
         _message = 'We could not send the request. Please try again.';
@@ -2551,171 +2002,184 @@ class _ConnectByIdSheetState extends State<ConnectByIdSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Material(
-        color: TabbyColors.surfaceWhite,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(32),
+    return AccountDraftGuard(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Connect with a Friend',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: TabbyColors.brandDarkTeal,
+        child: Material(
+          color: TabbyPalette.of(context).surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Connect with a Friend',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: TabbyPalette.of(context).text,
+                          ),
                         ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Enter the exact Tabby ID your friend shared with you.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: TabbyColors.textSecondary,
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _codeController,
-                  textCapitalization: TextCapitalization.characters,
-                  autocorrect: false,
-                  decoration: InputDecoration(
-                    labelText: 'Tabby ID',
-                    hintText: 'TAB-7K4P2M',
-                    prefixIcon: const Icon(Icons.badge_outlined),
-                    suffixIcon: IconButton(
-                      tooltip: 'Find friend',
-                      onPressed: _isLookingUp ? null : _findFriend,
-                      icon: _isLookingUp
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Icon(Icons.search_rounded),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onSubmitted: (_) => _findFriend(),
-                ),
-                if (_foundUser != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: TabbyColors.brandMintAccent,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: TabbyColors.brandEmerald,
-                          child: Text(
-                            _foundUser!.displayName.isNotEmpty
-                                ? _foundUser!.displayName
-                                    .substring(0, 1)
-                                    .toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              color: TabbyColors.surfaceWhite,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            _foundUser!.displayName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                if (_message != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
-                    _message!,
+                    'Enter the exact Tabby ID your friend shared with you.',
                     style: TextStyle(
                       fontSize: 12,
-                      color: _requestSent
-                          ? TabbyColors.brandEmerald
-                          : TabbyColors.alertRed,
-                      fontWeight: FontWeight.w600,
+                      color: TabbyPalette.of(context).secondaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _codeController,
+                    enabled: !_isSending,
+                    onChanged: (_) {
+                      ++_lookupGeneration;
+                      setState(() {
+                        _isLookingUp = false;
+                        _foundUser = null;
+                        _lookedUpCode = null;
+                        _message = null;
+                        _requestSent = false;
+                      });
+                    },
+                    textCapitalization: TextCapitalization.characters,
+                    autocorrect: false,
+                    decoration: InputDecoration(
+                      labelText: 'Tabby ID',
+                      hintText: 'TAB-7K4P2M',
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                      suffixIcon: IconButton(
+                        tooltip: 'Find friend',
+                        onPressed: _isLookingUp || _isSending
+                            ? null
+                            : _findFriend,
+                        icon: _isLookingUp
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.search_rounded),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    onSubmitted: (_) => _findFriend(),
+                  ),
+                  if (_foundUser != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: TabbyPalette.of(context).soft,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: TabbyColors.brandAmber,
+                            child: Text(
+                              _foundUser!.displayName.isNotEmpty
+                                  ? _foundUser!.displayName
+                                        .substring(0, 1)
+                                        .toUpperCase()
+                                  : '?',
+                              style: TextStyle(
+                                color: TabbyPalette.of(context).text,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _foundUser!.displayName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: TabbyPalette.of(context).text,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  if (_message != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _message!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _requestSent
+                            ? TabbyPalette.of(context).link
+                            : TabbyPalette.of(context).errorText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  if (_foundUser != null && !_requestSent)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isSending ? null : _sendRequest,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: TabbyColors.brandAmber,
+                          foregroundColor: TabbyColors.brandInk,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: _isSending
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: TabbyColors.brandInk,
+                                ),
+                              )
+                            : const Text('Send Friend Request'),
+                      ),
+                    )
+                  else if (_requestSent)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Done'),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
                     ),
                   ),
                 ],
-                const SizedBox(height: 20),
-                if (_foundUser != null && !_requestSent)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSending ? null : _sendRequest,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: TabbyColors.brandEmerald,
-                        foregroundColor: TabbyColors.surfaceWhite,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: _isSending
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: TabbyColors.surfaceWhite,
-                              ),
-                            )
-                          : const Text('Send Friend Request'),
-                    ),
-                  )
-                else if (_requestSent)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Done'),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -2755,7 +2219,7 @@ class _PinSetupSheetState extends ConsumerState<_PinSetupSheet> {
   Future<void> _savePin() async {
     if (_pinController.text != _confirmController.text ||
         !RegExp(r'^\d{4,6}$').hasMatch(_pinController.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      TabbyFeedback.of(context).showSnackBar(
         const SnackBar(content: Text('Enter matching 4 to 6 digit PINs.')),
       );
       return;
@@ -2770,7 +2234,7 @@ class _PinSetupSheetState extends ConsumerState<_PinSetupSheet> {
     if (saved) {
       Navigator.of(context).pop();
       if (widget.hostContext.mounted) {
-        ScaffoldMessenger.of(widget.hostContext).showSnackBar(
+        TabbyFeedback.of(widget.hostContext).showSnackBar(
           const SnackBar(content: Text('PIN protection enabled.')),
         );
       }
@@ -2782,7 +2246,7 @@ class _PinSetupSheetState extends ConsumerState<_PinSetupSheet> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: TabbyColors.surfaceWhite,
+      color: TabbyPalette.of(context).surface,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: SafeArea(
         child: Padding(
@@ -2796,20 +2260,20 @@ class _PinSetupSheetState extends ConsumerState<_PinSetupSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Configure PIN',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: TabbyColors.brandDarkTeal,
+                  color: TabbyPalette.of(context).text,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Use a 4 to 6 digit PIN as a device fallback.',
                 style: TextStyle(
                   fontSize: 12,
-                  color: TabbyColors.textSecondary,
+                  color: TabbyPalette.of(context).secondaryText,
                 ),
               ),
               const SizedBox(height: 16),

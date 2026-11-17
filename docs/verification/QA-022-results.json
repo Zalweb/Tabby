@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-11-17T06:55:25.371Z",
+  "base_commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+  "dirty_tree": true,
+  "scope": "Google OAuth handoff/callback/credential repair; Android-only private live acceptance",
+  "source_sha256": {
+    "lib/features/auth/presentation/login_screen.dart": "88528977f40dd8c17e07e7a5376b9ec629baeb52455ff8c5f37532bab7c0eee9",
+    "lib/features/tabs/data/supabase_tabby_repository.dart": "1d391bf085cdcb4f74707fab40bab16eefacff4a8bb2731776f1f66ac76a87c0",
+    "test/features/auth_completion_scope_test.dart": "9695ddf359532f560082cc5262ef6a98b8bbf7e0b0ec35509762f34f7a9da1d5",
+    "integration_test/android_session_cases.json": "f949d0b53afbf0435474473e3136b63158a8d5e5716464fd6800191e3b84bba5",
+    "scripts/usb-test.test.cjs": "ef8d1ac8487fdb5acfbbcc84a18979cddc8d5f73f06b4504b5eb1fe86778cadc",
+    "pubspec.yaml": "87d10bef5e0b79ab4633cd3c4f22c50ec6c9c3ed1fde5344762d1aaf2d4e2110",
+    "pubspec.lock": "f077a3764737f9e2a65ced2587e12949a952e58efe563a1e2c6149e036f40537",
+    "deploy/azure-full/configure-application.py": "7ddcaad388996e4a06622a6a636bcf5d51f95434efda8aa4c4256ed96d4ad83f",
+    "deploy/azure-full/configure-google-callback.py": "83202e66fd43f43ae4db0ce6e215d24a607c4d28add59b38967d8c19185fec2d",
+    "deploy/azure-full/test_google_callback.py": "9943c01f7e26cbdd5a67d061c71a2f6a949d21361021cfa1f8e31bcb6dcd8846"
+  },
+  "source_note": "Current integrated login includes separate QA-024 presentation; auth-only commit snapshot retains prior UI. Snapshot is separately tested. No source hash claims a clean exact release candidate.",
+  "checks": {
+    "focused_flutter": 29,
+    "integrated_flutter": 759,
+    "node": 76,
+    "python_configuration": 5,
+    "dart_analysis": "No issues found!",
+    "physical_android": {
+      "outcome": "passed",
+      "auth_cases": 26,
+      "receiving_cases": 22,
+      "device": "Lenovo TB321FU / API36 / ARM64 / 4KB",
+      "report_sha256": "7d27f24d74fc4b94eeb3b95a1f6cfac124b6edc005da367a2cf4cc308141dfe7",
+      "auth_log_sha256": "d91dbda34f088ef198f057507b8e329ef40d98f5e9aafec03794ef2e8173d510",
+      "receiving_log_sha256": "34bab8a58a03fdcc692b0640ceac01d13c1389583df3a055a3da86a48fce1b7b",
+      "scope": "Actual Flutter forms and installed SDK with loopback HTTP and injected Google/browser platform ports; no real Google picker or account in fixtures."
+    },
+    "owned_flutter": 747,
+    "owned_flutter_log_sha256": "f2e46c62355440b1974078e85301b086033939bc0ffa28c003ea8ce57d656210",
+    "owned_dart_analysis": "No issues found!",
+    "owned_analysis_log_sha256": "58acad698bb19a711c0beb553dd3b7489726bbb77c09f9f935025903a8d0aa56"
+  },
+  "backend": {
+    "environment": "approved Azure migration destination",
+    "callback": "https://tabby-7abf436e-20261113.eastasia.cloudapp.azure.com/auth/v1/callback",
+    "callback_repair": {
+      "run_id": "oauth-callback-20261114T081702Z-3e3474",
+      "outcome": "passed",
+      "callback": "https://tabby-7abf436e-20261113.eastasia.cloudapp.azure.com/auth/v1/callback",
+      "only_configuration_field": "GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI",
+      "backup_ciphertext_sha256": "8d84e66bb4fc90e30cddde7a5e110fe3c6e643561bdcd21546eba30ca2d5e6b8",
+      "backup_recovery_verified": true,
+      "credentials_changed": false,
+      "financial_data_changed": false,
+      "signup_changed": false,
+      "restarted_service": "auth",
+      "auth_healthy": true,
+      "signup_still_disabled": true
+    },
+    "matching_existing_web_client_secret_repair": {
+      "run_id": "oauth-callback-20261117T033450Z-35da1f",
+      "outcome": "passed",
+      "callback": "https://tabby-7abf436e-20261113.eastasia.cloudapp.azure.com/auth/v1/callback",
+      "configuration_fields": [
+        "GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI",
+        "GOTRUE_EXTERNAL_GOOGLE_SECRET"
+      ],
+      "backup_ciphertext_sha256": "28fc4470b5eb2c49eb1e27f24e1a58c3d03172b01a0faf43deec8d8a7ada5ce6",
+      "backup_recovery_verified": true,
+      "credentials_changed": true,
+      "incoming_credential_probe": "invalid_grant for synthetic code; client accepted",
+      "financial_data_changed": false,
+      "signup_changed": false,
+      "restarted_service": "auth",
+      "operator_sha256": "83202e66fd43f43ae4db0ce6e215d24a607c4d28add59b38967d8c19185fec2d",
+      "auth_healthy": true,
+      "signup_still_disabled": true,
+      "encrypted_provider_override_saved": true
+    },
+    "real_google_login": {
+      "user_report": "Home opens",
+      "confirmed_existing_google_identity": true,
+      "email_confirmed": true,
+      "recent_signin": true,
+      "new_session_observed": true,
+      "pending_pkce_count": 0,
+      "token_http_status": 200,
+      "callback_http_status": 302,
+      "account_identifiers_or_credentials_saved": false
+    }
+  },
+  "installed": {
+    "checked_at": "2026-11-17T06:53:30.601Z",
+    "device": "Lenovo TB321FU / API36 / ARM64 / 4KB",
+    "main_version": 12,
+    "apk_sha256": "3747e7d8e81599f95d5a7bc567decccd5804cb1e53cbc2716f50e830f0d62206",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "installed_bytes_verified": true,
+    "main_first_install_time_unchanged": true,
+    "temporary_test_package_removed": true,
+    "main_data_clear_or_uninstall": false,
+    "owner_signout_performed": false,
+    "private_screen_captured": false,
+    "main_activity_status": "ok"
+  },
+  "release12_source_matches": [
+    {
+      "path": "lib/features/auth/presentation/login_screen.dart",
+      "sha256": "88528977f40dd8c17e07e7a5376b9ec629baeb52455ff8c5f37532bab7c0eee9",
+      "release12_source_sha256": "88528977f40dd8c17e07e7a5376b9ec629baeb52455ff8c5f37532bab7c0eee9"
+    },
+    {
+      "path": "lib/features/tabs/data/supabase_tabby_repository.dart",
+      "sha256": "1d391bf085cdcb4f74707fab40bab16eefacff4a8bb2731776f1f66ac76a87c0",
+      "release12_source_sha256": "1d391bf085cdcb4f74707fab40bab16eefacff4a8bb2731776f1f66ac76a87c0"
+    },
+    {
+      "path": "test/features/auth_completion_scope_test.dart",
+      "sha256": "9695ddf359532f560082cc5262ef6a98b8bbf7e0b0ec35509762f34f7a9da1d5",
+      "release12_source_sha256": null
+    },
+    {
+      "path": "integration_test/android_session_cases.json",
+      "sha256": "f949d0b53afbf0435474473e3136b63158a8d5e5716464fd6800191e3b84bba5",
+      "release12_source_sha256": null
+    },
+    {
+      "path": "pubspec.yaml",
+      "sha256": "87d10bef5e0b79ab4633cd3c4f22c50ec6c9c3ed1fde5344762d1aaf2d4e2110",
+      "release12_source_sha256": "87d10bef5e0b79ab4633cd3c4f22c50ec6c9c3ed1fde5344762d1aaf2d4e2110"
+    },
+    {
+      "path": "pubspec.lock",
+      "sha256": "f077a3764737f9e2a65ced2587e12949a952e58efe563a1e2c6149e036f40537",
+      "release12_source_sha256": "f077a3764737f9e2a65ced2587e12949a952e58efe563a1e2c6149e036f40537"
+    },
+    {
+      "path": "scripts/usb-test.test.cjs",
+      "sha256": "ef8d1ac8487fdb5acfbbcc84a18979cddc8d5f73f06b4504b5eb1fe86778cadc",
+      "release12_source_sha256": null
+    }
+  ],
+  "log_sha256": {
+    "qa022-original-google.log": "604fbf4aabe731951a2a53ecd5af0c61be32fbde0db48afdd70e780df01cb229",
+    "qa022-intermediate-duplicate-browser.log": "2004b61be781602c76cd41e6bfd2a05d6f2ad95dda4d7b4f36452e49203d71a6",
+    "qa022-focused-callback-errors.log": "fd5a3850648cae64a7aaec771a8aa868e838b0e49177d6899735223ab45dc8cd",
+    "qa022-flutter-final3.log": "79833f26521ccec86319aa610a5a3e2cec6b9c777e00f42c8eae7b0717023054",
+    "qa022-node-final3.log": "f6e949ff7a95708ad866aa62c7dfc50cad9a2b8998df6217156595da3374d2fe",
+    "qa022-analysis-final4.log": "58acad698bb19a711c0beb553dd3b7489726bbb77c09f9f935025903a8d0aa56",
+    "qa022-python-final2.log": "3fc8f5b6decdd9c3f6f8c7bb53dbb93cf9aab6e45bed45f7e1020d1d10be50e9",
+    "qa024-full-tests.log": "1bb5a2a8d0383df070f7c00fcdf4ff7f9634e04db3061da45dcabc2c3912a8cb"
+  },
+  "limitations": [
+    "Independent integration review remains open.",
+    "Release12 built from the combined dirty source tree; not a clean release approval.",
+    "Real owner Google login succeeded on release11; release12 updates same auth code plus guarded callback error handling without signing out owner.",
+    "Fixtures do not establish every actual provider/native/account lifecycle.",
+    "Firebase/FCM project selection, real background push, SMTP/delta/cutover and broader production acceptance remain open.",
+    "iOS runtime deferred by user; no public release or global backend cutover."
+  ],
+  "owned_commit_source": {
+    "login_sha256": "c5b12c08840fdcd1bec8845b574636a4f9a895a9febeeba0fe2315c1b5c5b3bb",
+    "pubspec_sha256": "08046adc1aee17c0bcf829fd7e50edc40b907cee7552dc64649c949d09deacdc",
+    "presentation": "pre-QA-024 UI, auth methods identical to integrated source"
+  }
+}

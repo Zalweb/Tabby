@@ -113,7 +113,7 @@ extension MascotEmotionExtension on MascotEmotion {
   }
 }
 
-/// Expense categories aligned with FinWise UI and AGENTS.md
+/// Expense categories aligned with Tabby UI and AGENTS.md
 enum ExpenseCategory {
   food('Food', '', Icons.restaurant_rounded),
   transportation('Transportation', '', Icons.directions_car_rounded),
@@ -134,6 +134,7 @@ enum TransactionStatus {
   acknowledged('Acknowledged'),
   paymentSubmitted('Payment Submitted'),
   settled('Settled'),
+  disputed('Disputed'),
   cancelled('Cancelled');
 
   const TransactionStatus(this.label);
@@ -205,30 +206,28 @@ class TabbyUser {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'displayName': displayName,
-        'email': email,
-        'phone': phone,
-        'avatarUrl': avatarUrl,
-        'gcashNumber': gcashNumber,
-        'mayaNumber': mayaNumber,
-        'qrCodeUrl': qrCodeUrl,
-        'friendCode': friendCode,
-      };
+    'id': id,
+    'displayName': displayName,
+    'email': email,
+    'phone': phone,
+    'avatarUrl': avatarUrl,
+    'gcashNumber': gcashNumber,
+    'mayaNumber': mayaNumber,
+    'qrCodeUrl': qrCodeUrl,
+    'friendCode': friendCode,
+  };
 
   factory TabbyUser.fromMap(Map<String, dynamic> map) => TabbyUser(
-        id: map['id'] as String? ?? '',
-        displayName:
-            (map['displayName'] ?? map['display_name']) as String? ?? '',
-        email: map['email'] as String? ?? '',
-        phone: map['phone'] as String? ?? '',
-        avatarUrl: (map['avatarUrl'] ?? map['avatar_url']) as String?,
-        gcashNumber:
-            (map['gcashNumber'] ?? map['gcash_number']) as String? ?? '',
-        mayaNumber: (map['mayaNumber'] ?? map['maya_number']) as String? ?? '',
-        qrCodeUrl: (map['qrCodeUrl'] ?? map['qr_code_url']) as String?,
-        friendCode: (map['friendCode'] ?? map['friend_code']) as String?,
-      );
+    id: map['id'] as String? ?? '',
+    displayName: (map['displayName'] ?? map['display_name']) as String? ?? '',
+    email: map['email'] as String? ?? '',
+    phone: map['phone'] as String? ?? '',
+    avatarUrl: (map['avatarUrl'] ?? map['avatar_url']) as String?,
+    gcashNumber: (map['gcashNumber'] ?? map['gcash_number']) as String? ?? '',
+    mayaNumber: (map['mayaNumber'] ?? map['maya_number']) as String? ?? '',
+    qrCodeUrl: (map['qrCodeUrl'] ?? map['qr_code_url']) as String?,
+    friendCode: (map['friendCode'] ?? map['friend_code']) as String?,
+  );
 }
 
 /// Normalizes a copied or typed Tabby ID without exposing a database UUID.
@@ -412,12 +411,12 @@ class ParticipantShare {
   }
 
   Map<String, dynamic> toMap() => {
-        'userId': userId,
-        'name': name,
-        'shareAmountCentavos': shareAmountCentavos,
-        'isPayer': isPayer,
-        'acknowledged': acknowledged,
-      };
+    'userId': userId,
+    'name': name,
+    'shareAmountCentavos': shareAmountCentavos,
+    'isPayer': isPayer,
+    'acknowledged': acknowledged,
+  };
 
   factory ParticipantShare.fromMap(Map<String, dynamic> map) =>
       ParticipantShare(
@@ -430,8 +429,81 @@ class ParticipantShare {
 }
 
 /// Ledger item (Transaction or Payment) in a Tab
+enum PartyKind { user, contact }
+
+@immutable
+class PartyRef {
+  const PartyRef({required this.kind, required this.id});
+  final PartyKind kind;
+  final String id;
+  Map<String, dynamic> toMap() => {'kind': kind.name, 'id': id};
+  factory PartyRef.fromMap(Map<String, dynamic> map) => PartyRef(
+    kind: PartyKind.values.byName(map['kind'] as String),
+    id: map['id'] as String,
+  );
+  @override
+  bool operator ==(Object other) =>
+      other is PartyRef && other.kind == kind && other.id == id;
+  @override
+  int get hashCode => Object.hash(kind, id);
+}
+
+@immutable
+class ExpenseRevision {
+  final String? parentChangeId, parentOriginalId;
+  const ExpenseRevision({
+    required this.changeId,
+    required this.originalId,
+    required this.role,
+    required this.kind,
+    required this.reason,
+    this.parentChangeId,
+    this.parentOriginalId,
+  });
+  final String changeId, originalId, role, kind, reason;
+  bool get isReminderCandidate => role == 'replacement';
+  Map<String, dynamic> toMap() => {
+    'change_id': changeId,
+    'original_id': originalId,
+    'role': role,
+    'kind': kind,
+    'reason': reason,
+    'parent_change_id': parentChangeId,
+    'parent_original_id': parentOriginalId,
+  };
+  factory ExpenseRevision.fromMap(Map<String, dynamic> map) {
+    if (map['change_id'] is! String ||
+        (map['change_id'] as String).isEmpty ||
+        map['original_id'] is! String ||
+        (map['original_id'] as String).isEmpty ||
+        !const ['original', 'reversal', 'replacement'].contains(map['role']) ||
+        !const ['correct', 'cancel'].contains(map['kind']) ||
+        map['reason'] is! String ||
+        (map['parent_change_id'] != null &&
+            map['parent_change_id'] is! String) ||
+        (map['parent_original_id'] != null &&
+            map['parent_original_id'] is! String)) {
+      throw const FormatException('Invalid expense revision metadata.');
+    }
+    return ExpenseRevision(
+      changeId: map['change_id'] as String,
+      originalId: map['original_id'] as String,
+      role: map['role'] as String,
+      kind: map['kind'] as String,
+      reason: map['reason'] as String,
+      parentChangeId: map['parent_change_id'] as String?,
+      parentOriginalId: map['parent_original_id'] as String?,
+    );
+  }
+}
+
 @immutable
 class LedgerEntry {
+  final ExpenseRevision? revision;
+  final List<String> receiptHistory;
+  final String? paymentReference;
+  final String? rejectionReason;
+  final List<ParticipantShare> participants;
   final String id;
   final String tabId;
   final String title;
@@ -448,8 +520,15 @@ class LedgerEntry {
   final PaymentMethod? paymentMethod;
   final String? note;
   final String? receiptUrl;
+  final PartyRef? payer;
+  final PartyRef? recipient;
 
   const LedgerEntry({
+    this.revision,
+    this.receiptHistory = const [],
+    this.paymentReference,
+    this.rejectionReason,
+    this.participants = const [],
     required this.id,
     required this.tabId,
     required this.title,
@@ -466,9 +545,16 @@ class LedgerEntry {
     this.paymentMethod,
     this.note,
     this.receiptUrl,
+    this.payer,
+    this.recipient,
   });
 
   LedgerEntry copyWith({
+    ExpenseRevision? revision,
+    List<String>? receiptHistory,
+    String? paymentReference,
+    String? rejectionReason,
+    List<ParticipantShare>? participants,
     String? id,
     String? tabId,
     String? title,
@@ -485,8 +571,15 @@ class LedgerEntry {
     PaymentMethod? paymentMethod,
     String? note,
     String? receiptUrl,
+    PartyRef? payer,
+    PartyRef? recipient,
   }) {
     return LedgerEntry(
+      revision: revision ?? this.revision,
+      receiptHistory: receiptHistory ?? this.receiptHistory,
+      paymentReference: paymentReference ?? this.paymentReference,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      participants: participants ?? this.participants,
       id: id ?? this.id,
       tabId: tabId ?? this.tabId,
       title: title ?? this.title,
@@ -504,27 +597,36 @@ class LedgerEntry {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       note: note ?? this.note,
       receiptUrl: receiptUrl ?? this.receiptUrl,
+      payer: payer ?? this.payer,
+      recipient: recipient ?? this.recipient,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'tabId': tabId,
-        'title': title,
-        'category': category.name,
-        'totalAmountCentavos': totalAmountCentavos,
-        'myShareCentavos': myShareCentavos,
-        'counterpartShareCentavos': counterpartShareCentavos,
-        'paidByUserId': paidByUserId,
-        'paidByName': paidByName,
-        'date': date.toIso8601String(),
-        'dueDate': dueDate?.toIso8601String(),
-        'status': status.name,
-        'isPayment': isPayment,
-        'paymentMethod': paymentMethod?.name,
-        'note': note,
-        'receiptUrl': receiptUrl,
-      };
+    'revision': revision?.toMap(),
+    'participants': participants.map((p) => p.toMap()).toList(),
+    'rejectionReason': rejectionReason,
+    'paymentReference': paymentReference,
+    'receiptHistory': receiptHistory,
+    'id': id,
+    'tabId': tabId,
+    'title': title,
+    'category': category.name,
+    'totalAmountCentavos': totalAmountCentavos,
+    'myShareCentavos': myShareCentavos,
+    'counterpartShareCentavos': counterpartShareCentavos,
+    'paidByUserId': paidByUserId,
+    'paidByName': paidByName,
+    'date': date.toIso8601String(),
+    'dueDate': dueDate?.toIso8601String(),
+    'status': status.name,
+    'isPayment': isPayment,
+    'paymentMethod': paymentMethod?.name,
+    'note': note,
+    'receiptUrl': receiptUrl,
+    'payer': payer?.toMap(),
+    'recipient': recipient?.toMap(),
+  };
 
   factory LedgerEntry.fromMap(Map<String, dynamic> map) {
     ExpenseCategory cat = ExpenseCategory.other;
@@ -561,6 +663,24 @@ class LedgerEntry {
     }
 
     return LedgerEntry(
+      revision: map['revision'] == null
+          ? null
+          : ExpenseRevision.fromMap(
+              Map<String, dynamic>.from(map['revision'] as Map),
+            ),
+      participants:
+          (map['participants'] as List<dynamic>?)
+              ?.map(
+                (p) => ParticipantShare.fromMap(
+                  Map<String, dynamic>.from(p as Map),
+                ),
+              )
+              .toList() ??
+          const [],
+      rejectionReason: map['rejectionReason'] as String?,
+      paymentReference: map['paymentReference'] as String?,
+      receiptHistory:
+          (map['receiptHistory'] as List<dynamic>?)?.cast<String>() ?? const [],
       id: map['id'] as String? ?? '',
       tabId: map['tabId'] as String? ?? '',
       title: map['title'] as String? ?? '',
@@ -582,6 +702,12 @@ class LedgerEntry {
       paymentMethod: pm,
       note: map['note'] as String?,
       receiptUrl: map['receiptUrl'] as String?,
+      payer: map['payer'] is Map
+          ? PartyRef.fromMap(Map<String, dynamic>.from(map['payer'] as Map))
+          : null,
+      recipient: map['recipient'] is Map
+          ? PartyRef.fromMap(Map<String, dynamic>.from(map['recipient'] as Map))
+          : null,
     );
   }
 }
@@ -589,10 +715,11 @@ class LedgerEntry {
 /// Bilateral Tab representation between Current User and Counterpart
 @immutable
 class BilateralTab {
+  final List<TabbyUser> members;
+  final bool isLocalOnly;
   final String id;
   final TabbyUser counterpart;
-  final int
-      netBalanceCentavos; // > 0: Counterpart owes user; < 0: User owes counterpart; 0: settled
+  final int netBalanceCentavos; // > 0: Counterpart owes user; < 0: User owes counterpart; 0: settled
   final int itemCount;
   final List<LedgerEntry> entries;
   final DateTime lastUpdated;
@@ -603,6 +730,8 @@ class BilateralTab {
   final bool isTabOnlyParticipant;
 
   const BilateralTab({
+    this.members = const [],
+    this.isLocalOnly = false,
     required this.id,
     required this.counterpart,
     required this.netBalanceCentavos,
@@ -615,6 +744,8 @@ class BilateralTab {
   });
 
   BilateralTab copyWith({
+    List<TabbyUser>? members,
+    bool? isLocalOnly,
     String? id,
     TabbyUser? counterpart,
     int? netBalanceCentavos,
@@ -626,6 +757,8 @@ class BilateralTab {
     bool? isTabOnlyParticipant,
   }) {
     return BilateralTab(
+      members: members ?? this.members,
+      isLocalOnly: isLocalOnly ?? this.isLocalOnly,
       id: id ?? this.id,
       counterpart: counterpart ?? this.counterpart,
       netBalanceCentavos: netBalanceCentavos ?? this.netBalanceCentavos,
@@ -639,42 +772,52 @@ class BilateralTab {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'counterpart': counterpart.toMap(),
-        'netBalanceCentavos': netBalanceCentavos,
-        'itemCount': itemCount,
-        'entries': entries.map((e) => e.toMap()).toList(),
-        'lastUpdated': lastUpdated.toIso8601String(),
-        'isGroupTab': isGroupTab,
-        'groupName': groupName,
-        'isTabOnlyParticipant': isTabOnlyParticipant,
-      };
+    'members': members.map((m) => m.toMap()).toList(),
+    'id': id,
+    'counterpart': counterpart.toMap(),
+    'isLocalOnly': isLocalOnly,
+    'netBalanceCentavos': netBalanceCentavos,
+    'itemCount': itemCount,
+    'entries': entries.map((e) => e.toMap()).toList(),
+    'lastUpdated': lastUpdated.toIso8601String(),
+    'isGroupTab': isGroupTab,
+    'groupName': groupName,
+    'isTabOnlyParticipant': isTabOnlyParticipant,
+  };
 
   factory BilateralTab.fromMap(Map<String, dynamic> map) => BilateralTab(
-        id: map['id'] as String? ?? '',
-        counterpart: map['counterpart'] is Map<String, dynamic>
-            ? TabbyUser.fromMap(map['counterpart'] as Map<String, dynamic>)
-            : TabbyUser(
-                id: map['id'] as String? ?? '',
-                displayName: 'Friend',
-                email: '',
-                phone: ''),
-        netBalanceCentavos: (map['netBalanceCentavos'] as num?)?.toInt() ?? 0,
-        itemCount: (map['itemCount'] as num?)?.toInt() ??
-            (map['entries'] as List<dynamic>?)?.length ??
-            0,
-        entries: (map['entries'] as List<dynamic>?)
-                ?.map((e) => LedgerEntry.fromMap(e as Map<String, dynamic>))
-                .toList() ??
-            const [],
-        lastUpdated: map['lastUpdated'] != null
-            ? (DateTime.tryParse(map['lastUpdated'] as String) ??
-                DateTime.now())
-            : DateTime.now(),
-        isGroupTab: map['isGroupTab'] as bool? ?? false,
-        groupName: map['groupName'] as String?,
-        isTabOnlyParticipant: map['isTabOnlyParticipant'] as bool? ?? false,
-      );
+    members:
+        (map['members'] as List<dynamic>?)
+            ?.map((m) => TabbyUser.fromMap(Map<String, dynamic>.from(m as Map)))
+            .toList() ??
+        const [],
+    isLocalOnly: map['isLocalOnly'] as bool? ?? false,
+    id: map['id'] as String? ?? '',
+    counterpart: map['counterpart'] is Map<String, dynamic>
+        ? TabbyUser.fromMap(map['counterpart'] as Map<String, dynamic>)
+        : TabbyUser(
+            id: map['id'] as String? ?? '',
+            displayName: 'Friend',
+            email: '',
+            phone: '',
+          ),
+    netBalanceCentavos: (map['netBalanceCentavos'] as num?)?.toInt() ?? 0,
+    itemCount:
+        (map['itemCount'] as num?)?.toInt() ??
+        (map['entries'] as List<dynamic>?)?.length ??
+        0,
+    entries:
+        (map['entries'] as List<dynamic>?)
+            ?.map((e) => LedgerEntry.fromMap(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+    lastUpdated: map['lastUpdated'] != null
+        ? (DateTime.tryParse(map['lastUpdated'] as String) ?? DateTime.now())
+        : DateTime.now(),
+    isGroupTab: map['isGroupTab'] as bool? ?? false,
+    groupName: map['groupName'] as String?,
+    isTabOnlyParticipant: map['isTabOnlyParticipant'] as bool? ?? false,
+  );
 }
 
 /// Recent activity item for the feed
@@ -698,25 +841,35 @@ class TabbyActivity {
     this.iconData,
   });
 
+  TabbyActivity copyWith({String? id, String? description}) => TabbyActivity(
+    id: id ?? this.id,
+    actorName: actorName,
+    description: description ?? this.description,
+    amountCentavos: amountCentavos,
+    timestamp: timestamp,
+    icon: icon,
+    iconData: iconData,
+  );
+
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'actorName': actorName,
-        'description': description,
-        'amountCentavos': amountCentavos,
-        'timestamp': timestamp.toIso8601String(),
-        'icon': icon,
-      };
+    'id': id,
+    'actorName': actorName,
+    'description': description,
+    'amountCentavos': amountCentavos,
+    'timestamp': timestamp.toIso8601String(),
+    'icon': icon,
+  };
 
   factory TabbyActivity.fromMap(Map<String, dynamic> map) => TabbyActivity(
-        id: map['id'] as String? ?? '',
-        actorName: map['actorName'] as String? ?? '',
-        description: map['description'] as String? ?? '',
-        amountCentavos: (map['amountCentavos'] as num?)?.toInt() ?? 0,
-        timestamp: map['timestamp'] != null
-            ? (DateTime.tryParse(map['timestamp'] as String) ?? DateTime.now())
-            : DateTime.now(),
-        icon: map['icon'] as String? ?? '',
-      );
+    id: map['id'] as String? ?? '',
+    actorName: map['actorName'] as String? ?? '',
+    description: map['description'] as String? ?? '',
+    amountCentavos: (map['amountCentavos'] as num?)?.toInt() ?? 0,
+    timestamp: map['timestamp'] != null
+        ? (DateTime.tryParse(map['timestamp'] as String) ?? DateTime.now())
+        : DateTime.now(),
+    icon: map['icon'] as String? ?? '',
+  );
 }
 
 /// Upcoming reminder item
@@ -728,8 +881,10 @@ class UpcomingReminder {
   final String description;
   final int amountCentavos;
   final DateTime dueDate;
+  final PartyRef? counterparty;
+  final String? sourceEntryId;
   final bool
-      isIWhoOwe; // true if current user owes; false if friend owes current user
+  isIWhoOwe; // true if current user owes; false if friend owes current user
 
   const UpcomingReminder({
     required this.id,
@@ -739,17 +894,21 @@ class UpcomingReminder {
     required this.amountCentavos,
     required this.dueDate,
     required this.isIWhoOwe,
+    this.counterparty,
+    this.sourceEntryId,
   });
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'tabId': tabId,
-        'friendName': friendName,
-        'description': description,
-        'amountCentavos': amountCentavos,
-        'dueDate': dueDate.toIso8601String(),
-        'isIWhoOwe': isIWhoOwe,
-      };
+    'id': id,
+    'tabId': tabId,
+    'friendName': friendName,
+    'description': description,
+    'amountCentavos': amountCentavos,
+    'dueDate': dueDate.toIso8601String(),
+    'isIWhoOwe': isIWhoOwe,
+    'counterparty': counterparty?.toMap(),
+    'sourceEntryId': sourceEntryId,
+  };
 
   factory UpcomingReminder.fromMap(Map<String, dynamic> map) =>
       UpcomingReminder(
@@ -762,6 +921,12 @@ class UpcomingReminder {
             ? (DateTime.tryParse(map['dueDate'] as String) ?? DateTime.now())
             : DateTime.now(),
         isIWhoOwe: map['isIWhoOwe'] as bool? ?? false,
+        counterparty: map['counterparty'] is Map
+            ? PartyRef.fromMap(
+                Map<String, dynamic>.from(map['counterparty'] as Map),
+              )
+            : null,
+        sourceEntryId: map['sourceEntryId'] as String?,
       );
 }
 
@@ -832,63 +997,65 @@ class AppNotification {
   }
 
   AppNotification copyWith({bool? isRead, DateTime? readAt}) => AppNotification(
-        id: id,
-        recipientUserId: recipientUserId,
-        type: type,
-        relatedTabId: relatedTabId,
-        relatedTransactionId: relatedTransactionId,
-        relatedPaymentId: relatedPaymentId,
-        relatedGroupId: relatedGroupId,
-        title: title,
-        body: body,
-        isRead: isRead ?? this.isRead,
-        createdAt: createdAt,
-        readAt: readAt ?? this.readAt,
-      );
+    id: id,
+    recipientUserId: recipientUserId,
+    type: type,
+    relatedTabId: relatedTabId,
+    relatedTransactionId: relatedTransactionId,
+    relatedPaymentId: relatedPaymentId,
+    relatedGroupId: relatedGroupId,
+    title: title,
+    body: body,
+    isRead: isRead ?? this.isRead,
+    createdAt: createdAt,
+    readAt: readAt ?? this.readAt,
+  );
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'recipientUserId': recipientUserId,
-        'type': type,
-        'relatedTabId': relatedTabId,
-        'relatedTransactionId': relatedTransactionId,
-        'relatedPaymentId': relatedPaymentId,
-        'relatedGroupId': relatedGroupId,
-        'title': title,
-        'body': body,
-        'isRead': isRead,
-        'createdAt': createdAt.toIso8601String(),
-        'readAt': readAt?.toIso8601String(),
-      };
+    'id': id,
+    'recipientUserId': recipientUserId,
+    'type': type,
+    'relatedTabId': relatedTabId,
+    'relatedTransactionId': relatedTransactionId,
+    'relatedPaymentId': relatedPaymentId,
+    'relatedGroupId': relatedGroupId,
+    'title': title,
+    'body': body,
+    'isRead': isRead,
+    'createdAt': createdAt.toIso8601String(),
+    'readAt': readAt?.toIso8601String(),
+  };
 
   factory AppNotification.fromMap(Map<String, dynamic> map) => AppNotification(
-        id: map['id'] as String? ?? '',
-        recipientUserId: map['recipientUserId'] as String? ?? '',
-        type: map['type'] as String? ?? 'general',
-        relatedTabId: map['relatedTabId'] as String?,
-        relatedTransactionId: map['relatedTransactionId'] as String?,
-        relatedPaymentId: map['relatedPaymentId'] as String?,
-        relatedGroupId: map['relatedGroupId'] as String?,
-        title: map['title'] as String? ?? '',
-        body: map['body'] as String? ?? '',
-        isRead: map['isRead'] as bool? ?? false,
-        createdAt: map['createdAt'] != null
-            ? (DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now())
-            : DateTime.now(),
-        readAt: map['readAt'] != null
-            ? DateTime.tryParse(map['readAt'] as String)
-            : null,
-      );
+    id: map['id'] as String? ?? '',
+    recipientUserId: map['recipientUserId'] as String? ?? '',
+    type: map['type'] as String? ?? 'general',
+    relatedTabId: map['relatedTabId'] as String?,
+    relatedTransactionId: map['relatedTransactionId'] as String?,
+    relatedPaymentId: map['relatedPaymentId'] as String?,
+    relatedGroupId: map['relatedGroupId'] as String?,
+    title: map['title'] as String? ?? '',
+    body: map['body'] as String? ?? '',
+    isRead: map['isRead'] as bool? ?? false,
+    createdAt: map['createdAt'] != null
+        ? (DateTime.tryParse(map['createdAt'] as String) ?? DateTime.now())
+        : DateTime.now(),
+    readAt: map['readAt'] != null
+        ? DateTime.tryParse(map['readAt'] as String)
+        : null,
+  );
 }
 
 /// Result of a profile completion or profile update operation.
 class ProfileUpdateResult {
+  final TabbyUser? user;
   final bool isSuccess;
   final bool isDuplicatePhone;
   final String? errorMessage;
 
   const ProfileUpdateResult({
     required this.isSuccess,
+    this.user,
     this.isDuplicatePhone = false,
     this.errorMessage,
   });
@@ -896,4 +1063,3 @@ class ProfileUpdateResult {
   static const success = ProfileUpdateResult(isSuccess: true);
   static const failure = ProfileUpdateResult(isSuccess: false);
 }
-

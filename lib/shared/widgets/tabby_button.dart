@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+
 import '../../core/theme/tabby_colors.dart';
+import '../../core/theme/tabby_palette.dart';
 
 enum TabbyButtonVariant {
-  primary,   // FinWise Emerald #00D09E
-  secondary, // FinWise Soft Mint #DFF7E2 or Dark Teal
-  outline,   // Outlined border
-  danger,    // Alert Red
+  neutral,
+  primary, // Amber fill with charcoal text
+  secondary, // Warm theme-aware highlight
+  outline, // Outlined border
+  danger, // Alert Red
 }
 
 class TabbyButton extends StatelessWidget {
@@ -35,25 +38,49 @@ class TabbyButton extends StatelessWidget {
     BorderSide borderSide = BorderSide.none;
 
     switch (variant) {
+      case TabbyButtonVariant.neutral:
+        backgroundColor = TabbyPalette.of(context).surface;
+        foregroundColor = TabbyPalette.of(context).text;
+        borderSide = BorderSide(color: TabbyPalette.of(context).border);
+        break;
       case TabbyButtonVariant.primary:
-        backgroundColor = TabbyColors.brandEmerald;
-        foregroundColor = TabbyColors.surfaceWhite;
+        backgroundColor = TabbyColors.brandAmber;
+        foregroundColor = TabbyColors.brandInk;
         break;
       case TabbyButtonVariant.secondary:
-        backgroundColor = TabbyColors.brandMintAccent;
-        foregroundColor = TabbyColors.brandDarkTeal;
+        backgroundColor = TabbyPalette.of(context).soft;
+        foregroundColor = TabbyPalette.of(context).text;
         break;
       case TabbyButtonVariant.outline:
-        backgroundColor = TabbyColors.surfaceWhite;
-        foregroundColor = TabbyColors.brandEmerald;
-        borderSide = const BorderSide(color: TabbyColors.brandEmerald, width: 1.5);
+        backgroundColor = TabbyPalette.of(context).surface;
+        foregroundColor = TabbyPalette.of(context).link;
+        borderSide = BorderSide(
+          color: TabbyPalette.of(context).controlBorder,
+          width: 1.5,
+        );
         break;
       case TabbyButtonVariant.danger:
-        backgroundColor = TabbyColors.alertRed;
+        backgroundColor = const Color(0xFFB3261E);
         foregroundColor = TabbyColors.surfaceWhite;
         break;
     }
 
+    final suppliedIcon = icon;
+    final effectiveIcon = suppliedIcon is Icon
+        ? Icon(
+            suppliedIcon.icon,
+            size: suppliedIcon.size,
+            color: foregroundColor,
+            semanticLabel: suppliedIcon.semanticLabel,
+            textDirection: suppliedIcon.textDirection,
+            applyTextScaling: suppliedIcon.applyTextScaling,
+            shadows: suppliedIcon.shadows,
+            fill: suppliedIcon.fill,
+            weight: suppliedIcon.weight,
+            grade: suppliedIcon.grade,
+            opticalSize: suppliedIcon.opticalSize,
+          )
+        : suppliedIcon;
     final buttonContent = Row(
       mainAxisSize: isFullWidth ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -68,10 +95,7 @@ class TabbyButton extends StatelessWidget {
             ),
           )
         else ...[
-          if (icon != null) ...[
-            icon!,
-            const SizedBox(width: 8),
-          ],
+          if (icon != null) ...[effectiveIcon!, const SizedBox(width: 8)],
           Flexible(
             child: Text(
               label,
@@ -81,30 +105,33 @@ class TabbyButton extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 fontFamily: 'Inter',
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
+              textAlign: TextAlign.center,
+              softWrap: true,
             ),
           ),
         ],
       ],
     );
 
-    return SizedBox(
-      height: height,
-      width: isFullWidth ? double.infinity : null,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          foregroundColor: foregroundColor,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: borderSide,
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: height),
+      child: SizedBox(
+        width: isFullWidth ? double.infinity : null,
+        child: ElevatedButton(
+          onPressed: isLoading ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: backgroundColor,
+            foregroundColor: foregroundColor,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: borderSide,
+            ),
+            minimumSize: Size(0, height),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: buttonContent,
         ),
-        child: buttonContent,
       ),
     );
   }

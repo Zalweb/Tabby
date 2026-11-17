@@ -98,7 +98,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final createTabButton = find.text('Create a Tab');
+    final createTabButton = find.byKey(const ValueKey('navigation-create-tab'));
     await tester.ensureVisible(createTabButton);
     await tester.tap(createTabButton);
     await tester.pumpAndSettle();
@@ -106,12 +106,15 @@ void main() {
     expect(find.widgetWithText(CheckboxListTile, 'Alex'), findsOneWidget);
     expect(find.text('Connected'), findsOneWidget);
     await tester.tap(find.widgetWithText(CheckboxListTile, 'Alex'));
-    await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+      expect(find.text('You already have a tab with Alex'), findsOneWidget);
+      expect(notifier.state.tabs.single.entries, isEmpty);
+      await tester.tap(find.text('Add New Expense'));
     await tester.pumpAndSettle();
 
     final amountField = find.byKey(const ValueKey('create-tab-amount'));
     await tester.enterText(amountField, '100.00');
-    final createButton = find.widgetWithText(ElevatedButton, 'Create Tab');
+      final createButton = find.widgetWithText(ElevatedButton, 'Add to Tab');
     await tester.ensureVisible(createButton);
     await tester.tap(createButton);
     await tester.pump(const Duration(seconds: 4));

@@ -1,0 +1,307 @@
+{
+  "task": "QA-028",
+  "timestamp": "2026-11-17T09:40:07.033Z",
+  "tested_commit": "1f8b0bb7deaa05c3602a1d41c71f194818738fba",
+  "dirty_tree": true,
+  "build": {
+    "started_at": "2026-11-17T09:36:48.264Z",
+    "finished_at": "2026-11-17T09:38:19.512Z",
+    "commit": "1f8b0bb7deaa05c3602a1d41c71f194818738fba",
+    "dirty_tree": true,
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64",
+    "build_number": 15,
+    "public_config_fields": [
+      "FIREBASE_API_KEY",
+      "FIREBASE_APP_ID",
+      "FIREBASE_PROJECT_ID",
+      "FIREBASE_SENDER_ID",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL"
+    ],
+    "changed_during_build": [],
+    "outcome": "passed"
+  },
+  "artifact": {
+    "schema": 1,
+    "commit": "1f8b0bb7deaa05c3602a1d41c71f194818738fba",
+    "apk_sha256": "1985498fb5508f516c8ce6bb30108cec983e75737e26256778bf3a277b25e15a",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 15,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "installation": {
+    "timestamp": "2026-11-17T09:38:28.260Z",
+    "device": "Lenovo TB321FU / API36 / ARM64",
+    "transport": "authorized USB",
+    "hardware_identity_checked": true,
+    "primary_user_checked": true,
+    "before_version": 14,
+    "installed_version": 15,
+    "package": "com.zalweb.tabby",
+    "install_mode": "adb install -r; no uninstall or data clear",
+    "first_install_time_preserved": true,
+    "certificate_matches_previous": true,
+    "apk_sha256": "1985498fb5508f516c8ce6bb30108cec983e75737e26256778bf3a277b25e15a",
+    "installed_apk_sha256": "1985498fb5508f516c8ce6bb30108cec983e75737e26256778bf3a277b25e15a",
+    "exact_installed_bytes_match": true,
+    "activity_launch": "Status: ok",
+    "application_running": true
+  },
+  "native_ui_suite": {
+    "started_at": "2026-11-17T09:35:13.180Z",
+    "suite": "entry",
+    "transport": "usb-only",
+    "package": "com.zalweb.tabby.entrytest",
+    "outcome": "passed",
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed",
+        "duration_ms": 51
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed",
+        "duration_ms": 63
+      },
+      {
+        "name": "device-serial",
+        "outcome": "passed",
+        "duration_ms": 41
+      },
+      {
+        "name": "device-hardware-serial",
+        "outcome": "passed",
+        "duration_ms": 97
+      },
+      {
+        "name": "device-model",
+        "outcome": "passed",
+        "duration_ms": 88
+      },
+      {
+        "name": "device-api",
+        "outcome": "passed",
+        "duration_ms": 83
+      },
+      {
+        "name": "device-page-size",
+        "outcome": "passed",
+        "duration_ms": 89
+      },
+      {
+        "name": "physical-device",
+        "outcome": "passed",
+        "duration_ms": 95
+      },
+      {
+        "name": "production-package-inventory",
+        "outcome": "passed",
+        "duration_ms": 140
+      },
+      {
+        "name": "flutter-version",
+        "outcome": "passed",
+        "duration_ms": 544
+      },
+      {
+        "name": "build-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 30614
+      },
+      {
+        "name": "verify-package-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 39
+      },
+      {
+        "name": "device-recheck-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 90
+      },
+      {
+        "name": "install-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 7166
+      },
+      {
+        "name": "notification-permission-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 87
+      },
+      {
+        "name": "drive-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 25370
+      },
+      {
+        "name": "validate-drive-1-android_google_entry_test",
+        "outcome": "passed",
+        "required_cases": 5
+      },
+      {
+        "name": "stop-1-android_google_entry_test",
+        "outcome": "passed",
+        "duration_ms": 129
+      }
+    ],
+    "limitations": [
+      "Synthetic device suites do not verify a live backend.",
+      "Matrix delivery probes schedule alarms; notification delivery is not asserted.",
+      "No release, upgrade, production migration or full device acceptance is implied."
+    ],
+    "commit": "1f8b0bb7deaa05c3602a1d41c71f194818738fba",
+    "dirty_tree": true,
+    "device": {
+      "model": "TB321FU",
+      "api": "36",
+      "page_size": "4096"
+    },
+    "production_package_present": true,
+    "flutter": "Flutter 3.47.8 • channel stable • https://github.com/flutter/flutter.git\nFramework • revision 737ba8f885 (4 weeks ago) • 2026-10-22 21:37:31 -0700\nEngine • hash dfd2e6cb7d319db05e3bf1503f3e2ac60f6288a2 (revision cf636b1dfb) (25 days ago) • 2026-10-23 02:13:38.000Z\nTools • Dart 3.13.7 • DevTools 2.60.0",
+    "finished_at": "2026-11-17T09:36:17.994Z"
+  },
+  "checks": {
+    "full_flutter_tests_passed": 819,
+    "focused_tests_passed": 79,
+    "pure_summary_cases_passed": 8,
+    "large_text_layout_cases_passed": 8,
+    "usb_runner_guards_passed": 10,
+    "analysis": "No issues found",
+    "preview_fixture_tests_passed": 2,
+    "preview_outputs": 24,
+    "source_hashes_match_at_handoff": true,
+    "subsequent_source_changes": [],
+    "skill_validation": "repository and installed skill quick_validate passed; updated matching copies",
+    "independent_integration_review": "unverified",
+    "ios_runtime": "unverified",
+    "actual_screen_reader": "unverified",
+    "exact_candidate_16kb_runtime": "unverified",
+    "project_memory": "passed",
+    "project_memory_summary": "Project memory valid: 82 tasks, 45 audit findings, 105 verification records.",
+    "documentation_base_coverage": "failed",
+    "uncovered_preexisting_files": [
+      ".agents/skills/using-superpowers/SKILL.md",
+      ".agents/skills/using-superpowers/references/antigravity-tools.md",
+      ".agents/skills/using-superpowers/references/claude-code-tools.md",
+      ".agents/skills/using-superpowers/references/codex-tools.md",
+      ".agents/skills/using-superpowers/references/gemini-tools.md",
+      ".agents/skills/using-superpowers/references/hermes-tools.md",
+      ".agents/skills/using-superpowers/references/muse-tools.md",
+      ".agents/skills/using-superpowers/references/pi-tools.md",
+      "assets/reference/introduction reference idea/180eff0e-1c2a-484c-9f7b-1c77ae34501f.jpg",
+      "assets/reference/introduction reference idea/2b99698d-48f5-4cd1-8746-8fe41d4f2b99.jpg",
+      "assets/reference/introduction reference idea/2ba19411-1bb9-471a-b719-ae144bfd67b1.jpg",
+      "assets/reference/introduction reference idea/4106b9b5-5ea7-4e32-bb16-9989400e9e6c.jpg",
+      "assets/reference/introduction reference idea/5233965d-3541-4745-9fa0-8d4fac80b9b0.jpg",
+      "assets/reference/introduction reference idea/78b58fa9-f1f3-479b-8fb0-2cda4e5ef69f.jpg",
+      "assets/reference/introduction reference idea/7b024bb7-4e75-4cff-9984-bd7fb4bccb41.jpg",
+      "assets/reference/introduction reference idea/7b3a7cd3-b35e-4ae5-8caa-54e9fa486e0b.jpg",
+      "assets/reference/introduction reference idea/973df76a-7652-4388-8077-49ca83d83ab2.jpg",
+      "assets/reference/introduction reference idea/97b4ac89-4dd1-447c-8775-88e7c705d10d.jpg",
+      "assets/reference/introduction reference idea/ab5f9d81-cccc-48ea-b366-686451e2c7f6.jpg",
+      "assets/reference/introduction reference idea/aced9c36-480e-46cd-9f52-4b624c89a0d6.jpg",
+      "assets/reference/introduction reference idea/be6e6fa0-dc79-4db9-820c-6866431947e5.jpg",
+      "assets/reference/introduction reference idea/bf033565-15ee-4bf0-b0f3-7eeeb2774417.jpg",
+      "assets/reference/introduction reference idea/db4534d5-b0b4-4d29-becc-8d5c6774f912.jpg",
+      "skills-lock.json"
+    ],
+    "git_whitespace": "passed",
+    "final_git_status": "Dirty integration tree retained, including prior work and concurrent QA-027 notification/header-order repair; no bulk commit/reset",
+    "final_source_hashes_match": true,
+    "final_checked_at": "2026-11-17T09:40:51.264Z"
+  },
+  "validation_source_hashes": {
+    "lib/features/home/domain/home_dashboard_summary.dart": "0852fa05c63a65bcb0c5adf49ffc27cb9a779b8e87b39fd1cb099e38a6eff1b0",
+    "lib/features/home/presentation/home_summary_cards.dart": "eed5f833ebec53a3c22836c0bac0fb52eebcea1de394f5702760c805231ed2a1",
+    "test/features/home_summary_test.dart": "bd8cf7faf3368fce2df66127d7938367bedcd056c5b25eb580b4bbba32e191e1",
+    "test/features/minimal_daily_layout_test.dart": "131f5e9a04142300c4e525bf816f13eb34fa7c875ca39b1b337818052e3ce93c",
+    "test/support/daily_home_fixture.dart": "34d478f8d11562ad33cabc356111956087e52130d7b330c08823006f604eca79",
+    "test/support/warm_design_fixture.dart": "8a26f15733f5bf06f4e08735885975a05dd1c5814b5ece6124af72f62836bc88",
+    "integration_test/android_google_entry_test.dart": "b0f841624187f5a53d192d2c70f9b28c1141a1543af592b4943a8204ef70a4e6",
+    "integration_test/android_google_entry_cases.json": "73efd62127cab58341f769ec616f892d184d43e418f8c29733fb22ed5f5ef4e0",
+    ".agents/skills/tabby-design/SKILL.md": "58dce545cffd346346d4887765fbb53994c0291816ff8277f9fa644627a4a652",
+    "scripts/usb-test.test.cjs": "f1076259b8c5706cb9a9f881514b007dbd3cafb30b41005a20c2880fd232de00"
+  },
+  "implementation": {
+    "home": "One net-position/mascot hero, personal tab clearance, filtered confirmed Received/Paid, dues, recent activity and functional dock Add; existing Home/Tabs/Profile destinations only",
+    "payments": "Settled payment entries, explicit payer/recipient, deduplicated IDs; filtered by recorded submission dates, excluding unattributed legacy parties with notice",
+    "clearance": "Current-user payables/receivables plus unresolved legacy-group checks; opposite group pairs do not net to all settled",
+    "secondary_pages": "Removed duplicated detail KPI/mascot/progress header; retained actual balance/party summary, settlement and ledger history. Profile removes static currency/language rows and provider-advertising duplicate; existing real actions retained.",
+    "appearance": "16px rounded Material/ListTile choices,16px horizontal/6px vertical content padding, selected border/radio, scrollable saved/busy/error behavior; compact Profile identity stacks Edit",
+    "art": "Reuses existing transparent notebook mascot; native card/gradient/text/control layout, no new generated assets"
+  },
+  "earlier_observations": [
+    "First focused76 passed/3 failed: old Home-card labels/actions and a creation test leaving the new root sheet open. Updated tests to actual single summary/dock action and explicit Done; focused79 pass.",
+    "Six large-text Home states passed; two Appearance checks exposed existing Profile identity Row overflow by98px. Layout now stacks Edit; all8 pass.",
+    "Visual preview found period Ink obscured by DecoratedBox and a dark camera-badge foreground. Shared Material selection painting and white-on-charcoal badge fix pass revised previews.",
+    "First full810 passed/9 failed from removed Home/static-settings/provider-ad labels and the unread-bell icon. UI assertions now exercise real retained actions; unread count and active icon preserved. Final full suite passes.",
+    "Two helper-generation attempts failed before writing Home due JS template escaping, then corrected. Initial fixture used a nonexistent category enum and was corrected to existing other before tests. These were local preparation/fixture errors, not device acceptance."
+  ],
+  "limitations": [
+    "Private dirty-tree candidate retains earlier/concurrent changes; no clean-commit/public release claim.",
+    "This UI does not add Stats, payment processing or new backend/provider behavior.",
+    "Native isolated fixture uses synthetic ledger/profile data. No owner financial screenshot/transaction/logout or main data clear.",
+    "Existing QA-027 notification/header-order source is included and host-regressed; live notification-tap acceptance remains that task's separate evidence.",
+    "Independent integration review/iOS/screen reader/exact16KB runtime remain unverified.",
+    "Existing Cupertino-font, Java native-access and package_info_plus future-KGP warnings persist.",
+    "Host visual fixtures use Arial substitutes for Inter/Roboto/Ahem with real Material Icons; actual native UI suite is separate."
+  ]
+}

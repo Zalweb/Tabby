@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tabby/main.dart';
@@ -19,9 +20,9 @@ void main() {
 
     // Verify Home Dashboard header & greeting (without emojis)
     expect(find.text('Frienzal'), findsOneWidget);
-    expect(find.text('YOU OWE'), findsOneWidget);
-    expect(find.text("YOU'RE OWED"), findsOneWidget);
-    expect(find.text('Create a Tab'), findsOneWidget);
+    expect(find.text('NET BALANCE'), findsOneWidget);
+    expect(find.text('Received'), findsOneWidget);
+    expect(find.byKey(const ValueKey('navigation-create-tab')), findsOneWidget);
 
     // Tap on 'My Tabs' navigation item
     await tester.tap(find.text('My Tabs'));
@@ -39,6 +40,7 @@ void main() {
     expect(find.text('Profile & Settings'), findsOneWidget);
     expect(find.text('Payment Methods'), findsOneWidget);
     expect(find.text('Manage Friends'), findsOneWidget);
-    expect(find.text('Currency Precision'), findsOneWidget);
+    expect(find.text('Currency Precision'), findsNothing);
+    expect(find.text('Appearance'), findsOneWidget);
   });
 }

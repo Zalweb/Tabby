@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tabby/core/theme/tabby_colors.dart';
+import 'package:tabby/core/theme/tabby_palette.dart';
 import 'package:tabby/features/profile/presentation/profile_screen.dart';
 
 void main() {
-  testWidgets('Profile uses the approved grouped settings arrangement',
-      (tester) async {
+  testWidgets('Profile uses the approved grouped settings arrangement', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
@@ -15,17 +16,13 @@ void main() {
     });
 
     await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
-          home: ProfileScreen(),
-        ),
-      ),
+      const ProviderScope(child: MaterialApp(home: ProfileScreen())),
     );
     await tester.pumpAndSettle();
 
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
-      TabbyColors.brandEmerald,
+      TabbyPalette.light.canvas,
     );
     expect(find.text('Profile & Settings'), findsOneWidget);
     expect(find.text('Account'), findsOneWidget);
@@ -33,7 +30,9 @@ void main() {
     expect(find.text('Manage Friends'), findsOneWidget);
     expect(find.text('Preferences'), findsOneWidget);
     expect(find.text('Appearance'), findsOneWidget);
-    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('Language'), findsNothing);
+    expect(find.text('Currency Precision'), findsNothing);
+    expect(find.text('GCash / Maya / Bank'), findsNothing);
     expect(find.text('Notifications'), findsOneWidget);
     expect(find.text('Data & Support'), findsOneWidget);
     expect(find.text('Sync & Offline'), findsOneWidget);
@@ -42,19 +41,16 @@ void main() {
   });
 
   testWidgets(
-      'Profile keeps the identity actions visible in the compact header',
-      (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
-          home: ProfileScreen(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+    'Profile keeps the identity actions visible in the compact header',
+    (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: ProfileScreen())),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Frienzal'), findsOneWidget);
-    expect(find.textContaining('TAB-'), findsOneWidget);
-    expect(find.text('Edit Profile'), findsOneWidget);
-  });
+      expect(find.text('Frienzal'), findsOneWidget);
+      expect(find.textContaining('TAB-'), findsOneWidget);
+      expect(find.text('Edit Profile'), findsOneWidget);
+    },
+  );
 }

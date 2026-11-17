@@ -22,7 +22,7 @@ void main() {
     expect(settings.darkModeEnabled, isFalse);
   });
 
-  test('settings preserve preference changes through copyWith', () {
+  test('settings preserve appearance while keeping PHP and English fixed', () {
     final settings = const UserSettings().copyWith(
       currencyCode: 'USD',
       languageCode: 'fil',
@@ -30,8 +30,8 @@ void main() {
       darkModeEnabled: true,
     );
 
-    expect(settings.currencyCode, 'USD');
-    expect(settings.languageCode, 'fil');
+    expect(settings.currencyCode, 'PHP');
+    expect(settings.languageCode, 'en');
     expect(settings.motionEnabled, isFalse);
     expect(settings.darkModeEnabled, isTrue);
   });

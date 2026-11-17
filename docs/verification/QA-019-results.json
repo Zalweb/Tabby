@@ -1,0 +1,502 @@
+{
+  "task": "QA-019",
+  "timestamp": "2026-11-14T14:33:57.367+08:00",
+  "tested_commit": "3af8bae7b8578e653491a74c8df902a05cd9a3f1",
+  "dirty_tree": true,
+  "results": {
+    "analysis": "No issues found",
+    "node": {
+      "passed": 76,
+      "failed": 0
+    },
+    "release_aot_seed": "passed",
+    "signed_financial_storage_upgrade": "passed",
+    "normal_main_restoration": "passed",
+    "normal_main_ui_after_restoration": "Observed expected Complete your profile gate with synthetic account still connected, no login/onboarding re-entry",
+    "legacy_debug_key_upgrade": false,
+    "remote_financial_replay_tested": false,
+    "auth_session_after_restoration": "preserved"
+  },
+  "device": {
+    "qemu": 1,
+    "api": 36,
+    "page_size": 16384,
+    "abi": "x86_64",
+    "serial": "emulator-5580",
+    "package": "com.zalweb.tabby"
+  },
+  "command": "node scripts/android-signed-storage-test.cjs --device emulator-5580 --baseline-apk <exact private v6 APK> --public-config <ignored public-client-only JSON> --expected-cert 4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+  "run_report": {
+    "started_at": "2026-11-14T06:28:44.327Z",
+    "outcome": "passed",
+    "device": "emulator-5580",
+    "package": "com.zalweb.tabby",
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed"
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-identity",
+        "outcome": "passed"
+      },
+      {
+        "name": "baseline-path",
+        "outcome": "passed"
+      },
+      {
+        "name": "pull-owned-baseline",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-restore",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-seed",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-verify",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-seed",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-identity",
+        "outcome": "passed"
+      },
+      {
+        "name": "stop-seed",
+        "outcome": "passed"
+      },
+      {
+        "name": "launch-seed",
+        "outcome": "passed"
+      },
+      {
+        "name": "pid-seed",
+        "outcome": "passed"
+      },
+      {
+        "name": "proof-seed",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-verify",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-identity",
+        "outcome": "passed"
+      },
+      {
+        "name": "stop-verify",
+        "outcome": "passed"
+      },
+      {
+        "name": "launch-verify",
+        "outcome": "passed"
+      },
+      {
+        "name": "pid-verify",
+        "outcome": "passed"
+      },
+      {
+        "name": "proof-verify",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-restore",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-identity",
+        "outcome": "passed"
+      },
+      {
+        "name": "stop-restore",
+        "outcome": "passed"
+      },
+      {
+        "name": "launch-restore",
+        "outcome": "passed"
+      }
+    ],
+    "artifacts": [
+      {
+        "phase": "restore",
+        "schema": 1,
+        "commit": "3af8bae7b8578e653491a74c8df902a05cd9a3f1",
+        "apk_sha256": "94ce7b1426346a7a51dcf0e2af539e54c67649014439a85ef801453ea2bf55eb",
+        "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+        "application_id": "com.zalweb.tabby",
+        "version_code": 9,
+        "version_name": "1.0.4",
+        "debuggable": false,
+        "zip_16kb_aligned": true,
+        "native_libraries": [
+          {
+            "name": "lib/arm64-v8a/libapp.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 0,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libdartjni.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libflutter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libsqlite3mc.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libapp.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 0,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libdartjni.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libdatastore_shared_counter.so",
+            "load_segments": 2,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libflutter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libsqlite3mc.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          }
+        ]
+      },
+      {
+        "phase": "seed",
+        "schema": 1,
+        "commit": "3af8bae7b8578e653491a74c8df902a05cd9a3f1",
+        "apk_sha256": "8827facfd0abae6526551b134a8c186419cc01b76bd3cf349b66eda40d8b8875",
+        "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+        "application_id": "com.zalweb.tabby",
+        "version_code": 7,
+        "version_name": "1.0.4",
+        "debuggable": false,
+        "zip_16kb_aligned": true,
+        "native_libraries": [
+          {
+            "name": "lib/arm64-v8a/libapp.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 0,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libdartjni.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libflutter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libsqlite3mc.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libapp.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 0,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libdartjni.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libdatastore_shared_counter.so",
+            "load_segments": 2,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libflutter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libsqlite3mc.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          }
+        ]
+      },
+      {
+        "phase": "verify",
+        "schema": 1,
+        "commit": "3af8bae7b8578e653491a74c8df902a05cd9a3f1",
+        "apk_sha256": "1a619773a136b0f4dd59eee77af8d2b29e21becb97a495ffa9b502d5f1e0670e",
+        "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+        "application_id": "com.zalweb.tabby",
+        "version_code": 8,
+        "version_name": "1.0.4",
+        "debuggable": false,
+        "zip_16kb_aligned": true,
+        "native_libraries": [
+          {
+            "name": "lib/arm64-v8a/libapp.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 0,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libdartjni.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libflutter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/arm64-v8a/libsqlite3mc.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libapp.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 0,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libdartjni.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libdatastore_shared_counter.so",
+            "load_segments": 2,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libflutter.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          },
+          {
+            "name": "lib/x86_64/libsqlite3mc.so",
+            "load_segments": 3,
+            "minimum_alignment": 16384,
+            "relro_segments": 1,
+            "relro_16kb_compatible": true
+          }
+        ]
+      }
+    ],
+    "limits": [
+      "Owned x86_64 16KB emulator and new production key only; no legacy debug-key upgrade or remote financial action.",
+      "Synthetic encrypted storage payloads, not backend replay or every M1 journey."
+    ],
+    "commit": "3af8bae7b8578e653491a74c8df902a05cd9a3f1",
+    "dirty_tree": true,
+    "baseline": {
+      "version_code": 6,
+      "apk_sha256": "531a16c6e83e9a5d806e6aa47c3d28e66ab631d0a06d775d90743b0e4062febc",
+      "app_id": "10214"
+    },
+    "seed_storage_verified": true,
+    "verify_storage_verified": true,
+    "real_main_restored": true,
+    "finished_at": "2026-11-14T06:33:44.867Z",
+    "local_report": {
+      "path": ".dart_tool/signed-storage-tests/2026-11-14T06-28-44-325Z/report.json",
+      "sha256": "285b89531dedad6c69ebe34eb25fe95b1be10b4492d9245b6e8f3061c0830ce5"
+    }
+  },
+  "source_manifest": {
+    "base": "docs/verification/QA-018-results.json",
+    "base_sha256": "d88fda9e89f0e861196cf6909afe591f3a35db4ebf9ffbbee7f196f405eefc3c",
+    "unchanged_base_files_verified": 480,
+    "updated_and_added": [
+      {
+        "path": "integration_test/android_signed_storage_fixture.dart",
+        "sha256": "7c652fb59f6c641ab4cf30ecbccf0397282e4b2d43117079bdefa48afaf6ea0b"
+      },
+      {
+        "path": "scripts/android-signed-storage-test.cjs",
+        "sha256": "690f0568aa366686df1be2360736dee6267a12b6f7470ad29a7f864475243cd9"
+      },
+      {
+        "path": "scripts/android-signed-storage-test.test.cjs",
+        "sha256": "3eef1dc71a72dcc6b99327668dce9cc08840d0e6f25d435cdc0021c1e25a783e"
+      }
+    ],
+    "total_source_files": 483
+  },
+  "logs": [
+    {
+      "path": ".dart_tool/readiness/qa019-signed-storage.log",
+      "sha256": "c980c57e4e685ae940b4bade6b7d74b879f1e3561413dde3eddb99742c550400"
+    },
+    {
+      "path": ".dart_tool/readiness/qa019-node-final.log",
+      "sha256": "a0a651cf48b4289b3670a17dcfa58e7248c29983a6a0b9bf99a9acda4c4e4e1b"
+    },
+    {
+      "path": ".dart_tool/readiness/qa019-analysis-final.log",
+      "sha256": "58acad698bb19a711c0beb553dd3b7489726bbb77c09f9f935025903a8d0aa56"
+    },
+    {
+      "path": ".dart_tool/signed-storage-tests/2026-11-14T06-28-44-325Z/20-proof-seed.log",
+      "sha256": "dea129139aa1538928891a6912b883e1715fa719f2be2ef2458b59d45f354243"
+    },
+    {
+      "path": ".dart_tool/signed-storage-tests/2026-11-14T06-28-44-325Z/29-proof-verify.log",
+      "sha256": "2a181da6f4fad2e86db19e281f5dfe2dd7cc93e85d0575dee97182f8aa28218b"
+    }
+  ],
+  "limits": [
+    "New approved production key on an owned x86_64 16KB emulator; no old debug-key install modified.",
+    "Synthetic cache/queued-operation payload persistence through actual release AOT factory, secure draft/PIN and key identity. No backend replay, real financial writes, provider/FCM or all M1 UI claim.",
+    "Normal-main restoration APK uses Azure public client overrides and no Firebase; not final/public release approval.",
+    "Independent integration review and ARM64 16KB runtime remain open; iOS deferred."
+  ]
+}

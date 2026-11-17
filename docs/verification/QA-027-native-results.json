@@ -1,0 +1,163 @@
+{
+  "recorded_at": "2026-11-17T10:29:05.386Z",
+  "tested_commit": "d0d07126da9b05d29dc8860508e44cd752cbda5a",
+  "dirty_tree": true,
+  "native_source_sha256": {
+    "android/app/src/main/AndroidManifest.xml": "2ab0819eceffd33f0a9a934d06da0b62021343e96d7e3020a29ee784ac7236e9",
+    "android/app/src/main/kotlin/com/zalweb/tabby/MainActivity.kt": "6d45cf8e9f8488e839f46ddd6a923bcaf91fb9c930a0c9f8165f67d165b37d5b",
+    "android/app/src/main/kotlin/com/zalweb/tabby/PushEnvelope.kt": "1bac489a900d81ce0ee0e723e89eb98a2daa79af8998eb8114fc90494d9808c2",
+    "android/app/src/test/kotlin/com/zalweb/tabby/PushTapDeliveryTest.kt": "c99954669a9bef0176b67a58e412794065d618cf758bd2814de10a2712e1c781"
+  },
+  "debug_release_delivery_source_matches": {
+    "android/app/src/main/AndroidManifest.xml": true,
+    "android/app/src/main/kotlin/com/zalweb/tabby/MainActivity.kt": true,
+    "android/app/src/main/kotlin/com/zalweb/tabby/PushEnvelope.kt": true,
+    "android/app/src/test/kotlin/com/zalweb/tabby/PushTapDeliveryTest.kt": true,
+    "lib/core/services/notification_tap_coordinator.dart": true,
+    "lib/core/services/tabby_notification_service.dart": true,
+    "lib/core/services/background_reminder_service.dart": true,
+    "lib/main.dart": true,
+    "lib/features/tabs/data/supabase_tabby_repository.dart": true
+  },
+  "before_fix": {
+    "actual_drawer_tap": "Page Not Found router screen",
+    "missing_tab_model_not_proven_as_original_failure": true,
+    "compiled_embedding_url_handler": "enabled by default",
+    "metadata_only_warm": "passed",
+    "metadata_only_cold": "failed: Home instead of target, with process absent immediately before tap"
+  },
+  "repair": {
+    "embedding": "disable default Flutter deep links; app_links retains OAuth ownership and scoped native channel owns reminder taps",
+    "native_handoff": "defer destructive intent read until Dart initialTap listener handshake; current binding validation stays at consumption",
+    "unique_pending_intent_uri_retained": true,
+    "no_new_route_or_membership_bypass": true
+  },
+  "native_regression": {
+    "red": {
+      "tests": 4,
+      "failed": 2,
+      "scope": "early destructive read/newest intent; deferred scope validation; existing envelope checks pass"
+    },
+    "green": {
+      "tests": 4,
+      "failed": 0
+    },
+    "logging_compile_attempt": "BuildConfig unavailable; corrected debug-only diagnostics to Android applicationInfo debuggable flag, without enabling new Gradle features"
+  },
+  "warm": {
+    "observed_at": "2026-11-17T10:23:43.971Z",
+    "mode": "warm physical native notification tap",
+    "same_process_before_and_after": true,
+    "exact_owned_event_selected": true,
+    "actual_system_notification_tapped": true,
+    "visual_observation": "physical isolated app screen inspected",
+    "correct_test_group_visible": true,
+    "actual_debtor_is_recipient": true,
+    "one_peso_owed_to_tagged_sender_visible": true,
+    "page_not_found_visible": false,
+    "tab_not_found_visible": false,
+    "fixture_history_retained": true,
+    "private_screenshot_published": false,
+    "source_apk_sha256": "b79275fa71bf5195efcb81f18852750d1074324634c12e3902ad086631242162"
+  },
+  "cold": {
+    "observed_at": "2026-11-17T10:21:03.395Z",
+    "mode": "cold physical native notification tap",
+    "process_absent_immediately_before_tap": true,
+    "new_process_started": true,
+    "exact_owned_event_selected": true,
+    "actual_system_notification_tapped": true,
+    "correct_test_group_visible": true,
+    "actual_debtor_is_recipient": true,
+    "one_peso_owed_to_tagged_sender_visible": true,
+    "page_not_found_visible": false,
+    "tab_not_found_visible": false,
+    "fixture_history_retained": true,
+    "restored_spare_google_session": true,
+    "native_initial_tap_present_after_listener_handshake": true,
+    "native_new_intent_observed": true,
+    "private_raw_logs_or_screenshot_published": false,
+    "source_apk_sha256": "b79275fa71bf5195efcb81f18852750d1074324634c12e3902ad086631242162"
+  },
+  "final_live_integrity": {
+    "outcome": "passed",
+    "all_preexisting_financial_fingerprints_unchanged": true,
+    "tagged_sender_access_still_retired": true,
+    "google_recipient_preserved": true,
+    "existing_group_fixture_expenses": 1,
+    "pending_or_sending_jobs": 0,
+    "read_only": true,
+    "private_ids_rows_or_tokens_logged": false
+  },
+  "compiled_manifest": {
+    "checked_at": "2026-11-17T10:22:23.715Z",
+    "compiled_flutter_default_deep_link_disabled": true,
+    "compiled_oauth_callback_filter_retained": true,
+    "compiled_native_push_service_retained": true
+  },
+  "normal16_install": {
+    "installed_at": "2026-11-17T10:23:49.701Z",
+    "package": "com.zalweb.tabby",
+    "before_version": 15,
+    "installed_version": 16,
+    "install_mode": "adb install -r; no uninstall/data clear",
+    "first_install_time_preserved": true,
+    "production_certificate_matches": true,
+    "apk_sha256": "02dd7199462e1ffc1b24372aa1e95c8b76a8b893475899982220cd3c9e240f8f",
+    "installed_apk_sha256": "02dd7199462e1ffc1b24372aa1e95c8b76a8b893475899982220cd3c9e240f8f",
+    "exact_installed_bytes_match": true,
+    "activity_launch": "Status: ok",
+    "owner_account_signed_out": false,
+    "owner_financial_seed": false,
+    "reserved_usbtest_and_entrytest_preserved": true,
+    "source_manifest_sha256": "df34578aa5764daaaf79a95105ed99c7cb41b9b5c314906710403348c40ff6c3"
+  },
+  "release_build": {
+    "started_at": "2026-11-17T10:20:02.220Z",
+    "finished_at": "2026-11-17T10:21:40.215Z",
+    "commit": "d0d07126da9b05d29dc8860508e44cd752cbda5a",
+    "dirty_tree": true,
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64",
+    "build_number": 16,
+    "public_config_fields": [
+      "FIREBASE_API_KEY",
+      "FIREBASE_APP_ID",
+      "FIREBASE_PROJECT_ID",
+      "FIREBASE_SENDER_ID",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL"
+    ],
+    "changed_during_build": [],
+    "outcome": "passed",
+    "source_manifest_sha256": "df34578aa5764daaaf79a95105ed99c7cb41b9b5c314906710403348c40ff6c3"
+  },
+  "source_snapshot_debug": {
+    "apk_sha256": "b79275fa71bf5195efcb81f18852750d1074324634c12e3902ad086631242162",
+    "frozen_source": true,
+    "source_drift": []
+  },
+  "host_checks": {
+    "current_integrated_flutter": 826,
+    "current_integrated_analysis": "passed",
+    "previous_owned_flutter_snapshot": 754,
+    "previous_explicit_notification_loader_cases": 24,
+    "android_package_alignment": 1
+  },
+  "provenance": [
+    "Recipient uses actual spare Google/SDK session and real authorized group data.",
+    "Original individual/group business events used actual trigger/queue/gateway/worker acceptance. Subsequent warm/cold checks use distinct data-only transport probe events to the same existing group; no new business reminder, expense or queue claim.",
+    "Physical drawer automation validates exact isolated package/event-key hash, its own title/body record and one unambiguous visible native card before tapping. Headerless Android template has no app-name text.",
+    "Warm same PID and cold PID absent immediately before touch are independently checked; destination and PHP1 owed are inspected on the actual isolated app screen. This is agent physical observation, not a user attestation or mock/widget test.",
+    "UIAutomator returned no usable Flutter app nodes; no empty-tree UI result was counted as a pass. Private screenshots were inspected locally and deleted; no screenshot/raw account data retained in shared evidence.",
+    "Read-only final fingerprint check proves original financial history unchanged, sender still retired, Google recipient retained and zero pending/sending jobs."
+  ],
+  "limitations": [
+    "Normal16 contains current dirty integrated UI/auth/native source, not an independently reviewed clean final release candidate.",
+    "No scheduler activation, public release, source-backend cutover, iOS runtime or exact-release16 16KB runtime approval.",
+    "Fresh manual Google browser sign-in after the native flag change remains unverified; actual spare session restoration and authorized reads pass, and SDK app_links ownership/filter are retained.",
+    "Further logout/account-switch/token-rotation/offline/force-stop and release acceptance remain distinct gates."
+  ]
+}

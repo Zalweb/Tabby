@@ -33,12 +33,12 @@ void main() {
 
       // Verify Home Dashboard loaded without emojis
       expect(find.text('Frienzal'), findsOneWidget);
-      expect(find.text('YOU OWE'), findsOneWidget);
-      expect(find.text("YOU'RE OWED"), findsOneWidget);
+      expect(find.text('NET BALANCE'), findsOneWidget);
+      expect(find.text('Received'), findsOneWidget);
       expect(find.text('Upcoming & Reminders'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Recent Activity'), 300);
       expect(find.text('Recent Activity'), findsOneWidget);
-      expect(find.text('Create a Tab'), findsOneWidget);
+      expect(find.byKey(const ValueKey('navigation-create-tab')), findsOneWidget);
 
       // Navigate to My Tabs
       await tester.tap(find.text('My Tabs'));
@@ -89,8 +89,8 @@ void main() {
       expect(find.byType(DynamicIslandWidget), findsOneWidget);
       expect(find.byType(IPhoneHomeIndicator), findsOneWidget);
       expect(find.text('Frienzal'), findsOneWidget);
-      expect(find.text('YOU OWE'), findsOneWidget);
-      expect(find.text("YOU'RE OWED"), findsOneWidget);
+      expect(find.text('NET BALANCE'), findsOneWidget);
+      expect(find.text('Received'), findsOneWidget);
 
       // Interactivity within desktop frame: tap My Tabs
       await tester.tap(find.text('My Tabs'));

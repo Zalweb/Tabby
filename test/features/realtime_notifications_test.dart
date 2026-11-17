@@ -139,7 +139,8 @@ void main() {
       expect(find.text('1 unread notification'), findsOneWidget);
       expect(find.text('ALERTS & NOTIFICATIONS'), findsOneWidget);
       expect(find.text('Payment Received'), findsOneWidget);
-      expect(find.text('A payment of ₱500.00 was recorded on your tab.'), findsOneWidget);
+      expect(find.text('A payment of ₱500.00 was recorded on your tab.'),
+          findsOneWidget);
       expect(find.text('Mark all read'), findsWidgets);
 
       // Tap Mark all read

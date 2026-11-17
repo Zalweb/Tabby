@@ -39,51 +39,37 @@ class CurrencyFormatter {
   }
 
   /// Parses a string representation (e.g. '150.50', '₱1,250.00', '250', '-150.50') into integer centavos.
+  static const maxAmountCentavos = 99999999999;
+
   static int parseToCentavos(String input) {
-    if (input.trim().isEmpty) return 0;
-    // Remove symbols, commas, spaces
-    final cleaned = input.replaceAll('₱', '').replaceAll(',', '').trim();
-    if (cleaned.isEmpty) return 0;
-
-    bool isNegative = false;
-    String absCleaned = cleaned;
-    if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
-      isNegative = true;
-      absCleaned = cleaned.substring(1, cleaned.length - 1).trim();
-    } else if (cleaned.startsWith('-')) {
-      isNegative = true;
-      absCleaned = cleaned.substring(1).trim();
+    var value = input.trim();
+    if (value.isEmpty) return 0;
+    var negative = false;
+    if (value.startsWith('(') && value.endsWith(')')) {
+      negative = true;
+      value = value.substring(1, value.length - 1).trim();
     }
-    if (absCleaned.isEmpty) return 0;
-
-    final parts = absCleaned.split('.');
-    if (parts.length > 2) {
-      throw const FormatException('Currency values may have only one decimal point.');
+    if (value.startsWith('-')) {
+      if (negative) throw const FormatException('Enter a valid PHP amount.');
+      negative = true;
+      value = value.substring(1).trim();
     }
-    final wholeStr = parts[0];
-    if (wholeStr.isEmpty && (parts.length == 1 || parts[1].isEmpty)) {
-      throw const FormatException('Invalid currency value.');
+    value = value.replaceFirst(
+        RegExp(r'^(?:PHP\s*|₱\s*)', caseSensitive: false), '');
+    if (!RegExp(
+            r'^(?:(?:[0-9]+|[1-9][0-9]{0,2}(?:,[0-9]{3})+)(?:\.[0-9]{0,2})?|\.[0-9]{1,2})$')
+        .hasMatch(value)) {
+      throw const FormatException(
+          'Enter a valid PHP amount with up to two decimal places.');
     }
-    final whole = int.tryParse(wholeStr) ?? 0;
-
-    int centavos = whole * 100;
-    if (parts.length > 1) {
-      String fracStr = parts[1];
-      if (fracStr.length > 2) {
-        throw const FormatException(
-          'Currency values may have at most two decimal places.',
-        );
-      } else if (fracStr.length == 1) {
-        fracStr = '${fracStr}0';
-      }
-      if (fracStr.isNotEmpty && int.tryParse(fracStr) == null) {
-        throw const FormatException('Invalid currency value.');
-      }
-      final frac = int.tryParse(fracStr) ?? 0;
-      centavos += frac;
+    final parts = value.replaceAll(',', '').split('.');
+    final whole = BigInt.parse(parts[0].isEmpty ? '0' : parts[0]);
+    final fraction = parts.length == 1 ? '00' : parts[1].padRight(2, '0');
+    final amount = whole * BigInt.from(100) + BigInt.parse(fraction);
+    if (amount > BigInt.from(maxAmountCentavos)) {
+      throw const FormatException('The maximum amount is PHP 999,999,999.99.');
     }
-
-    return isNegative ? -centavos : centavos;
+    return negative ? -amount.toInt() : amount.toInt();
   }
 
   /// Parses a currency value without throwing for user-entered invalid text.

@@ -1,3 +1,5 @@
+> HISTORICAL RECORD: retained for traceability. Claims apply only to its recorded date; this file is not current instructions or proof of deployment. See [current documentation](../../INDEX.md).
+
 # Plan: Post-Audit Fixes & Verification (2026-09-22)
 
 > **Status: COMPLETE (2026-09-22).** All five tasks implemented and verified:

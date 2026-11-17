@@ -2,6 +2,12 @@
 .env
 .env.*
 !.env.example
+# Firebase CLI caches, auth/debug logs and local secret material
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+.runtimeconfig.json
+**/*firebase-adminsdk*.json
 *.pem
 *.key
 *.cert
@@ -60,9 +66,14 @@ eggs/
 
 # Flutter / Dart artifacts
 .dart_tool/
+android/.kotlin/
 .packages
 .pub-cache/
 .pub/
 .flutter-plugins
 .flutter-plugins-dependencies
 releases/
+!docs/releases/
+docs/releases/*
+!docs/releases/README.md
+!docs/releases/*.json

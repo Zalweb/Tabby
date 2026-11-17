@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: mobile-build-${{ github.ref }}
@@ -21,11 +21,12 @@ jobs:
     uses: ./.github/workflows/build-android.yml
     secrets: inherit
     permissions:
-      contents: write
+      contents: read
 
   build-ios:
     name: Build iOS IPA
     uses: ./.github/workflows/build-ios.yml
     secrets: inherit
     permissions:
-      contents: write
+      contents: read
+      actions: read

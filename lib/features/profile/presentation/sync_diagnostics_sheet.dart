@@ -1,7 +1,14 @@
+import '../../../shared/widgets/tabby_mascot_widget.dart';
+import '../../../shared/widgets/tabby_feedback.dart';
+import '../../../core/theme/motion_preferences.dart';
+
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/tabby_colors.dart';
+import '../../../core/theme/tabby_palette.dart';
 import '../../../shared/widgets/tabby_button.dart';
 import '../application/sync_diagnostics_provider.dart';
 
@@ -11,7 +18,14 @@ class SyncDiagnosticsSheet extends ConsumerWidget {
   final BuildContext hostContext;
 
   static Future<void> show(BuildContext context) {
-    return showModalBottomSheet<void>(
+    unawaited(
+      ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(syncDiagnosticsProvider.notifier).checkStatus(),
+    );
+    return showTabbyBottomSheet<void>(
+      sheetAnimationStyle: TabbyMotion.style(context),
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -23,14 +37,15 @@ class SyncDiagnosticsSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final diagnostics = ref.watch(syncDiagnosticsProvider);
     final isBusy = diagnostics.status == SyncStatus.syncing;
-    final online = diagnostics.status != SyncStatus.offline;
-    final feedback = diagnostics.errorMessage ??
+    final online = diagnostics.isOnline == true;
+    final feedback =
+        diagnostics.errorMessage ??
         (isBusy
             ? 'Tabby kept your cached data safe. Sync is in progress.'
             : null);
 
     return Material(
-      color: TabbyColors.surfaceWhite,
+      color: TabbyPalette.of(context).surface,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
       child: SafeArea(
         child: Padding(
@@ -42,12 +57,15 @@ class SyncDiagnosticsSheet extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    const Expanded(
-                      child: Text('Backend & Offline Sync',
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: TabbyColors.brandDarkTeal)),
+                    Expanded(
+                      child: Text(
+                        'Backend & Offline Sync',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: TabbyPalette.of(context).text,
+                        ),
+                      ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
@@ -55,19 +73,49 @@ class SyncDiagnosticsSheet extends ConsumerWidget {
                     ),
                   ],
                 ),
+                if (isBusy ||
+                    diagnostics.isOnline == false ||
+                    diagnostics.status == SyncStatus.failed)
+                  Center(
+                    child: TabbyMascotWidget.art(
+                      pose: isBusy
+                          ? TabbyMascotPose.thinking
+                          : TabbyMascotPose.helpful,
+                      size: 64,
+                    ),
+                  ),
                 const SizedBox(height: 14),
                 _statusRow(
+                  context,
                   icon: online ? Icons.cloud_done_rounded : Icons.cloud_off,
                   title: 'Network',
                   subtitle: online
                       ? 'A connection is available for server refreshes.'
                       : 'Cached tabs remain available until you reconnect.',
-                  status: online ? 'Online' : 'Offline',
-                  color:
-                      online ? TabbyColors.brandEmerald : TabbyColors.alertRed,
+                  status: diagnostics.isOnline == null
+                      ? 'Checking'
+                      : online
+                      ? 'Online'
+                      : 'Offline',
+                  color: online ? TabbyColors.brandAmber : TabbyColors.alertRed,
                 ),
                 const Divider(height: 24),
+                Text(
+                  '${diagnostics.pendingWrites} writes pending · ${diagnostics.needsAttention} need attention',
+                ),
+                if (diagnostics.needsAttention > 0)
+                  TextButton(
+                    onPressed: isBusy
+                        ? null
+                        : () async {
+                            await ref
+                                .read(syncDiagnosticsProvider.notifier)
+                                .syncNow(retrySavedWrites: true);
+                          },
+                    child: const Text('Retry saved writes'),
+                  ),
                 _statusRow(
+                  context,
                   icon: Icons.sync_rounded,
                   title: 'Server sync',
                   subtitle: diagnostics.lastSyncedAt == null
@@ -76,22 +124,27 @@ class SyncDiagnosticsSheet extends ConsumerWidget {
                   status: syncStatusLabel(diagnostics),
                   color: diagnostics.status == SyncStatus.failed
                       ? TabbyColors.alertRed
-                      : TabbyColors.brandEmerald,
+                      : TabbyColors.brandAmber,
                 ),
                 const Divider(height: 24),
                 _statusRow(
+                  context,
                   icon: Icons.phone_android_rounded,
                   title: 'Offline cache',
                   subtitle:
                       'Previously loaded tabs are protected on this device.',
                   status: 'Available',
-                  color: TabbyColors.accentBlue,
+                  color: TabbyColors.accentBurnt,
                 ),
                 if (feedback != null) ...[
                   const SizedBox(height: 12),
-                  Text(feedback,
-                      style: const TextStyle(
-                          color: TabbyColors.alertRed, fontSize: 12)),
+                  Text(
+                    feedback,
+                    style: TextStyle(
+                      color: TabbyPalette.of(context).secondaryText,
+                      fontSize: 12,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 22),
                 TabbyButton(
@@ -103,14 +156,21 @@ class SyncDiagnosticsSheet extends ConsumerWidget {
                               .read(syncDiagnosticsProvider.notifier)
                               .syncNow();
                           if (!context.mounted) return;
-                          ScaffoldMessenger.of(hostContext).showSnackBar(
+                          TabbyFeedback.of(hostContext).showSnackBar(
                             SnackBar(
-                              content: Text(synced
-                                  ? 'All tabs and transactions are fully synchronized.'
-                                  : 'Tabby kept your cached data safe. Sync will retry when you are online.'),
-                              backgroundColor: synced
-                                  ? TabbyColors.brandEmerald
-                                  : TabbyColors.alertRed,
+                              content: Text(
+                                synced
+                                    ? ref
+                                                  .read(syncDiagnosticsProvider)
+                                                  .status ==
+                                              SyncStatus.localOnly
+                                          ? 'Saved on this device.'
+                                          : 'All tabs and transactions are synchronized.'
+                                    : ref
+                                              .read(syncDiagnosticsProvider)
+                                              .errorMessage ??
+                                          'Your cached data is retained.',
+                              ),
                             ),
                           );
                         },
@@ -123,7 +183,8 @@ class SyncDiagnosticsSheet extends ConsumerWidget {
     );
   }
 
-  Widget _statusRow({
+  Widget _statusRow(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
@@ -142,19 +203,29 @@ class SyncDiagnosticsSheet extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                      child: Text(title,
-                          style: const TextStyle(fontWeight: FontWeight.w800))),
-                  Text(status,
-                      style: TextStyle(
-                          color: color,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800)),
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Text(
+                    status,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 3),
-              Text(subtitle,
-                  style: const TextStyle(
-                      color: TabbyColors.textSecondary, fontSize: 12)),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: TabbyPalette.of(context).secondaryText,
+                  fontSize: 12,
+                ),
+              ),
             ],
           ),
         ),

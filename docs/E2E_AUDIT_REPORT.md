@@ -1,3 +1,5 @@
+> HISTORICAL RECORD: retained for traceability. Claims apply only to its recorded date; this file is not current instructions or proof of deployment. See [current documentation](INDEX.md).
+
 # 📱 Tabby Full End-to-End (E2E) Testing & Platform Audit Report
 
 > **Date:** September 17, 2026  

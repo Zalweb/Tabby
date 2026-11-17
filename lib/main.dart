@@ -1,117 +1,150 @@
+import 'features/auth/application/registration_flow.dart';
+import 'core/theme/motion_preferences.dart';
+
+import 'dart:async';
 import 'dart:ui' show PointerDeviceKind;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import 'core/theme/tabby_palette.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'core/config/app_state.dart';
 import 'core/config/supabase_config.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/services/tabby_notification_service.dart';
+import 'core/services/receipt_attachment_service.dart';
 import 'core/theme/tabby_theme.dart';
 import 'core/widgets/biometric_gate.dart';
+import 'core/widgets/startup_gate.dart';
+import 'core/services/storage_recovery_service.dart';
+import 'features/tabs/data/ledger_cache_storage.dart';
 import 'features/app_update/domain/app_update_models.dart';
 import 'features/app_update/presentation/app_update_prompt.dart';
-import 'features/classroom/application/classroom_providers.dart';
-import 'features/classroom/data/classroom_local_cache.dart';
-import 'features/tabs/data/supabase_tabby_repository.dart';
 import 'features/tabs/application/tabby_providers.dart';
 
-Future<void> _refreshProfileCompletionState() async {
-  final userId = SupabaseConfig.currentUserId;
-  if (userId == null) {
-    AppState.profileCompletionRequired.value = false;
-    return;
-  }
-
-  final requiresProfile =
-      await SupabaseTabbyRepository.instance.requiresProfileCompletion(userId);
-  if (requiresProfile != null) {
-    AppState.profileCompletionRequired.value = requiresProfile;
-  }
-}
+Future<void> _refreshProfileCompletionState() => RegistrationFlow.refresh();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  runApp(
+    const StartupGate(
+      initialize: _initializeApp,
+      child: ProviderScope(child: TabbyApp(enableUpdateCheck: true)),
+    ),
+  );
+}
+
+bool _authListenerAttached = false;
+
+Future<List<String>> _initializeApp() async {
+  // Do this before mounting providers: failed recovery must never replay queues
+  // or overwrite a key-bound database with a fresh empty cache.
+  try {
+    await const LedgerCacheStorage().read(key: 'tabby_startup_probe');
+  } catch (_) {
+    throw const LocalStorageUnavailable();
+  }
+  final notices = <String>[];
+  try {
+    await ReceiptAttachmentService.recovery.recover().timeout(
+      const Duration(seconds: 10),
+    );
+  } catch (_) {
+    notices.add(
+      'An image draft could not be recovered. Reopen its form to retry.',
+    );
+  }
 
   // Restore onboarding-seen flag persisted from a previous session.
   const onboardingStorage = FlutterSecureStorage();
-  final seenOnboarding =
-      await onboardingStorage.read(key: 'tabby_has_seen_onboarding');
-  if (seenOnboarding == 'true') {
-    AppState.hasSeenOnboarding.value = true;
+  try {
+    final seenOnboarding = await onboardingStorage
+        .read(key: 'tabby_has_seen_onboarding')
+        .timeout(const Duration(seconds: 10));
+    if (seenOnboarding == 'true') AppState.hasSeenOnboarding.value = true;
+  } catch (_) {
+    notices.add('Saved preferences couldn’t be restored. You can continue.');
   }
 
   try {
-    await TabbyNotificationService.instance.initialize();
-    await SupabaseConfig.initialize();
+    await TabbyNotificationService.instance.initialize().timeout(
+      const Duration(seconds: 10),
+    );
+  } catch (_) {
+    notices.add(
+      'Notifications are unavailable. You can try again or continue.',
+    );
+  }
+  {
+    if (!SupabaseConfig.isInitialized) await SupabaseConfig.initialize();
     if (SupabaseConfig.isInitialized) {
+      await TabbyNotificationService.instance
+          .setActiveAccount(SupabaseConfig.currentUserId)
+          .catchError((Object _) {
+            notices.add(
+              'Device alerts could not be reset. Please retry in settings.',
+            );
+          });
       if (SupabaseConfig.auth.currentUser != null) {
+        AppState.registrationCheckPending.value = true;
         AppState.isAuthenticated.value = true;
         AppState.hasSeenOnboarding.value = true;
-        onboardingStorage.write(
-          key: 'tabby_has_seen_onboarding',
-          value: 'true',
-        );
-        await _refreshProfileCompletionState();
-      }
-      SupabaseConfig.auth.onAuthStateChange.listen((data) {
-        final session = data.session;
-        if (session != null) {
-          AppState.isAuthenticated.value = true;
-          AppState.hasSeenOnboarding.value = true;
-          onboardingStorage.write(
+        try {
+          await onboardingStorage.write(
             key: 'tabby_has_seen_onboarding',
             value: 'true',
           );
-          _refreshProfileCompletionState();
-        } else {
-          AppState.isAuthenticated.value = false;
-          AppState.profileCompletionRequired.value = false;
+        } catch (_) {
+          notices.add('Your onboarding preference couldn’t be saved.');
         }
-      });
-
-      Future<void>.microtask(() async {
-        final userId = SupabaseConfig.currentUserId;
-        if (userId == null) return;
-        final container = ProviderContainer();
         try {
-          await container.read(classroomConnectionProvider.notifier).load();
-          final connection = container.read(classroomConnectionProvider);
-          final tasks = await ClassroomLocalCache.loadTasks(userId) ?? [];
-          if (connection != null) {
-            await TabbyNotificationService.instance.reregisterAllTaskAlarms(
-              tasks: tasks,
-              connection: connection,
-            );
-          }
-        } catch (e) {
-          debugPrint('[Main] Classroom alarm restore notice: $e');
-        } finally {
-          container.dispose();
+          await _refreshProfileCompletionState().timeout(
+            const Duration(seconds: 10),
+          );
+        } catch (_) {
+          notices.add(
+            'Your profile couldn’t be refreshed. You can continue and retry later.',
+          );
         }
-      });
+      }
+      if (!_authListenerAttached) {
+        _authListenerAttached = true;
+        SupabaseConfig.auth.onAuthStateChange.listen((data) {
+          final session = data.session;
+          unawaited(
+            TabbyNotificationService.instance
+                .setActiveAccount(session?.user.id)
+                .catchError((Object _) {}),
+          );
+          if (session != null) {
+            final check = _refreshProfileCompletionState();
+            AppState.isAuthenticated.value = true;
+            AppState.hasSeenOnboarding.value = true;
+            onboardingStorage
+                .write(key: 'tabby_has_seen_onboarding', value: 'true')
+                .catchError((Object _) {});
+            check.catchError((Object _) {});
+          } else {
+            AppState.isAuthenticated.value = false;
+            RegistrationFlow.reset();
+          }
+        }, onError: (Object _, StackTrace __) {});
+      }
     }
-  } catch (e) {
-    debugPrint('[Main] Supabase initialization notice: $e');
   }
-
-  runApp(
-    const ProviderScope(
-      child: TabbyApp(enableUpdateCheck: true),
-    ),
-  );
+  return notices;
 }
 
 final ValueNotifier<bool?> webDeviceFrameOverride = ValueNotifier<bool?>(null);
 
 class TabbyApp extends ConsumerWidget {
-  const TabbyApp({
-    super.key,
-    this.updateChecker,
-    this.enableUpdateCheck,
-  });
+  const TabbyApp({super.key, this.updateChecker, this.enableUpdateCheck});
 
   final AppUpdateChecker? updateChecker;
   final bool? enableUpdateCheck;
@@ -119,11 +152,34 @@ class TabbyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(userSettingsProvider);
+    final reducedMotion =
+        !settings.motionEnabled ||
+        (MediaQuery.maybeDisableAnimationsOf(context) ?? false) ||
+        WidgetsBinding
+            .instance
+            .platformDispatcher
+            .accessibilityFeatures
+            .disableAnimations;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      TabbyNotificationService.instance.markRouterReady(
+        prepareTab: (actor, tab) async {
+          if (!context.mounted || SupabaseConfig.currentUserId != actor) {
+            return false;
+          }
+          final stamp = SupabaseConfig.captureSession();
+          await ref.read(tabbyProvider.notifier).refreshTabs();
+          if (!context.mounted || !SupabaseConfig.isCurrentSession(stamp)) {
+            return false;
+          }
+          return ref.read(tabDetailProvider(tab))?.id == tab;
+        },
+      );
+    });
     return MaterialApp.router(
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       title: 'Tabby',
-      theme: TabbyTheme.lightTheme,
-      darkTheme: TabbyTheme.darkTheme,
+      theme: TabbyMotion.theme(TabbyTheme.lightTheme, reducedMotion),
+      darkTheme: TabbyMotion.theme(TabbyTheme.darkTheme, reducedMotion),
       themeMode: settings.darkModeEnabled ? ThemeMode.dark : ThemeMode.light,
       locale: Locale(settings.languageCode),
       supportedLocales: AppLocalizations.supportedLocales,
@@ -133,9 +189,9 @@ class TabbyApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      themeAnimationDuration: settings.motionEnabled
-          ? const Duration(milliseconds: 250)
-          : Duration.zero,
+      themeAnimationDuration: reducedMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 250),
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {
           PointerDeviceKind.touch,
@@ -167,27 +223,29 @@ class TabbyApp extends ConsumerWidget {
                     child: content,
                   )
                 : (kIsWeb
-                    ? Stack(
-                        children: [
-                          content,
-                          Positioned(
-                            bottom: 16.0,
-                            right: 16.0,
-                            child: _buildFrameToggleBadge(
-                              label: 'iPhone Frame',
-                              icon: Icons.phone_iphone_rounded,
-                              onTap: () {
-                                webDeviceFrameOverride.value = true;
-                              },
+                      ? Stack(
+                          children: [
+                            content,
+                            Positioned(
+                              bottom: 16.0,
+                              right: 16.0,
+                              child: _buildFrameToggleBadge(
+                                label: 'iPhone Frame',
+                                icon: Icons.phone_iphone_rounded,
+                                onTap: () {
+                                  webDeviceFrameOverride.value = true;
+                                },
+                              ),
                             ),
-                          ),
-                        ],
-                      )
-                    : content);
+                          ],
+                        )
+                      : content);
 
             return MediaQuery(
               data: MediaQuery.of(context).copyWith(
-                disableAnimations: !settings.motionEnabled,
+                disableAnimations:
+                    !settings.motionEnabled ||
+                    MediaQuery.disableAnimationsOf(context),
               ),
               child: BiometricGate(
                 child: AppUpdatePrompt(
@@ -304,25 +362,27 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFFE2E8F0),
+      decoration: BoxDecoration(
+        color: TabbyPalette.of(context).soft,
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFFF1F5F9), // Soft studio lighting highlight
-            Color(0xFFE2E8F0), // Modern neutral studio backdrop
-            Color(0xFFCBD5E1), // Grounding gradient shadow
+            TabbyPalette.of(context).canvas, // Warm desktop preview surround
+            TabbyPalette.of(context).soft,
+            TabbyPalette.of(context).border,
           ],
-          stops: [0.0, 0.45, 1.0],
+          stops: const [0.0, 0.45, 1.0],
         ),
       ),
       child: Stack(
         children: [
           Center(
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 24.0,
+              ),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.center,
@@ -388,8 +448,9 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
               color: const Color(0xFF1A1A1A), // Sleek dark titanium bezel
               borderRadius: BorderRadius.circular(outerCornerRadius),
               border: Border.all(
-                color:
-                    const Color(0xFF2C2C2C), // Chamfered metallic rim highlight
+                color: const Color(
+                  0xFF2C2C2C,
+                ), // Chamfered metallic rim highlight
                 width: 1.5,
               ),
               boxShadow: [
@@ -423,8 +484,10 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
                       data: MediaQuery.of(context).copyWith(
                         size: const Size(screenWidth, screenHeight),
                         padding: const EdgeInsets.only(top: 44.0, bottom: 28.0),
-                        viewPadding:
-                            const EdgeInsets.only(top: 44.0, bottom: 28.0),
+                        viewPadding: const EdgeInsets.only(
+                          top: 44.0,
+                          bottom: 28.0,
+                        ),
                       ),
                       child: SizedBox(
                         width: screenWidth,
@@ -439,9 +502,7 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
                       left: 0,
                       right: 0,
                       child: Center(
-                        child: IgnorePointer(
-                          child: DynamicIslandWidget(),
-                        ),
+                        child: IgnorePointer(child: DynamicIslandWidget()),
                       ),
                     ),
 
@@ -451,9 +512,7 @@ class IPhoneDeviceFrameWrapper extends StatelessWidget {
                       left: 0,
                       right: 0,
                       child: Center(
-                        child: IgnorePointer(
-                          child: IPhoneHomeIndicator(),
-                        ),
+                        child: IgnorePointer(child: IPhoneHomeIndicator()),
                       ),
                     ),
                   ],
@@ -522,10 +581,7 @@ class DynamicIslandWidget extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF0F172A),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF1E293B),
-                  width: 1.0,
-                ),
+                border: Border.all(color: const Color(0xFF1E293B), width: 1.0),
               ),
               child: Center(
                 child: Container(

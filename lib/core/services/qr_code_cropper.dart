@@ -208,7 +208,8 @@ class QrCodeCropper {
       final finderBox = _detectByFinderPatterns(pixels, width, height);
 
       // Step 2: Fallback to high-frequency edge transition density cluster
-      final densityBox = finderBox ?? _detectByTransitionDensity(pixels, width, height);
+      final densityBox =
+          finderBox ?? _detectByTransitionDensity(pixels, width, height);
 
       final detectedBox = finderBox ?? densityBox;
 
@@ -553,7 +554,8 @@ class QrCodeCropper {
   }
 
   /// Crops the [uiImage] to [cropRect] and returns the encoded PNG bytes.
-  static Future<Uint8List> _cropImage(ui.Image uiImage, ui.Rect cropRect) async {
+  static Future<Uint8List> _cropImage(
+      ui.Image uiImage, ui.Rect cropRect) async {
     final recorder = ui.PictureRecorder();
     final canvas = ui.Canvas(recorder);
 

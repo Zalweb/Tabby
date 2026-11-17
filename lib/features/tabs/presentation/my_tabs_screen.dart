@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tabby_colors.dart';
+import '../../../core/theme/tabby_palette.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../shared/widgets/notification_center_sheet.dart';
 import '../../../shared/widgets/tabby_mascot_widget.dart';
@@ -39,17 +40,18 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
     final groups = filteredTabs.where((tab) => tab.isGroupTab).toList();
 
     return Scaffold(
-      backgroundColor: TabbyColors.brandEmerald,
+      backgroundColor: TabbyPalette.of(context).canvas,
       body: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            _buildEmeraldHeader(context),
+            _buildWarmHeader(context),
             Expanded(
               child: Material(
-                color: TabbyColors.bgCanvas,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(36)),
+                color: TabbyPalette.of(context).canvas,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(36),
+                ),
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
@@ -59,7 +61,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                       child: RefreshIndicator(
                         onRefresh: () =>
                             ref.read(tabbyProvider.notifier).refreshTabs(),
-                        color: TabbyColors.brandEmerald,
+                        color: TabbyColors.brandAmber,
                         child: SingleChildScrollView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
@@ -83,19 +85,19 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
     );
   }
 
-  Widget _buildEmeraldHeader(BuildContext context) {
+  Widget _buildWarmHeader(BuildContext context) {
     return Container(
-      color: TabbyColors.brandEmerald,
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+      color: TabbyPalette.of(context).canvas,
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Text(
               'My Tabs',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
-                color: TabbyColors.brandDarkTeal,
+                color: TabbyPalette.of(context).text,
                 letterSpacing: -0.5,
               ),
             ),
@@ -105,14 +107,15 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
             icon: const Icon(Icons.add_rounded, size: 18),
             label: const Text('Create Tab'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: TabbyColors.surfaceWhite,
-              foregroundColor: TabbyColors.brandDarkTeal,
+              backgroundColor: TabbyPalette.of(context).surface,
+              foregroundColor: TabbyPalette.of(context).text,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(22),
               ),
               textStyle: const TextStyle(
+                fontFamily: 'Inter',
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
@@ -123,7 +126,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: TabbyColors.surfaceWhite,
+              color: TabbyPalette.of(context).surface,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
@@ -154,7 +157,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                       ? Icons.notifications_active_rounded
                       : Icons.notifications_none_rounded,
                   size: 21,
-                  color: TabbyColors.brandDarkTeal,
+                  color: TabbyPalette.of(context).text,
                 ),
               ),
               onPressed: () => NotificationCenterSheet.show(context),
@@ -171,19 +174,13 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: TabbyColors.brandMintAccent,
+          color: TabbyPalette.of(context).soft,
           borderRadius: BorderRadius.circular(24),
         ),
         child: SegmentedButton<bool>(
           segments: const [
-            ButtonSegment<bool>(
-              value: false,
-              label: Text('Active'),
-            ),
-            ButtonSegment<bool>(
-              value: true,
-              label: Text('Groups'),
-            ),
+            ButtonSegment<bool>(value: false, label: Text('Active')),
+            ButtonSegment<bool>(value: true, label: Text('Groups')),
           ],
           selected: {_showGroups},
           showSelectedIcon: false,
@@ -197,19 +194,17 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
             ),
             side: WidgetStateProperty.all(BorderSide.none),
             shape: WidgetStateProperty.all(
-              RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             ),
             backgroundColor: WidgetStateProperty.resolveWith((states) {
               return states.contains(WidgetState.selected)
-                  ? TabbyColors.brandEmerald
+                  ? TabbyColors.brandAmber
                   : Colors.transparent;
             }),
             foregroundColor: WidgetStateProperty.resolveWith((states) {
               return states.contains(WidgetState.selected)
-                  ? TabbyColors.surfaceWhite
-                  : TabbyColors.brandDarkTeal;
+                  ? TabbyColors.brandInk
+                  : TabbyPalette.of(context).text;
             }),
             textStyle: WidgetStateProperty.resolveWith((states) {
               return TextStyle(
@@ -230,7 +225,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       child: Container(
         decoration: BoxDecoration(
-          color: TabbyColors.brandMintAccent,
+          color: TabbyPalette.of(context).soft,
           borderRadius: BorderRadius.circular(16),
         ),
         child: TextField(
@@ -238,16 +233,16 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
           onChanged: (value) {
             ref.read(tabSearchQueryProvider.notifier).state = value;
           },
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: TabbyColors.brandDarkTeal,
+            color: TabbyPalette.of(context).text,
           ),
           decoration: InputDecoration(
             hintText: 'Search friends or tabs...',
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.search_rounded,
-              color: TabbyColors.textSecondary,
+              color: TabbyPalette.of(context).secondaryText,
               size: 20,
             ),
             suffixIcon: _searchController.text.isEmpty
@@ -264,8 +259,10 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
             border: InputBorder.none,
             enabledBorder: InputBorder.none,
             focusedBorder: InputBorder.none,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
+            ),
             filled: false,
           ),
         ),
@@ -339,10 +336,10 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: TabbyColors.brandDarkTeal,
+              color: TabbyPalette.of(context).text,
             ),
           ),
         ),
@@ -350,7 +347,7 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
           TextButton(
             onPressed: onAction,
             style: TextButton.styleFrom(
-              foregroundColor: TabbyColors.brandEmerald,
+              foregroundColor: TabbyPalette.of(context).link,
               padding: EdgeInsets.zero,
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -387,9 +384,9 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: TabbyColors.surfaceWhite,
+        color: TabbyPalette.of(context).surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: TabbyColors.borderMint),
+        border: Border.all(color: TabbyPalette.of(context).border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x04000000),
@@ -415,10 +412,10 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: TabbyColors.brandDarkTeal,
+                        color: TabbyPalette.of(context).text,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -426,9 +423,9 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                       '$amountLabel · $peopleLabel',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
-                        color: TabbyColors.textSecondary,
+                        color: TabbyPalette.of(context).secondaryText,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -443,12 +440,14 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: isSettled
-                          ? TabbyColors.borderMint
-                          : TabbyColors.brandMintAccent,
+                          ? TabbyPalette.of(context).border
+                          : TabbyPalette.of(context).soft,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -457,15 +456,15 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         color: isSettled
-                            ? TabbyColors.textSecondary
-                            : TabbyColors.brandEmerald,
+                            ? TabbyPalette.of(context).secondaryText
+                            : TabbyPalette.of(context).link,
                       ),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right_rounded,
-                    color: TabbyColors.textSecondary,
+                    color: TabbyPalette.of(context).secondaryText,
                     size: 19,
                   ),
                 ],
@@ -481,10 +480,12 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
     final icon = tab.isGroupTab
         ? Icons.groups_rounded
         : (category?.icon ?? Icons.receipt_long_rounded);
-    final background =
-        tab.isGroupTab ? TabbyColors.iconBgMint : TabbyColors.iconBgBlue;
-    final foreground =
-        tab.isGroupTab ? TabbyColors.alertRed : TabbyColors.accentLightBlue;
+    final background = tab.isGroupTab
+        ? TabbyPalette.of(context).soft
+        : TabbyPalette.of(context).accentTint;
+    final foreground = tab.isGroupTab
+        ? TabbyPalette.of(context).errorText
+        : TabbyPalette.of(context).link;
 
     return Container(
       width: 48,
@@ -515,17 +516,14 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
               decoration: BoxDecoration(
                 color: _avatarColor(name),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: TabbyColors.surfaceWhite,
-                  width: 1.5,
-                ),
+                border: Border.all(color: TabbyColors.surfaceWhite, width: 1.5),
               ),
               child: Text(
                 _initial(name),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
-                  color: TabbyColors.brandDarkTeal,
+                  color: TabbyPalette.of(context).text,
                 ),
               ),
             ),
@@ -534,10 +532,10 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
         if (remaining > 0)
           Text(
             '+$remaining',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: TabbyColors.textSecondary,
+              color: TabbyPalette.of(context).secondaryText,
             ),
           ),
       ],
@@ -562,19 +560,19 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
             const SizedBox(height: 10),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: TabbyColors.brandDarkTeal,
+                color: TabbyPalette.of(context).text,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: TabbyColors.textSecondary,
+                color: TabbyPalette.of(context).secondaryText,
               ),
             ),
             const SizedBox(height: 14),
@@ -583,15 +581,18 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
               icon: const Icon(Icons.add_rounded, size: 17),
               label: Text(buttonLabel),
               style: ElevatedButton.styleFrom(
-                backgroundColor: TabbyColors.brandEmerald,
-                foregroundColor: TabbyColors.surfaceWhite,
+                backgroundColor: TabbyColors.brandAmber,
+                foregroundColor: TabbyColors.brandInk,
                 elevation: 0,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 11,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(22),
                 ),
                 textStyle: const TextStyle(
+                  fontFamily: 'Inter',
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                 ),
@@ -636,13 +637,20 @@ class _MyTabsScreenState extends ConsumerState<MyTabsScreen> {
 
   Color _avatarColor(String value) {
     final colors = <Color>[
-      TabbyColors.iconBgBlue,
-      TabbyColors.brandMintAccent,
-      const Color(0xFFFFE7D6),
-      const Color(0xFFE9E1FF),
+      TabbyPalette.of(context).accentTint,
+      TabbyPalette.of(context).soft,
+      TabbyPalette.of(context).pendingTint,
+      TabbyPalette.of(context).surface,
     ];
     final normalized = value.trim();
     final index = normalized.isEmpty ? 0 : normalized.codeUnitAt(0);
-    return colors[index % colors.length];
+    final tone = colors[index % colors.length];
+    return Theme.of(context).brightness == Brightness.dark &&
+            index % colors.length >= 2
+        ? Color.alphaBlend(
+            tone.withValues(alpha: 0.14),
+            TabbyPalette.dark.surface,
+          )
+        : tone;
   }
 }

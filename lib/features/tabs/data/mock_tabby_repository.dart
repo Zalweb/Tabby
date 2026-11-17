@@ -1,8 +1,39 @@
 import '../domain/models.dart';
+import '../domain/share_allocation.dart' as allocation;
 
 /// In-memory repository seeded with realistic peer expenses and bilateral relationships.
 /// Implements ADR-001 integer centavos and canonical balance formulas.
 class MockTabbyRepository {
+  /// A server row is authoritative for a known ID, including confirmation state.
+  static List<LedgerEntry> mergeServerEntries(
+      List<LedgerEntry> server, Iterable<LedgerEntry> local) {
+    final ids = server.map((entry) => entry.id).toSet();
+    return deduplicateLedgerEntries(
+        [...server, ...local.where((entry) => !ids.contains(entry.id))]);
+  }
+
+  static List<BilateralTab> applyOperationResult(
+    List<BilateralTab> tabs, {
+    required String localEntryId,
+    required String remoteTabId,
+    required String remoteEntryId,
+    required String currentUserId,
+  }) =>
+      tabs.map((tab) {
+        if (!tab.entries.any((entry) => entry.id == localEntryId)) return tab;
+        final entries = deduplicateLedgerEntries(tab.entries
+            .map((entry) => entry.copyWith(
+                tabId: remoteTabId,
+                id: entry.id == localEntryId ? remoteEntryId : entry.id))
+            .toList());
+        return tab.copyWith(
+            id: remoteTabId,
+            isLocalOnly: false,
+            entries: entries,
+            itemCount: entries.length,
+            netBalanceCentavos: calculateNetBalance(entries, currentUserId));
+      }).toList();
+
   static const TabbyUser currentUser = TabbyUser(
     id: 'user-me',
     displayName: 'Frienzal',
@@ -18,24 +49,42 @@ class MockTabbyRepository {
 
   /// AGENTS.md Section 8 Canonical Balance Calculation Engine
   /// Net Balance_A = sum(Owed to A) - sum(Owed by A) - sum(Payments Received by A) + sum(Payments Made by A)
-  static int calculateNetBalance(List<LedgerEntry> entries, String currentUserId) {
+  static int calculateNetBalance(
+      List<LedgerEntry> entries, String currentUserId) {
     int netCentavos = 0;
 
     for (final entry in entries) {
-      if (entry.status == TransactionStatus.cancelled) continue;
+      if (entry.status == TransactionStatus.cancelled ||
+          entry.status == TransactionStatus.disputed) {
+        continue;
+      }
 
       if (entry.isPayment) {
-        // Payment record
-        if (entry.paidByUserId == currentUserId) {
+        if (entry.status != TransactionStatus.settled) continue;
+        final payer = entry.payer ??
+            PartyRef(kind: PartyKind.user, id: entry.paidByUserId);
+        if (payer.kind == PartyKind.user && payer.id == currentUserId) {
           // Current user made payment -> reduces what user owes (positive offset)
           netCentavos += entry.totalAmountCentavos;
-        } else {
+        } else if (entry.recipient?.kind == PartyKind.user &&
+            entry.recipient?.id == currentUserId) {
           // Counterpart made payment -> reduces what counterpart owes (negative offset)
           netCentavos -= entry.totalAmountCentavos;
         }
+        // An uninvolved member, or an ambiguous legacy recipient, has no
+        // incoming payment. Refresh legacy rows to obtain explicit parties.
       } else {
         // Expense transaction
-        if (entry.paidByUserId == currentUserId) {
+        if (entry.participants.isNotEmpty) {
+          final ownShare = entry.participants
+                  .where((p) => p.userId == currentUserId)
+                  .firstOrNull
+                  ?.shareAmountCentavos ??
+              0;
+          netCentavos += entry.paidByUserId == currentUserId
+              ? entry.totalAmountCentavos - ownShare
+              : -ownShare;
+        } else if (entry.paidByUserId == currentUserId) {
           // Current user paid upfront -> counterpart owes their share
           netCentavos += entry.counterpartShareCentavos;
         } else {
@@ -53,25 +102,7 @@ class MockTabbyRepository {
   static Map<String, int> allocateEqualShares(
     int totalAmountCentavos,
     Iterable<String> participantIds,
-  ) {
-    if (totalAmountCentavos < 0) {
-      throw ArgumentError.value(
-        totalAmountCentavos,
-        'totalAmountCentavos',
-        'must not be negative',
-      );
-    }
-
-    final ids = participantIds.toSet().toList()..sort();
-    if (ids.isEmpty) return const {};
-
-    final baseShare = totalAmountCentavos ~/ ids.length;
-    final remainder = totalAmountCentavos % ids.length;
-    return {
-      for (var index = 0; index < ids.length; index++)
-        ids[index]: baseShare + (index < remainder ? 1 : 0),
-    };
-  }
+  ) => allocation.allocateEqualShares(totalAmountCentavos, participantIds);
 
   static bool _isServerUuid(String id) {
     if (id.length != 36) return false;
@@ -80,26 +111,11 @@ class MockTabbyRepository {
         .hasMatch(id);
   }
 
-  static String _normalizeTitle(String title) {
-    var s = title.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-    if (s.startsWith('settled ')) {
-      s = s.substring(8).trim();
-    }
-    return s;
-  }
-
-  /// Deduplicates ledger entries by exact ID and semantic transaction signature,
-  /// prioritizing server-confirmed UUIDs over optimistic/temporary local IDs.
-  ///
-  /// Semantic merge rules only apply when at least one side has a temporary
-  /// local ID (starts with 'entry-'/'payment-' or is not a valid server UUID).
-  /// Two entries with different valid server UUIDs are never merged.
+  /// Reconcile only stable transaction identities; similarity is not identity.
   static List<LedgerEntry> deduplicateLedgerEntries(List<LedgerEntry> list) {
     final result = <LedgerEntry>[];
 
     for (final candidate in list) {
-      final normCandidateTitle = _normalizeTitle(candidate.title);
-
       final duplicateIndex = result.indexWhere((existing) {
         // 1. Exact ID match (unconditional)
         if (candidate.id.isNotEmpty &&
@@ -108,46 +124,8 @@ class MockTabbyRepository {
           return true;
         }
 
-        // Semantic merge rules only bridge an optimistic local entry with
-        // its server-confirmed counterpart. Two entries of the same ID class
-        // (both temporary local or both server-confirmed) must never be
-        // merged — they are legitimate distinct records.
-        if (_isServerUuid(candidate.id) == _isServerUuid(existing.id)) {
-          return false;
-        }
-
-        // 2. Financial transaction match
-        if (candidate.totalAmountCentavos == existing.totalAmountCentavos &&
-            candidate.isPayment == existing.isPayment) {
-          final secondsDiff =
-              candidate.date.difference(existing.date).abs().inSeconds;
-
-          // Transactions within 24 hours (86,400 seconds)
-          if (secondsDiff < 86400) {
-            if (candidate.isPayment) {
-              if (candidate.paymentMethod == existing.paymentMethod ||
-                  candidate.paymentMethod == null ||
-                  existing.paymentMethod == null) {
-                return true;
-              }
-            } else {
-              final normExistingTitle = _normalizeTitle(existing.title);
-              final titlesMatch = normCandidateTitle == normExistingTitle ||
-                  (normCandidateTitle.isNotEmpty &&
-                      normExistingTitle.isNotEmpty &&
-                      (normCandidateTitle.contains(normExistingTitle) ||
-                          normExistingTitle.contains(normCandidateTitle)));
-              final categoriesMatch = candidate.category == existing.category;
-
-              if (titlesMatch) {
-                return true;
-              } else if (categoriesMatch && secondsDiff < 1800) {
-                return true;
-              }
-            }
-          }
-        }
-
+        // A UUID-looking suffix is not an explicit operation-to-server mapping.
+        // Preserve both records until the executor supplies the actual mapping.
         return false;
       });
 
@@ -177,9 +155,7 @@ class MockTabbyRepository {
             receiptUrl: preferred.receiptUrl ??
                 existing.receiptUrl ??
                 candidate.receiptUrl,
-            dueDate: preferred.dueDate ??
-                existing.dueDate ??
-                candidate.dueDate,
+            dueDate: preferred.dueDate ?? existing.dueDate ?? candidate.dueDate,
             note: preferred.note ?? existing.note ?? candidate.note,
           );
         }
@@ -190,8 +166,18 @@ class MockTabbyRepository {
     return result;
   }
 
-  /// Deduplicates bilateral tabs by ID, counterpart ID, or counterpart name,
+  /// Deduplicates bilateral tabs by immutable tab or counterpart ID,
   /// merging all entries cleanly without duplicates.
+  static bool sameRelationship(BilateralTab a, BilateralTab b) {
+    if (a.isGroupTab || b.isGroupTab) {
+      return a.isGroupTab && b.isGroupTab && a.id.isNotEmpty && a.id == b.id;
+    }
+    return (a.id.isNotEmpty && a.id == b.id) ||
+        (a.counterpart.id.isNotEmpty &&
+            a.counterpart.id == b.counterpart.id &&
+            a.isTabOnlyParticipant == b.isTabOnlyParticipant);
+  }
+
   static List<BilateralTab> deduplicateTabs(
     List<BilateralTab> tabs, {
     String? currentUserId,
@@ -199,48 +185,8 @@ class MockTabbyRepository {
     final result = <BilateralTab>[];
 
     for (final tab in tabs) {
-      final matchIndex = result.indexWhere((existing) {
-        // Group tab match
-        if (tab.isGroupTab || existing.isGroupTab) {
-          if (tab.isGroupTab && existing.isGroupTab) {
-            if (tab.id.isNotEmpty &&
-                existing.id.isNotEmpty &&
-                tab.id == existing.id) {
-              return true;
-            }
-            final tabGrpName = (tab.groupName ?? tab.counterpart.displayName)
-                .trim()
-                .toLowerCase();
-            final exGrpName =
-                (existing.groupName ?? existing.counterpart.displayName)
-                    .trim()
-                    .toLowerCase();
-            if (tabGrpName.isNotEmpty && tabGrpName == exGrpName) {
-              return true;
-            }
-          }
-          return false;
-        }
-
-        // Bilateral individual tab match
-        if (tab.id.isNotEmpty &&
-            existing.id.isNotEmpty &&
-            tab.id == existing.id) {
-          return true;
-        }
-        if (tab.counterpart.id.isNotEmpty &&
-            existing.counterpart.id.isNotEmpty &&
-            tab.counterpart.id == existing.counterpart.id) {
-          return true;
-        }
-        final tabName = tab.counterpart.displayName.trim().toLowerCase();
-        final exName = existing.counterpart.displayName.trim().toLowerCase();
-        if (tabName.isNotEmpty && tabName == exName) {
-          return true;
-        }
-
-        return false;
-      });
+      final matchIndex =
+          result.indexWhere((existing) => sameRelationship(tab, existing));
 
       if (matchIndex == -1) {
         final cleanEntries = deduplicateLedgerEntries(tab.entries);
@@ -264,8 +210,10 @@ class MockTabbyRepository {
 
         final isTabServer = _isServerUuid(tab.id);
         final isExistingServer = _isServerUuid(existing.id);
-        final canonicalId =
-            (isTabServer && !isExistingServer) ? tab.id : existing.id;
+        final canonicalId = (!tab.isLocalOnly && existing.isLocalOnly) ||
+                (isTabServer && !isExistingServer)
+            ? tab.id
+            : existing.id;
 
         final counterpart = TabbyUser(
           id: existing.counterpart.id.isNotEmpty
@@ -300,7 +248,9 @@ class MockTabbyRepository {
 
         result[matchIndex] = existing.copyWith(
           id: canonicalId,
+          isLocalOnly: existing.isLocalOnly && tab.isLocalOnly,
           counterpart: counterpart,
+          members: existing.members.isNotEmpty ? existing.members : tab.members,
           entries: mergedEntries,
           itemCount: mergedEntries.length,
           netBalanceCentavos: effectiveBalance,

@@ -15,7 +15,9 @@ void main() {
       );
     });
 
-    test('yields to full native screen on mobile browser platforms (iOS / Android)', () {
+    test(
+        'yields to full native screen on mobile browser platforms (iOS / Android)',
+        () {
       // iPhone Safari
       expect(
         shouldRenderDeviceFrame(
@@ -37,7 +39,9 @@ void main() {
       );
     });
 
-    test('yields to full native screen on narrow desktop browser windows (<= 500px)', () {
+    test(
+        'yields to full native screen on narrow desktop browser windows (<= 500px)',
+        () {
       expect(
         shouldRenderDeviceFrame(
           isWeb: true,
@@ -66,7 +70,8 @@ void main() {
       );
     });
 
-    test('activates realistic iPhone frame on desktop web viewports (> 500px)', () {
+    test('activates realistic iPhone frame on desktop web viewports (> 500px)',
+        () {
       expect(
         shouldRenderDeviceFrame(
           isWeb: true,
@@ -88,7 +93,9 @@ void main() {
   });
 
   group('IPhoneDeviceFrameWrapper UI Components', () {
-    testWidgets('renders iPhone hardware chassis, Dynamic Island, and Home Indicator', (tester) async {
+    testWidgets(
+        'renders iPhone hardware chassis, Dynamic Island, and Home Indicator',
+        (tester) async {
       bool buttonPressed = false;
 
       await tester.pumpWidget(
@@ -102,7 +109,8 @@ void main() {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Screen: ${mediaQuery.size.width}x${mediaQuery.size.height}'),
+                        Text(
+                            'Screen: ${mediaQuery.size.width}x${mediaQuery.size.height}'),
                         Text('TopPadding: ${mediaQuery.padding.top}'),
                         Text('BottomPadding: ${mediaQuery.padding.bottom}'),
                         ElevatedButton(
@@ -136,7 +144,9 @@ void main() {
       expect(buttonPressed, isTrue);
     });
 
-    testWidgets('DynamicIslandWidget dimensions, colors, and camera/speaker dots', (tester) async {
+    testWidgets(
+        'DynamicIslandWidget dimensions, colors, and camera/speaker dots',
+        (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
