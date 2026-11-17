@@ -9,6 +9,7 @@ import re
 import stat
 import subprocess
 import zipfile
+from urllib.parse import quote
 
 
 def digest(path):
@@ -35,7 +36,7 @@ def inspect_app(app, build_number, config, source, run=subprocess.run):
     checked = 0
     for name, expected in source["files"].items():
         if name.startswith("assets/branding/"):
-            if digest(assets / name) != expected:
+            if digest(assets / quote(name, safe="/")) != expected:
                 raise ValueError("Bundled artwork differs from reviewed source: " + name)
             checked += 1
     if not checked:
@@ -87,7 +88,8 @@ def main():
     config = json.loads(Path(args.client_config).read_text())
     report = inspect_app(app, args.build_number, config, source)
     package_app(app, output)
-    report.update({"ipa": output.name, "ipa_sha256": digest(output), "source_commit": os.environ.get("GITHUB_SHA"), "android_baseline": source["android_baseline"], "public_client_hashes": {k: hashlib.sha256(v.encode()).hexdigest() for k, v in config.items()}, "source_file_count": len(source["files"]), "simulator_native_smoke": "Required preceding workflow step; see CI logs", "physical_iphone_verified": False})
+    native_evidence = output.parent / "native-smoke-evidence.json"
+    report.update({"ipa": output.name, "ipa_sha256": digest(output), "source_commit": os.environ.get("GITHUB_SHA"), "android_baseline": source["android_baseline"], "public_client_hashes": {k: hashlib.sha256(v.encode()).hexdigest() for k, v in config.items()}, "source_file_count": len(source["files"]), "simulator_native_smoke": json.loads(native_evidence.read_text()) if native_evidence.exists() else "Required preceding workflow step; see CI logs", "physical_iphone_verified": False})
     output.with_suffix(".json").write_text(json.dumps(report, indent=2) + "\n")
     (output.parent / "README.txt").write_text("Tabby unsigned iOS sideload build\n\nSign/install this IPA with AltStore or Sideloadly using your own Apple account. It is not directly installable or a TestFlight/App Store release. Keep the same signing identity/bundle ID for upgrades. Changing bundle ID may require browser Google sign-in fallback.\n\nCore screens, debt/sync behavior and mascots share the recorded Android source. iOS adds QR export to Files/native share. Remote background push and damaged-storage recovery remain Android-only. Local iOS notifications, Face ID and wallet/Google journeys still need testing on your iPhone.\n")
     print(json.dumps(report, indent=2))

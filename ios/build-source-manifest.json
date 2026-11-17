@@ -41,8 +41,8 @@
     "integration_test/ios_native_smoke_test.dart": "05a36a99781aaaccf18c1b91c32d9aabee057fcf8e35a51dbab69016bc043d53",
     "ios/Podfile": "b3dc749d8bfb9f6708bbaaacb8f6e5076e7651040d05f37b5ba76b6fdcce9f3c",
     "ios/client-config-hashes.json": "74a2be5153226f90dd37f9b277988a829e9a4ea42badd80d963ac48ec4759e43",
-    "scripts/ios-build-tests.py": "a567a1b318f9d8d7f2ac0937b37fc1bfaababde8b75641f40aa47d4def5e6892",
-    "scripts/ios-package.py": "fe246494adc62d1e051836898d399e621633e2f6d256cd2041b4f9df97a0f3ad",
+    "scripts/ios-build-tests.py": "ceab0b7f7bb6e965be8e613f47e565fc8d0e16506ff0f1e3e1c075c2bd60ed3b",
+    "scripts/ios-package.py": "4dbb112afebc71ea1ab3f750c12ce0174c637d440128709378f1397825fef30e",
     "scripts/ios-prepare.py": "5667640eaf1658e6cdce599cec24ce182325ff2f321bc3c9eae1fa41ac097ad2",
     "scripts/ios-simulator.py": "4be56c4254adb06a8c74ba9d2c2c0c49353c92bb08e68c3f9d9f6deef48d3c84",
     "skills-lock.json": "a0252bd8fe042698a14a54388a1a82780fd4172c7b2c2e1094ed815c782e8e7a",
@@ -51,8 +51,8 @@
     ".agents/skills/tabby-design/agents/openai.yaml": "7a67517447ffca34d5fa380cab13cc230fd73ad0192e87ec699007ce32ebc5a9",
     ".env.example": "5ede9fd69dd118ab634e8034846cb2856b978a56f3c03c4e2286a1fd67a9dc51",
     ".github/workflows/build-android.yml": "b6f4be09ecdddd0a6bc0225443ed271a0502af20873421000b5682c26225819c",
-    ".github/workflows/build-ios.yml": "893cb4d9dfd6fe1704fd8ecaa4a1a317cf59c4908106bd536973fc929d4ec8d2",
-    ".github/workflows/build-mobile.yml": "3367711f94431b0e20533ef14f5f862bd29b84642ee82fa42a97712dd6d1523e",
+    ".github/workflows/build-ios.yml": "194e22369117a527e7bf9eab1f760690053713919b5f2f02076265e23b88404d",
+    ".github/workflows/build-mobile.yml": "d7f48e56551a4093fff80dbd3d31d62ee117ea6d7ea2445c698f00105a31bd9b",
     ".github/workflows/deploy-azure-workers.yml": "1880869f4fd0a25f64efce6e8f399c219233822cc270eb369000124370fc5ba8",
     ".github/workflows/project-memory.yml": "7845d9544b01c58405b13bd371c44bd83a3c505e2b10be52ac607bf997ba8c3f",
     ".github/workflows/publish-latest-build.yml": "4aae7920773e55b8505493337a203c42ccbf83b386f18fc1f09676bb9071dec4",
@@ -957,7 +957,9 @@
     "web/icons/Icon-maskable-512.png": "ac77b7116d52f96b23ee1663bee4a5448487b4043b39f0d663f6dd61b16b3b91",
     "web/index.html": "582e2e4f6c948ad90574a9b1b4e8a4d4501a51108dcce30e16eed02df64ccc14",
     "web/manifest.json": "1d3912fae3772c97cbc9d8d0b6d6d90911a990d355e861ed391b22454bc5f725",
-    ".gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
+    ".gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da",
+    "scripts/ios-native-evidence.py": "4a7fe21292363cd02625f87b4ed1991f8d44932e0381c15a610bed2e6f0602ef",
+    "ios/native-smoke-evidence.json": "6369886a5b8c09186c04ddd081ba1414606bb2330d6798f7afa64be7cc5f2aa0"
   },
-  "updated_at": "2026-11-17T20:14:53.040Z"
+  "updated_at": "2026-11-17T20:36:13.533Z"
 }

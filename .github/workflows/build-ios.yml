@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-ios:
@@ -54,9 +55,15 @@ jobs:
       - name: Install native dependencies
         working-directory: ios
         run: pod install --repo-update
+      - name: Reuse matching native smoke evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/ios-native-evidence.py
       - name: Boot owned iOS simulator
+        if: env.IOS_NATIVE_SMOKE_REUSED != 'true'
         run: python3 scripts/ios-simulator.py
       - name: Check actual iOS channels, Keychain, encryption and images
+        if: env.IOS_NATIVE_SMOKE_REUSED != 'true'
         run: flutter test --no-pub integration_test/ios_native_smoke_test.dart -d "$IOS_SIMULATOR_UDID" --reporter expanded
       - name: Stop owned simulator
         if: always() && env.IOS_SIMULATOR_UDID != ''

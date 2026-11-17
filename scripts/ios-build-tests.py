@@ -20,10 +20,19 @@ def module(name):
 
 prepare = module("ios-prepare")
 package = module("ios-package")
+native = module("ios-native-evidence")
 CLIENT = {"SUPABASE_URL": "https://synthetic.invalid", "SUPABASE_ANON_KEY": "sb_publishable_synthetic", "GOOGLE_IOS_CLIENT_ID": "123-ios.apps.googleusercontent.com", "GOOGLE_WEB_CLIENT_ID": "123-web.apps.googleusercontent.com"}
 
 
 class ClientTests(unittest.TestCase):
+    def test_native_reuse_changes_for_app_inputs_but_not_packaging_or_documentation(self):
+        inputs = {"lib/main.dart": "a", "ios/Runner/AppDelegate.swift": "b",
+                  "pubspec.lock": "c", "integration_test/ios_native_smoke_test.dart": "d",
+                  "scripts/ios-prepare.py": "e", "assets/branding/mascot.png": "f"}
+        extras = {"scripts/ios-package.py": "x", "docs/report.md": "y",
+                  "ios/build-source-manifest.json": "z", "ios/native-smoke-evidence.json": "z"}
+        self.assertEqual(native.native_inputs({**inputs, **extras}), inputs)
+        self.assertNotEqual(native.native_inputs({**inputs, "lib/main.dart": "changed"}), inputs)
     def test_public_fields_validate_without_server_credentials(self):
         self.assertEqual(prepare.validate_client(CLIENT), CLIENT)
         for patch in [{"SUPABASE_ANON_KEY": "sb_secret_synthetic"}, {"SUPABASE_URL": "http://synthetic.invalid"}, {"SUPABASE_URL": "https://name:password@synthetic.invalid"}, {"GOOGLE_IOS_CLIENT_ID": "not-a-client"}, {"SERVICE_ROLE_KEY": "forbidden"}]:
@@ -91,6 +100,13 @@ class PackageTests(unittest.TestCase):
                 return SimpleNamespace(stdout=arch, returncode=0 if args[0] == "lipo" else signature)
             with self.subTest(arch=arch, signature=signature), self.assertRaises(ValueError):
                 package.inspect_app(self.app, "23", CLIENT, self.source, tool)
+
+    def test_flutter_percent_encodes_asset_names_with_spaces(self):
+        name = "assets/branding/Tabby Cat.png"
+        encoded = self.app / "Frameworks/App.framework/flutter_assets/assets/branding/Tabby%20Cat.png"
+        encoded.write_bytes(b"synthetic space-name asset")
+        self.source["files"][name] = package.digest(encoded)
+        self.assertEqual(self.inspect()["branding_assets_verified"], 2)
 
     def test_rejects_private_material_in_payload(self):
         (self.app / "unwanted.p12").write_bytes(b"synthetic-not-a-key")
