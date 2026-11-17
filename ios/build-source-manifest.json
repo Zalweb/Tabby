@@ -51,7 +51,7 @@
     ".agents/skills/tabby-design/agents/openai.yaml": "7a67517447ffca34d5fa380cab13cc230fd73ad0192e87ec699007ce32ebc5a9",
     ".env.example": "5ede9fd69dd118ab634e8034846cb2856b978a56f3c03c4e2286a1fd67a9dc51",
     ".github/workflows/build-android.yml": "b6f4be09ecdddd0a6bc0225443ed271a0502af20873421000b5682c26225819c",
-    ".github/workflows/build-ios.yml": "194e22369117a527e7bf9eab1f760690053713919b5f2f02076265e23b88404d",
+    ".github/workflows/build-ios.yml": "adf4a4280be849df98ea8be87dc798d0fad4b56513134a09407716a9f884105b",
     ".github/workflows/build-mobile.yml": "d7f48e56551a4093fff80dbd3d31d62ee117ea6d7ea2445c698f00105a31bd9b",
     ".github/workflows/deploy-azure-workers.yml": "1880869f4fd0a25f64efce6e8f399c219233822cc270eb369000124370fc5ba8",
     ".github/workflows/project-memory.yml": "7845d9544b01c58405b13bd371c44bd83a3c505e2b10be52ac607bf997ba8c3f",
@@ -961,5 +961,5 @@
     "scripts/ios-native-evidence.py": "4a7fe21292363cd02625f87b4ed1991f8d44932e0381c15a610bed2e6f0602ef",
     "ios/native-smoke-evidence.json": "6369886a5b8c09186c04ddd081ba1414606bb2330d6798f7afa64be7cc5f2aa0"
   },
-  "updated_at": "2026-11-17T20:36:13.533Z"
+  "updated_at": "2026-11-17T20:44:24.245Z"
 }

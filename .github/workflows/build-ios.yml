@@ -24,7 +24,7 @@ permissions:
 jobs:
   build-ios:
     name: Verify and build unsigned sideload IPA
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 40
     env:
       TABBY_BUILD_NUMBER: ${{ inputs.build_number || 23 }}
