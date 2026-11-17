@@ -1,0 +1,22 @@
+{
+  "android_expense_entry_test.dart": [
+    "existing ID selection shows direction 15000 and Cancel writes nothing",
+    "existing ID selection shows direction -15000 and Cancel writes nothing",
+    "existing ID selection shows direction 0 and Cancel writes nothing",
+    "no existing relationship continues normal Create without a write",
+    "lookup failure keeps selection uncommitted and retry checks again",
+    "View Existing Tab opens exact history without financial writes",
+    "Add existing warns, Review and Cancel preserve balance, Add Anyway saves once",
+    "same amount with a different description saves without duplicate warning; rapid taps save once",
+    "custom group 0/150/300 persists exact draft and gives correct ledger balances",
+    "custom over-allocation rejects save and keeps the editable draft",
+    "response loss, Back and reopened draft retry original operation once",
+    "late lookup result cannot open a dialog after the form is removed",
+    "account change dismisses both the existing-tab dialog and its form",
+    "new group records custom 0/150/300 without changing existing bilateral tabs",
+    "changing the person in an existing Add form still checks their shared tab"
+  ],
+  "android_expense_storage_test.dart": [
+    "custom zero-payer shares survive encrypted native SQLite close and reopen"
+  ]
+}

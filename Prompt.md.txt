@@ -1,0 +1,390 @@
+
+TABBY — PRODUCTION READINESS, SAFE REPAIR, AND DOCUMENTED FEATURE COMPLETION
+
+
+IMPORTANT NOTE: Don't improve the web app for this, Just focus on the IOS AND ANDROID. NEGLECT THE WEB APP FOR THIS PROMPT EVEN IT STATE HERE. REMEMBER THIS.
+
+FOCUS ON THIS PROMPT: THE ANDROID AND IOS
+
+OBJECTIVE
+
+Act as a senior Flutter/Supabase engineer, QA engineer, security reviewer, and production-readiness auditor.
+
+Audit the existing Tabby application, repair reproducible defects, complete clearly required unfinished behavior, and verify the resulting workflows. Continue beyond reporting when implementation and verification can proceed safely.
+
+Prioritize stabilization of the existing M1 application before completing dependent M2 capabilities. Production readiness must be established through recorded evidence, not inferred from passing builds or historical task labels.
+
+This prompt authorizes ordinary local code, test, configuration, and documentation changes. It does not authorize production deployment, backend cutover, live-data repair, cloud spending, public publication, destructive operations, or messages to users.
+
+Honor authorization already established in the actual execution session. Do not infer permission solely from historical documentation.
+
+1. REPOSITORY PREFLIGHT AND REQUIRED READING
+
+Before editing:
+
+- Inspect the current directory, branch, HEAD, Git status, tracked changes, untracked files, and applicable AGENTS.md instructions.
+- Record the initial HEAD as the audit base commit.
+- Preserve all existing work. Do not reset, clean, stash, overwrite, or commit unrelated changes.
+- Use a codex/ branch or isolated worktree where practical. If essential implementation exists only in the current dirty tree, preserve it and document the reason for working there.
+
+Read:
+
+- AGENTS.md
+- docs/INDEX.md
+- docs/project/INSTRUCTIONS.md
+- docs/project/DECISIONS.md
+- docs/plans/IMPLEMENTATION.md
+- docs/progress/STATUS.md
+- docs/project/ARCHITECTURE.md
+- docs/verification/README.md
+- docs/releases/README.md
+
+Then read the relevant area plans, task records, dependencies, and referenced verification evidence for each work batch.
+
+For migration, device, or release work, also read:
+
+- docs/project/AZURE_MIGRATION.md
+- docs/project/USB_TESTING.md
+- deploy/azure-full/README.md
+- docs/progress/tasks/INT-001.md
+- docs/progress/tasks/QA-001.md
+- docs/progress/tasks/QA-002.md
+- docs/progress/tasks/AZ-001.md
+- docs/progress/tasks/REL-001.md
+- Their latest linked verification records.
+
+Record the read set and claim the relevant existing task, or create a uniquely identified task using the repository template. Include agent/platform, branch, base commit, ISO timestamp with timezone, scope, dependencies, file reservations, coverage, and required verification categories.
+
+Recheck other agents’ claims before editing shared files. Coordinate central providers/models, routing, dependencies, SQL, and workflows through the integration owner. A stale claim is not automatically released.
+
+Do not replace the repository’s indexed documentation structure with a single large document.
+
+2. CONFIRM THE ACTUAL ARCHITECTURE AND ENVIRONMENTS
+
+Use current source, manifests, tests, and configuration to establish the implementation.
+
+The expected foundation is:
+
+- Flutter/Dart client with Riverpod and GoRouter.
+- Android as the primary acceptance/release platform.
+- iOS code requiring appropriate regression checks.
+- Supabase PostgreSQL, Auth, PostgREST/RPC, Storage, Realtime, and service workers/functions.
+- Offline persistence, durable commands, and account/session isolation.
+- Existing Flutter, Node, SQL, Android integration, and release-verification tooling.
+
+Check current storage implementations directly. Current source contains encrypted Drift/SQLite ledger storage and legacy migration paths; older architecture descriptions may be stale. Do not assume a dependency proves integration or that an old plan proves functionality is absent.
+
+Distinguish:
+
+- Original production Supabase backend.
+- Azure self-hosted Supabase migration destination.
+- Disposable/local test environments.
+- Synthetic remote test accounts.
+- Installed production Android package.
+- Isolated debug/test packages.
+
+Newer QA-002 records describe successful Azure restore and selected live/tablet checks while production cutover remains pending. Treat these as dated evidence to reassess, not universal proof of completion.
+
+DEC-012 selects the full Supabase migration destination. Do not independently deploy the older workers-only App Service proposal, replace Supabase contracts with a database-only backend, or change the production client endpoint.
+
+Preserve disabled signup, schedulers, and M2 rollout controls unless their documented gates and actual session authorization permit changes.
+
+Record specification/code discrepancies explicitly. Do not silently rewrite accepted requirements to match the implementation.
+
+3. NON-NEGOTIABLE TABBY PRODUCT CONTRACTS
+
+Every repair and feature must preserve:
+
+Money and identity:
+- Ledger amounts and shares are integer centavos.
+- Use immutable user/contact identity and PartyRef contracts.
+- Never merge people or deduplicate expenses solely by display name, amount, or date.
+- Maintain one bilateral relationship per immutable pair.
+- Groups contain parties; a group is never a payer or recipient.
+- Group obligations retain their actual payer, recipient, participants, and allocations.
+
+History and consent:
+- Confirmed financial history is append-only.
+- Corrections/cancellations preserve originals, reasons, payments, and required audit visibility.
+- Follow DEC-009 participant approval and explicit outside-app agreement rules for unclaimed contacts.
+- Unfriending does not delete obligations.
+- Contact conversion/claiming requires explicit consent.
+
+Payments:
+- Tabby does not move money.
+- Saved wallet-issued receiving QR → external payment → explicit submission → recipient verification/confirmation → balance change.
+- Displaying/scanning a QR, uploading proof, or submitting payment never automatically confirms receipt.
+- Confirmation/rejection operates on the existing submission.
+- Preserve payer and recipient identities, immutable proof revisions, and receipt/proof distinctions.
+- Never generate a plain account-string QR and represent it as a wallet-issued payment QR.
+
+Authorization:
+- Receiving methods are available only to their owner, accepted friends in the permitted profile context, and actual debtors in payment flows.
+- Server authorization is mandatory regardless of UI visibility.
+- Registered accepted friends are eligible group members; unregistered contacts remain bilateral tab-only parties.
+
+Synchronization:
+- Preserve durable operation IDs, actor-scoped idempotency, payload conflict detection, and serialized financial writes.
+- Persist commands before networking and reconcile results before acknowledgment.
+- Network availability does not establish successful synchronization.
+- Results from an old account/session generation must not update a later session.
+- Signed media URLs are temporary views of durable object references.
+
+Product presentation:
+- Preserve the approved theme, PHP/English M1 scope, calm conversational language, and no emoji UI copy.
+- Do not introduce speculative functionality, payment processing, unsupported preferences, or misleading capability claims.
+
+4. DISCOVERY AND FEATURE INVENTORY
+
+Build an inventory from documented requirements and current code.
+
+Cover at least:
+
+- Startup, signup/sign-in, Google OAuth, recovery, onboarding, profile completion, and deep links.
+- PIN/biometric locking, recovery, account switching, and secure persistence.
+- Friend requests, connections, manual contacts, and profiles.
+- Bilateral tabs, groups, expense creation, allocations, balances, history, corrections, and cancellation.
+- Payment methods, receiving QR management, access, replacement, removal, and URL expiry.
+- Payment submission, proof revisions, recipient confirmation/rejection, and concurrency.
+- Offline commands, retries, response loss, cache migration, drafts, and media recovery.
+- Dashboard, notifications, reminder preferences, scheduling, and background delivery.
+- Privacy export, reviewed deletion/anonymization, retention, and worker authorization.
+- M2 custom splits/tax/service charges, recurrence, contact claiming, acknowledgment, proposals, and disputes.
+- Backend migration, backups/recovery, configuration, CI, signing, and release gates.
+
+For each feature, identify:
+
+- Requirement/decision and task IDs.
+- Client entry points and backend/storage dependencies.
+- Implemented behavior and current exposure.
+- Available automated tests.
+- Latest applicable evidence and its limitations.
+- Defects, missing behavior, and unverified environments.
+- Release impact and next action.
+
+Differentiate implemented, verified, complete, hidden, blocked, and deferred.
+
+Do not treat an implemented-but-unverified feature as absent. Do not treat historical test counts as evidence for the current revision.
+
+5. BASELINE AND TEST STRATEGY
+
+Establish the available toolchains and required versions from manifests, workflows, and runbooks. Inspect scripts before running them, particularly scripts that can contact remote services or mutate accounts.
+
+Run applicable baseline checks and separate:
+
+- Existing failures.
+- Regressions introduced by this work.
+- Environment/tooling failures.
+- Checks that were not executed.
+
+Use the application’s existing testing layers:
+
+Flutter:
+- flutter analyze
+- flutter test
+- Targeted unit/widget tests under test/
+- Relevant integration_test/ suites
+
+Node/tooling:
+- Existing Node test suites for project memory, Android release verification, workers, packaging, device automation, and changed deployment tooling.
+
+Database:
+- Relevant scripts/test-*.cjs behavioral suites.
+- Native PostgreSQL independent-session tests where required.
+- Full disposable Supabase fresh-install/upgrade acceptance where available.
+
+Device:
+- Use scripts/usb-test.cjs and docs/project/USB_TESTING.md where applicable.
+- Discover the currently available authorized device/transport.
+- The documented paired Wi-Fi path is valid when available and authorized; do not assume USB is the only permitted transport.
+- Preserve production-package data and use the isolated test package.
+
+
+Verify the actual integration boundary. Widget tests do not establish live Auth, effective RLS, Storage authorization, provider delivery, or device lifecycle behavior.
+
+PGlite is local contract evidence and serializes calls. The native PostgreSQL harness exercises a financial subset; it does not establish full Supabase platform, migration, or deployed-policy acceptance.
+
+Use sanitized fixtures and isolated test data. Remote mutation tests require an explicitly approved test environment and dedicated synthetic accounts. An Azure restore containing copied real records is not disposable.
+
+6. REPAIR AND FEATURE COMPLETION
+
+Prioritize:
+
+P0: Security compromise, data loss, financial corruption, severe failures.
+P1: Broken core workflows, incorrect balances, unauthorized access, duplicate/overpaid financial operations.
+P2: Required incomplete behavior, persistence/recovery defects, functional UI problems.
+P3: Minor usability and maintainability issues.
+
+For each actionable defect:
+
+1. Reproduce it and record expected versus actual behavior.
+2. Identify the root cause and affected contracts.
+3. Add a meaningful regression test where appropriate.
+4. Implement a focused repair.
+5. Run targeted and related integration checks.
+6. Verify the original failure and relevant neighboring workflows.
+7. Update the task and verification records.
+
+Do not hide failures, broaden privileges, disable controls, weaken assertions, or remove requirements to obtain a passing result.
+
+Complete required unfinished features only when requirements and dependencies are clear.
+
+Follow the approved milestone order:
+- Stabilize and verify M1 first.
+- Complete dependent M2 implementation where appropriate.
+- Keep M2 UI, marketing, and server rollout gates closed until required acceptance and completion criteria pass.
+- Hidden optional M2 work does not automatically block an otherwise eligible M1 release.
+
+Preserve intentional test fixtures and development-only mocks. Replace mock behavior in exposed production paths only where real functionality is required.
+
+Avoid unrelated rewrites, framework migrations, blanket dependency upgrades, and broad formatting changes.
+
+7. TABBY-SPECIFIC VERIFICATION
+
+Financial/backend checks:
+- Exact allocations, odd centavos, malformed values, and invalid parties.
+- Duplicate retries and response-loss replay.
+- Same operation/same payload returns the original result.
+- Same operation/different payload fails without financial mutation.
+- Independent concurrent confirmations cannot overpay.
+- Pending/rejected submissions do not alter confirmed balances.
+- Group payments affect only the relevant parties.
+- Corrections preserve originals and enforce required consent.
+- Authenticated actor, outsider, and cross-account authorization cases.
+- Account switching during asynchronous operations and queue replay.
+- Attachment ownership, private reads, expiry, and immutable proof revisions.
+
+Android checks:
+- Cold-launch lock, PIN throttling, biometric behavior, and navigation.
+- Notification permission denial and exact/inexact scheduling fallback.
+- Actual delivery and tap behavior where required.
+- Reboot, background, process death, and force-stop as distinct conditions.
+- Picker interruption, account-bound media recovery, and draft persistence.
+- Gesture back, large text, accessibility, and low-memory history performance.
+- Required upgrade/data-preservation and 16 KB runtime acceptance.
+
+Do not equate a pending notification schedule with delivered notification evidence, an isolated debug package with a production upgrade, or static alignment with 16 KB device execution.
+
+Security/operations checks:
+- RLS, grants, RPC actor checks, SECURITY DEFINER exposure, and Storage policies.
+- Token/session lifecycle, service-role boundaries, worker authentication, and request hooks.
+- Input validation, relevant injection/browser risks, and CORS.
+- Sensitive logging, private-media exposure, and secret handling.
+- Client publishable/anonymous keys versus privileged secrets; assess effective access rather than key visibility alone.
+- TLS, environment validation, health checks, failures, backups, recovery, and dependency findings.
+
+Use targeted, compatible dependency fixes. Do not run force-upgrade commands blindly.
+
+8. MIGRATION AND CLOUD BOUNDARIES
+
+Use additive migrations and compatible versioned RPCs. Keep schema_all.sql synchronized. Never rename or edit applied migration history as a shortcut.
+
+Test fresh installation and upgrade against a verified migration inventory. Do not blindly replay every local migration against an existing backend.
+
+For the Azure migration, assess documented outstanding gates such as:
+
+- Provider and Google callback acceptance.
+- Production-capable email delivery.
+- Firebase/FCM and actual background delivery.
+- Realtime cross-account and lifecycle authorization.
+- Scheduled backups and recovery-key retention.
+- Fresh bootstrap reproducibility.
+- Final consistent synchronization, rollback, and client rollout.
+
+Recheck newer evidence before labeling any gate outstanding.
+
+Prepare and validate local repairs and runbooks without performing cutover. Do not switch endpoints, enable remote workers/schedulers, apply remote migrations, mutate real financial data, or change cloud resources unless specifically authorized.
+
+Respect the USD 100 total Azure student-credit constraint, enabled spending limit, and prohibition on paid-billing conversion. Budget alerts are not a hard spending cap.
+
+Retain the original backend and audit history. Rollback after destination writes requires reconciliation; routing back alone can lose financial history.
+
+9. ITERATIVE EXECUTION AND EVIDENCE
+
+Work in small batches:
+
+AUDIT → REPRODUCE → REPAIR → TARGETED TEST → INTEGRATION/REGRESSION → REVIEW
+
+Run broader regression and builds at meaningful integration checkpoints. Repeat them when new changes, failures, or unresolved risks justify it.
+
+Continue independent work when credentials, devices, providers, authorization, or requirements block another issue. Ask only for information or authorization genuinely needed for dependent actions.
+
+Do not repeat identical blocked attempts without new evidence. If safe actionable work is exhausted, provide a precise handoff.
+
+Use repository task states:
+planned → ready → in_progress → implemented → verified → complete
+
+Complete requires required verification, review, and integration. Do not claim independent review by reviewing your own work twice.
+
+Record:
+- Exact tested commit and dirty-tree status.
+- Relevant working-tree changes when HEAD alone does not identify tested source.
+- Timestamp, agent/platform, tool versions, device/API or database/migration environment.
+- Commands/scenarios, expected and actual results, failures, and unrun checks.
+- Sanitized durable evidence and next actions.
+
+Preserve history with dated superseding entries. Never manufacture evidence, release authorization, candidate hashes, or clean-tree claims.
+
+10. DOCUMENTATION AND HANDOFF
+
+Use task and verification records as the authoritative evidence.
+
+Create or update these summaries under docs/verification/:
+
+- PRODUCTION_READINESS_REPORT.md
+- BUG_FIX_CHANGELOG.md
+- REMAINING_ISSUES.md
+
+The readiness report must include:
+- Architecture and environment boundaries.
+- Feature inventory linked to requirements/tasks.
+- Implemented, exposed, verified, and incomplete behavior.
+- Defects repaired and unresolved findings.
+- Commands/results and evidence links.
+- Security, migration, device, provider, and release gates.
+- Readiness decision for the explicitly identified milestone/candidate.
+
+The changelog must identify each repaired issue, root cause, affected files, fix, regression coverage, and observed verification.
+
+Remaining issues must identify priority, impact, task owner, blocker, required environment/authorization, release effect, and precise next action.
+
+Use repository-relative links, register new documents in docs/INDEX.md, and retain dated history. Summaries must link authoritative records rather than create conflicting task status.
+
+Refresh and validate project memory:
+
+node scripts/check-project-memory.cjs --write
+node scripts/check-project-memory.cjs
+node scripts/check-project-memory.cjs --base <audit-base-commit>
+
+Run git diff --check and inspect final Git status. Report your changes separately from preserved pre-existing work. Never erase unrelated changes to obtain a clean tree.
+
+11. PRODUCTION DECISION
+
+Follow docs/releases/README.md and the actual release verifier.
+
+A production-ready Android candidate requires the exact clean candidate commit, release-signed APK, digest, certificate, package/version, applicable deployed migration inventory, and required evidence categories:
+
+- regression
+- analysis
+- integration
+- backend-integration
+- android-device
+- upgrade
+- oauth
+- 16kb-device
+- release-artifact
+- release-authorization
+
+Required M1 tasks, QA-001, REL-001, and any exposed M2 tasks must satisfy their completion gates.
+
+A debug APK, mock suite, successful migration rehearsal, partial tablet smoke test, or passing build cannot establish release readiness.
+
+Report checks as PASS, FAIL, BLOCKED, NOT TESTED, or justified NOT APPLICABLE. Map these accurately to repository verification metadata.
+
+Declare GO FOR PRODUCTION only when the defined candidate satisfies every required gate and applicable release authorization exists. Otherwise declare NO-GO and list the exact remaining blockers and actions.
+
+A GO recommendation does not execute publication or backend cutover.
+
+BEGIN EXECUTION
+
+Start with the read-only preflight and baseline inventory. Then claim the appropriate tasks and proceed through authorized repairs, required feature completion, verification, and documentation. Continue until safe actionable work is complete or the remaining work requires identified external input or authorization.

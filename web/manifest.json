@@ -1,0 +1,35 @@
+{
+    "name": "Tabby",
+    "short_name": "Tabby",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#00D09E",
+    "theme_color": "#00D09E",
+    "description": "Keep tabs. Settle up. Filipino peer-to-peer financial relationship tracker.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

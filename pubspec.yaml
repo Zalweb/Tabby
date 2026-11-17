@@ -1,0 +1,89 @@
+name: tabby
+description: "Keep tabs. Settle up. Filipino peer-to-peer financial relationship tracker."
+publish_to: 'none'
+version: 1.0.4+5
+
+environment:
+  sdk: '>=3.13.0 <4.0.0'
+  flutter: '>=3.47.8'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Backend BaaS & Realtime
+  supabase_flutter: ^2.8.0
+
+  # Google Sign-In (native iOS & Android OAuth)
+  google_sign_in: ^6.2.1
+
+  # State Management & Dependency Injection
+  flutter_riverpod: ^2.6.1
+
+  # Navigation & Deep Links
+  go_router: ^14.3.0
+
+  # Proof of Payment (Receipts) & Media
+  image_picker: ^1.1.2
+
+  # Connectivity & Hardware Security
+  connectivity_plus: ^6.0.5
+  flutter_secure_storage: ^9.2.2
+  local_auth: ^2.3.0
+
+  # Utility & Localization
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  crypto: ^3.0.6
+
+  # Release update prompts
+  http: ^1.2.2
+  package_info_plus: ^8.3.0
+  url_launcher: ^6.3.1
+  flutter_local_notifications: ^22.3.1
+  timezone: ^0.11.1
+  qr_flutter: ^4.1.0
+  cryptography: ^2.9.0
+  zxing2: 0.2.4
+  drift: ^2.35.3
+  sqlite3: ^3.8.0
+  path_provider: ^2.1.5
+
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+  mime: ^2.1.0
+  shared_preferences: ^2.5.5
+  google_sign_in_platform_interface: 2.5.0
+  url_launcher_platform_interface: 2.3.2
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/branding/tabby-launcher-v2.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  adaptive_icon_background: "#00D09E"
+  adaptive_icon_foreground: "assets/branding/tabby-launcher-foreground-v2.png"
+  web:
+    generate: true
+    image_path: "assets/branding/tabby-launcher-v2.png"
+    background_color: "#00D09E"
+    theme_color: "#00D09E"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/branding/
+    - assets/branding/mascot/

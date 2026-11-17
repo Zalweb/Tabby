@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tabby Design"
+  short_description: "Keep Tabby pages warm, minimal and consistent"
+  default_prompt: "Use $tabby-design to implement this Tabby interface with the shared cream, amber and charcoal design."

@@ -1,0 +1,557 @@
+{
+  "task": "QA-021",
+  "timestamp": "2026-11-14T16:06:03.377+08:00",
+  "tested_commit": "20034402a43d1e982c24af44c3b05b3395eb34d9",
+  "dirty_tree": false,
+  "configuration": "Public-client-only Azure migration acceptance override; no test account login credentials or Firebase identifiers bundled",
+  "artifact": {
+    "schema": 1,
+    "commit": "20034402a43d1e982c24af44c3b05b3395eb34d9",
+    "apk_sha256": "9b5ccd7554c90c9248ef65dcc2e50e16722e075609746be9a2e285c31f540751",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 10,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "build": {
+    "started_at": "2026-11-14T07:54:32.689Z",
+    "finished_at": "2026-11-14T07:54:56.281Z",
+    "commit": "20034402a43d1e982c24af44c3b05b3395eb34d9",
+    "dirty_tree_before": false,
+    "dirty_tree_after": false,
+    "actual_flutter_exit_code": 0,
+    "target": "lib/main.dart",
+    "mode": "release",
+    "build_number": 10,
+    "public_config_fields": [
+      "SUPABASE_URL",
+      "SUPABASE_ANON_KEY"
+    ],
+    "outcome": "passed"
+  },
+  "apk_content_scan": {
+    "apk_sha256": "9b5ccd7554c90c9248ef65dcc2e50e16722e075609746be9a2e285c31f540751",
+    "forbidden_private_or_seed_paths": [],
+    "fixture_literal_hits": [],
+    "native_app_backend": [
+      {
+        "entry": "lib/arm64-v8a/libapp.so",
+        "selected_azure_origin_present": true
+      },
+      {
+        "entry": "lib/armeabi-v7a/libapp.so",
+        "selected_azure_origin_present": true
+      },
+      {
+        "entry": "lib/x86_64/libapp.so",
+        "selected_azure_origin_present": true
+      }
+    ],
+    "outcome": "passed",
+    "limits": "Exact selected fixture credential/marker byte checks (UTF8/UTF16LE) and packaged-path checks. Not a universal secret/dependency audit; normal runtime preferences are created on launch."
+  },
+  "results": {
+    "analysis": "No issues found",
+    "node": {
+      "passed": 76,
+      "failed": 0,
+      "command": [
+        "node",
+        "--test",
+        "scripts/check-project-memory.test.cjs",
+        "scripts/android-release.test.cjs",
+        "scripts/android-emulator-test.test.cjs",
+        "scripts/android-cold-launch-test.test.cjs",
+        "scripts/android-signed-storage-test.test.cjs",
+        "scripts/usb-test.test.cjs",
+        "scripts/azure-full-template.test.cjs",
+        "scripts/azure-full-seal.test.cjs",
+        "scripts/azure-full-prepare-export.test.cjs",
+        "scripts/azure-package.test.mjs",
+        "backend/app.test.mjs",
+        "scripts/test-account-deletion-worker.mjs",
+        "scripts/test-account-deletion-transport.mjs",
+        "scripts/test-reminder-push-worker.mjs",
+        "scripts/test-recurring-worker.mjs",
+        "scripts/test-m2-schema-snapshot.cjs",
+        "test/release_workflow_test.js"
+      ]
+    },
+    "physical_smoke_named_cases": 5,
+    "physical_live_sdk_cases": 1,
+    "public_anonymous_probes": 4,
+    "prior_host_flutter": {
+      "passed": 736,
+      "rerun": false,
+      "reason": "All previous production lib/ and host test/ source hashes unchanged; dated QA-012 evidence, not fresh exact APK acceptance."
+    }
+  },
+  "source_manifest": {
+    "base": "docs/verification/QA-019-results.json",
+    "base_sha256": "e4ccb1643945a98899828c2de7c01de2894d3ecc6da1d285c987e030c01b147f",
+    "unchanged_base_files_verified": 483,
+    "updated_and_added": [],
+    "total_source_files": 483
+  },
+  "native_smoke": {
+    "local_report": {
+      "path": ".dart_tool/usb-tests/2026-11-14T07-56-16-690Z/report.json",
+      "sha256": "ff66e75af2c5a3263f139b4d3aa6a686b98717005065c9f9d39b6bb98aee7a8a"
+    },
+    "outcome": "passed",
+    "suite": "smoke",
+    "commit": "20034402a43d1e982c24af44c3b05b3395eb34d9",
+    "dirty_tree": false,
+    "model": "TB321FU",
+    "api": 36,
+    "page_size": 4096,
+    "package": "com.zalweb.tabby.usbtest",
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed"
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed"
+      },
+      {
+        "name": "wifi-tls-service",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-serial",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-hardware-serial",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-model",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-api",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-page-size",
+        "outcome": "passed"
+      },
+      {
+        "name": "physical-device",
+        "outcome": "passed"
+      },
+      {
+        "name": "production-package-inventory",
+        "outcome": "passed"
+      },
+      {
+        "name": "flutter-version",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-1-usb_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "verify-package-1-usb_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-recheck-1-usb_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-1-usb_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "notification-permission-1-usb_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-1-usb_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-drive-1-usb_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "stop-1-usb_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-1-usb_smoke_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "verify-package-1-usb_smoke_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-recheck-1-usb_smoke_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-1-usb_smoke_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "notification-permission-1-usb_smoke_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-1-usb_smoke_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-drive-1-usb_smoke_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "stop-1-usb_smoke_test",
+        "outcome": "passed"
+      }
+    ],
+    "drive_logs": [
+      {
+        "path": ".dart_tool/usb-tests/2026-11-14T07-56-16-690Z/17-drive-1-usb_seed_test.log",
+        "sha256": "5851437fd6bb41fe181fd2ec7e5d1d8cc3b3c8795640bccd432743c04d8c36f5"
+      },
+      {
+        "path": ".dart_tool/usb-tests/2026-11-14T07-56-16-690Z/25-drive-1-usb_smoke_test.log",
+        "sha256": "72b65555008dc6bacc0b8cd6db6eb2349ef5e8a94fe37b59a016b4fc6ccc083e"
+      }
+    ]
+  },
+  "native_live": {
+    "local_report": {
+      "path": ".dart_tool/usb-tests/2026-11-14T08-00-14-934Z/report.json",
+      "sha256": "cad33045b2fad5a5e566cf5a6ffed5da198bbe37b6187e4a0a709769fe7e1792"
+    },
+    "outcome": "passed",
+    "suite": "live",
+    "commit": "20034402a43d1e982c24af44c3b05b3395eb34d9",
+    "dirty_tree": false,
+    "model": "TB321FU",
+    "api": 36,
+    "page_size": 4096,
+    "package": "com.zalweb.tabby.usbtest",
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed"
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed"
+      },
+      {
+        "name": "wifi-tls-service",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-serial",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-hardware-serial",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-model",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-api",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-page-size",
+        "outcome": "passed"
+      },
+      {
+        "name": "physical-device",
+        "outcome": "passed"
+      },
+      {
+        "name": "production-package-inventory",
+        "outcome": "passed"
+      },
+      {
+        "name": "flutter-version",
+        "outcome": "passed"
+      },
+      {
+        "name": "private-config-ignore-check",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "verify-package-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-recheck-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "notification-permission-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-drive-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "stop-1-usb_live_test",
+        "outcome": "passed"
+      }
+    ],
+    "drive_logs": [
+      {
+        "path": ".dart_tool/usb-tests/2026-11-14T08-00-14-934Z/18-drive-1-usb_live_test.log",
+        "sha256": "2b2ba5f16f0acc2435baf69363473076ed55545c10464aeb9f045fb515c1b4dc"
+      }
+    ],
+    "phases": [
+      "fixtureAuthAndAuthorization",
+      "realtimeJoined",
+      "replicationReady",
+      "profileAckAndReadback",
+      "realtimeUpdateDelivered",
+      "fixtureProfileRestored"
+    ],
+    "scope": "Real SDK/Auth/RLS/Realtime in temporary .usbtest against dedicated existing synthetic fixture; not a financial journey or owner account login in signed APK"
+  },
+  "public_probes": {
+    "checked_at": "2026-11-14T07:53:44.091Z",
+    "origin": "https://tabby-7abf436e-20261113.eastasia.cloudapp.azure.com",
+    "outcome": "passed",
+    "checks": [
+      {
+        "name": "auth_health",
+        "http": 200,
+        "outcome": "passed"
+      },
+      {
+        "name": "anonymous_profiles_hidden",
+        "http": 200,
+        "outcome": "passed",
+        "row_count": 0
+      },
+      {
+        "name": "anonymous_financial_rows_hidden",
+        "http": 200,
+        "outcome": "passed",
+        "row_count": 0
+      },
+      {
+        "name": "anonymous_payment_proofs_hidden",
+        "http": 200,
+        "outcome": "passed",
+        "row_count": 0
+      }
+    ],
+    "credentials_or_row_bodies_logged": false,
+    "limits": "Read-only anonymous health/RLS probes, not authenticated financial journey or provider acceptance."
+  },
+  "public_auth_settings": {
+    "checked_at": "2026-11-14T07:49:25.371Z",
+    "origin": "https://tabby-7abf436e-20261113.eastasia.cloudapp.azure.com",
+    "settings_http": 200,
+    "signup_disabled": true,
+    "google_provider_enabled": true,
+    "email_provider_enabled": true,
+    "public_config_fields": [
+      "SUPABASE_URL",
+      "SUPABASE_ANON_KEY"
+    ],
+    "fixture_credentials_embedded": false,
+    "provider_runtime": "not established by this HTTP settings query"
+  },
+  "emulator_install": {
+    "timestamp": "2026-11-14T07:56:24.099Z",
+    "target": "emulator",
+    "apk_sha256": "9b5ccd7554c90c9248ef65dcc2e50e16722e075609746be9a2e285c31f540751",
+    "commit": "20034402a43d1e982c24af44c3b05b3395eb34d9",
+    "version_code": 10,
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "fresh_install": true,
+    "install": "passed",
+    "native_launch": "passed",
+    "page_size": 16384,
+    "abi": "x86_64",
+    "user": 0,
+    "synthetic_data_seeded": false,
+    "login_performed": false,
+    "sample_data_bundled": false,
+    "backend": "Azure migration live-acceptance destination",
+    "public_release": false,
+    "observed_ui": "Fresh first onboarding page, no startup error"
+  },
+  "tablet_install": {
+    "timestamp": "2026-11-14T08:02:11.974Z",
+    "target": "tablet",
+    "apk_sha256": "9b5ccd7554c90c9248ef65dcc2e50e16722e075609746be9a2e285c31f540751",
+    "commit": "20034402a43d1e982c24af44c3b05b3395eb34d9",
+    "version_code": 10,
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "fresh_install": true,
+    "install": "passed",
+    "native_launch": "passed",
+    "page_size": 4096,
+    "abi": "arm64-v8a",
+    "user": 0,
+    "synthetic_data_seeded": false,
+    "login_performed": false,
+    "sample_data_bundled": false,
+    "backend": "Azure migration live-acceptance destination",
+    "public_release": false,
+    "observed_ui": "Fresh first onboarding page, signed out; no startup error"
+  },
+  "temporary_test_cleanup": {
+    "timestamp": "2026-11-14T08:02:02.304Z",
+    "test_package": "removed_with_local_data",
+    "real_profile_original_restored": true,
+    "main_package_before": "absent",
+    "current_user": 0
+  },
+  "installed_verification": {
+    "timestamp": "2026-11-14T08:04:06.813Z",
+    "installed_apk_sha256": "9b5ccd7554c90c9248ef65dcc2e50e16722e075609746be9a2e285c31f540751",
+    "expected_apk_sha256": "9b5ccd7554c90c9248ef65dcc2e50e16722e075609746be9a2e285c31f540751",
+    "exact_installed_bytes_match": true,
+    "main_package_installed": true,
+    "test_package_absent": true,
+    "user": 0,
+    "observed_initial_screen": "First onboarding page, signed out; no startup error visible",
+    "user_credentials_entered_by_agent": false,
+    "user_cloud_history_changed_by_agent": false,
+    "manual_account_acceptance": "User will use their existing account; not yet verified by agent"
+  },
+  "user_choice": "User will sign in manually with their existing account; no agent login to their account",
+  "logs": [
+    {
+      "path": ".dart_tool/readiness/qa021-release-build.log",
+      "sha256": "c8d623799fb9868fd2fb619dd1809b7c015859bd48ac55492e48ed9ec992fb33"
+    },
+    {
+      "path": ".dart_tool/readiness/qa021-release-build-final.log",
+      "sha256": "f2c1619411d2864d1c5ac6bab42912747d8ab2800aac9a285a5e3314269715b5"
+    },
+    {
+      "path": ".dart_tool/readiness/qa021-node-final.log",
+      "sha256": "ada71bcc320f0e7f89f1dccfd6c5163bad2a3fddb7ff5327e1bef032450747a3"
+    },
+    {
+      "path": ".dart_tool/readiness/qa021-analysis-final.log",
+      "sha256": "58acad698bb19a711c0beb553dd3b7489726bbb77c09f9f935025903a8d0aa56"
+    },
+    {
+      "path": ".dart_tool/readiness/qa021-tablet-smoke.log",
+      "sha256": "38e57bb09f220a5220a349543fcb3d89328c5c2f511c79c673c2c23f61c4e19d"
+    },
+    {
+      "path": ".dart_tool/readiness/qa021-tablet-live.log",
+      "sha256": "b1ab0e241a55ae83aa500a587f8ebaef01df4d935ef74d5a200d9ffd70e91013"
+    }
+  ],
+  "limits": [
+    "Private live-acceptance installation on the user-authorized tablet, not public publication or completed production readiness.",
+    "New-account signup is disabled; Google sign-in and real FCM push remain unfinished. Firebase project quota/selection is unresolved. Email/password account testing is available.",
+    "User cloud financial records were not changed or erased. Existing Azure snapshot history may load after user sign-in; final source/destination synchronization and global cutover remain open.",
+    "Signed main APK is fresh-start/runtime/static acceptance only; full financial/Storage/provider/owner-account journeys and independent integration review remain open.",
+    "APK byte scan covers selected known fixture credentials/seed markers and paths, not every possible credential/dependency issue. No seeded ledger database or test login is bundled.",
+    "Initial PowerShell build wrapper returned1 despite Flutter Built output; actual-process rerun returned0, clean tree before/after. Java native-access/KGP future-compatibility and Cupertino font warning retained; no missing glyph observed on first onboarding only.",
+    "Raw screenshots/APKs/config/logs remain ignored/local; no private user credentials, financial rows or screenshots are committed. iOS runtime deferred."
+  ]
+}

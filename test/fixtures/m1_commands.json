@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "idempotency": [
+    {"actor": "A", "operation_id": "op1", "payload": {"total_centavos": 100}, "expected": "created"},
+    {"actor": "A", "operation_id": "op1", "payload": {"total_centavos": 100}, "expected": "original_result"},
+    {"actor": "A", "operation_id": "op1", "payload": {"total_centavos": 200}, "expected": "conflict"},
+    {"actor": "B", "operation_id": "op1", "payload": {"total_centavos": 100}, "expected": "created"}
+  ],
+  "payment_lifecycle": [
+    {"action": "display_qr", "expected": "no_balance_change"},
+    {"action": "submit_proof", "expected": "pending"},
+    {"action": "confirm_as_payer", "expected": "forbidden"},
+    {"action": "confirm_as_recipient", "expected": "confirmed_once"},
+    {"action": "reject_as_recipient", "expected": "rejected_with_history"}
+  ],
+  "session": [
+    {"initiator": {"account_id": "A", "session_generation": 1}, "current": {"account_id": "B", "session_generation": 2}, "expected": "discard"},
+    {"initiator": {"account_id": "A", "session_generation": 1}, "current": {"account_id": "A", "session_generation": 3}, "expected": "discard"}
+  ]
+}

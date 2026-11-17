@@ -1,0 +1,249 @@
+{
+  "task": "QA-013",
+  "timestamp": "2026-11-14T03:16:51.639+08:00",
+  "tested_commit": "dec17d09b7719ce17584f376b0d32d20fcc85796",
+  "dirty_tree": true,
+  "environment": "Physical Lenovo TB321FU/API36/4096-byte pages; isolated local native notification/secure-preference fixtures over paired TLS Wi-Fi",
+  "results": {
+    "native_cases": 4,
+    "node": {
+      "passed": 65,
+      "failed": 0
+    },
+    "analysis": "No issues found",
+    "prior_unchanged_app_host_flutter": {
+      "passed": 736,
+      "rerun_in_this_batch": false,
+      "source_manifest": "QA-012-results.json"
+    },
+    "exact_alarm_access": false,
+    "scheduled_notification_delivery_ms": 5063,
+    "immediate_active": true,
+    "account_switch_removal": true,
+    "disabled_preference_removal_and_suppression": true,
+    "runtime_permission_denial_immediate_and_schedule_suppression": true,
+    "test_permission_restored": true
+  },
+  "device_run": {
+    "local_run_id": "2026-11-13T19-14-37-142Z",
+    "outcome": "passed",
+    "commit": "dec17d09b7719ce17584f376b0d32d20fcc85796",
+    "dirty_tree": true,
+    "model": "TB321FU",
+    "api": 36,
+    "page_size": 4096,
+    "production_package_present": true,
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed",
+        "duration_ms": 51
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed",
+        "duration_ms": 55
+      },
+      {
+        "name": "wifi-tls-service",
+        "outcome": "passed",
+        "duration_ms": 40
+      },
+      {
+        "name": "device-serial",
+        "outcome": "passed",
+        "duration_ms": 41
+      },
+      {
+        "name": "device-hardware-serial",
+        "outcome": "passed",
+        "duration_ms": 142
+      },
+      {
+        "name": "device-model",
+        "outcome": "passed",
+        "duration_ms": 129
+      },
+      {
+        "name": "device-api",
+        "outcome": "passed",
+        "duration_ms": 136
+      },
+      {
+        "name": "device-page-size",
+        "outcome": "passed",
+        "duration_ms": 124
+      },
+      {
+        "name": "physical-device",
+        "outcome": "passed",
+        "duration_ms": 79
+      },
+      {
+        "name": "production-package-inventory",
+        "outcome": "passed",
+        "duration_ms": 168
+      },
+      {
+        "name": "flutter-version",
+        "outcome": "passed",
+        "duration_ms": 542
+      },
+      {
+        "name": "build-1-android_notification_delivery_test",
+        "outcome": "passed",
+        "duration_ms": 13791
+      },
+      {
+        "name": "verify-package-1-android_notification_delivery_test",
+        "outcome": "passed",
+        "duration_ms": 30
+      },
+      {
+        "name": "device-recheck-1-android_notification_delivery_test",
+        "outcome": "passed",
+        "duration_ms": 146
+      },
+      {
+        "name": "install-1-android_notification_delivery_test",
+        "outcome": "passed",
+        "duration_ms": 8495
+      },
+      {
+        "name": "notification-permission-1-android_notification_delivery_test",
+        "outcome": "passed",
+        "duration_ms": 113
+      },
+      {
+        "name": "drive-1-android_notification_delivery_test",
+        "outcome": "passed",
+        "duration_ms": 19391
+      },
+      {
+        "name": "validate-drive-1-android_notification_delivery_test",
+        "outcome": "passed",
+        "required_cases": 3
+      },
+      {
+        "name": "stop-1-android_notification_delivery_test",
+        "outcome": "passed",
+        "duration_ms": 99
+      },
+      {
+        "name": "build-1-android_notification_denied_test",
+        "outcome": "passed",
+        "duration_ms": 29887
+      },
+      {
+        "name": "verify-package-1-android_notification_denied_test",
+        "outcome": "passed",
+        "duration_ms": 29
+      },
+      {
+        "name": "device-recheck-1-android_notification_denied_test",
+        "outcome": "passed",
+        "duration_ms": 84
+      },
+      {
+        "name": "install-1-android_notification_denied_test",
+        "outcome": "passed",
+        "duration_ms": 9118
+      },
+      {
+        "name": "notification-permission-1-android_notification_denied_test",
+        "outcome": "passed",
+        "duration_ms": 95
+      },
+      {
+        "name": "drive-1-android_notification_denied_test",
+        "outcome": "passed",
+        "duration_ms": 14281
+      },
+      {
+        "name": "validate-drive-1-android_notification_denied_test",
+        "outcome": "passed",
+        "required_cases": 1
+      },
+      {
+        "name": "restore-notification-permission-1-android_notification_denied_test",
+        "outcome": "passed",
+        "duration_ms": 79
+      },
+      {
+        "name": "stop-1-android_notification_denied_test",
+        "outcome": "passed",
+        "duration_ms": 119
+      }
+    ],
+    "report_sha256": "50c1bdaf7b4093d0cf1dd66b86934982cd76f71f7a3f6ff891ed3e66d5c0f8b4",
+    "drive_logs": [
+      {
+        "path": ".dart_tool/usb-tests/2026-11-13T19-14-37-142Z/17-drive-1-android_notification_delivery_test.log",
+        "sha256": "fe9211961a2b17a0abe3922b742dea9023cd5073e41a28182b2eea40b64909c0"
+      },
+      {
+        "path": ".dart_tool/usb-tests/2026-11-13T19-14-37-142Z/25-drive-1-android_notification_denied_test.log",
+        "sha256": "d1f8e2c7c9117682fddc3bf443d3ffd21793ca6783a7d218704b7477405b7414"
+      }
+    ]
+  },
+  "source_manifest": {
+    "base": "docs/verification/QA-012-results.json",
+    "base_sha256": "d870838b428eb5a7524a02ac62e7c535fa2b3e5fe34abf3430031a6ed6c8799c",
+    "unchanged_base_files_verified": 462,
+    "updated_and_added": [
+      {
+        "path": "scripts/usb-test.cjs",
+        "sha256": "e0884904afd10340770d422c1ddddd0547b05c928c92073c479246638e40e597"
+      },
+      {
+        "path": "scripts/usb-test.test.cjs",
+        "sha256": "5b5e7b14a3a5cf127f26830aae1539a544ac5f4c1fc36abdfc16935e66c76adb"
+      },
+      {
+        "path": "integration_test/android_notification_delivery_test.dart",
+        "sha256": "29b857f8fa337677eabffdf05fa14178d6b1bac7d0acf9ea59dad92fb0a6b527"
+      },
+      {
+        "path": "integration_test/android_notification_denied_test.dart",
+        "sha256": "b8b8034e839f83863ddfaaa203c80334775de1c08be4be98817ff811ccc13258"
+      },
+      {
+        "path": "integration_test/android_notification_cases.json",
+        "sha256": "83625a234b0c5366ea566b5c805b1f2e4636317cdfdf6dd13ade522a5b29db7c"
+      }
+    ],
+    "total_source_files": 467
+  },
+  "final_denied_apk": {
+    "path": ".dart_tool/readiness/qa013-final-denied-debug.apk",
+    "sha256": "c6e42cfd992ef86abbc138d2f00008c7a494ed361884988914d99470a887de25",
+    "application_id": "com.zalweb.tabby.usbtest",
+    "release_candidate": false
+  },
+  "logs": [
+    {
+      "path": ".dart_tool/readiness/qa013-node-final.log",
+      "sha256": "88a768941c7eb1f54fba3516e028c6f5e5c0856f2fe8ff08f8f87833be604bc3"
+    },
+    {
+      "path": ".dart_tool/readiness/qa013-analysis-final.log",
+      "sha256": "58acad698bb19a711c0beb553dd3b7489726bbb77c09f9f935025903a8d0aa56"
+    },
+    {
+      "path": ".dart_tool/readiness/qa013-runner-final.log",
+      "sha256": "c79f896433173b4d6af842ba08bda4a52b5d75bc488704a52ddc020a0ed0f7aa"
+    },
+    {
+      "path": ".dart_tool/readiness/qa013-device-final.log",
+      "sha256": "1e2e89b508573c97d4918393a5b85194fc4ef12b5aa1e525e2104797fc92ddd5"
+    }
+  ],
+  "limits": [
+    "NotificationManager active entries establish OS posting for this test app; no human visual/tap/lock-screen assertion.",
+    "Scheduled inexact fallback delivered while test process was foreground and tablet awake. No reboot, package-replacement, background/closed/force-stop/OEM-restriction delivery proof.",
+    "Permission state revoked/granted through package-scoped adb, not interactive first-run permission prompt acceptance.",
+    "Remote FCM/provider/Storage/wallet,16KB runtime, signed upgrade/exact candidate and independent review remain unverified. iOS runtime deferred by user.",
+    "Allowed target APK replaced by denied target in shared build output; final denied APK only retained. No release artifact evidence."
+  ]
+}

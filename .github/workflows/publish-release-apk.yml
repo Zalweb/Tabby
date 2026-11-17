@@ -1,0 +1,21 @@
+name: Publish Release APK
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Successful mobile build run containing the verified candidate'
+        required: true
+      candidate_commit:
+        description: 'Exact 40-character candidate commit with reviewed release evidence'
+        required: true
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/publish-latest-build.yml
+    with:
+      run_id: ${{ inputs.run_id }}
+      candidate_commit: ${{ inputs.candidate_commit }}
+    secrets: inherit

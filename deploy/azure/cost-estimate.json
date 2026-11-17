@@ -1,0 +1,18 @@
+{
+  "observedAt": "2026-11-13T05:13:06+08:00",
+  "source": "https://prices.azure.com/api/retail/prices",
+  "currency": "USD",
+  "region": "southeastasia",
+  "product": "Azure App Service Basic Plan - Linux",
+  "sku": "B1",
+  "instances": 1,
+  "hourlyRetailPrice": 0.018,
+  "assumedHoursPerMonth": 730,
+  "computePerMonth": 13.14,
+  "lowTrafficPlanningAllowancePerMonth": 15,
+  "allowanceIsSpendingCap": false,
+  "additionalCosts": ["Key Vault operations", "outbound bandwidth", "taxes", "existing Supabase and Firebase charges", "other subscription consumption"],
+  "subscriptionPricingVerified": false,
+  "remainingCreditVerified": false,
+  "approved": false
+}

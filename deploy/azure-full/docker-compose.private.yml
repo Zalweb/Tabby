@@ -1,0 +1,16 @@
+services:
+  # Match the source PostgreSQL minor and the exercised HTTP acceptance runtime.
+  db:
+    image: supabase/postgres:17.11.0.019
+  rest:
+    image: postgrest/postgrest:v16.5
+  functions:
+    environment:
+      SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+    extra_hosts:
+      - "${PROXY_DOMAIN}:host-gateway"
+  # Only Caddy publishes ports. PostgreSQL/pooling remain inside Docker.
+  supavisor:
+    ports: !reset []
+  api-gw:
+    ports: !reset []

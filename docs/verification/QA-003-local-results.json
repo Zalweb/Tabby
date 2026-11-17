@@ -1,0 +1,458 @@
+{
+  "task": "QA-003",
+  "timestamp": "2026-11-13T08:39:11.097Z",
+  "tested_commit": "80d72f3f48a874a81404671c46380d4e608379c0",
+  "dirty_tree": true,
+  "environment": {
+    "flutter": "3.47.8",
+    "dart": "3.13.7",
+    "node": "v26.13.0",
+    "postgres": "17.11",
+    "postgrest": "16.5",
+    "platform": "win32"
+  },
+  "results": {
+    "flutter_baseline": {
+      "passed": 651,
+      "failed": 0
+    },
+    "flutter_final": {
+      "passed": 659,
+      "failed": 0
+    },
+    "node_baseline": {
+      "passed": 56,
+      "failed": 0
+    },
+    "node_final": {
+      "passed": 61,
+      "failed": 0
+    },
+    "targeted_final": {
+      "passed": 25,
+      "failed": 0
+    },
+    "analyzer": "No issues found",
+    "scoped_final_analyzer": "No issues found",
+    "native_contract_and_concurrency": "passed",
+    "pglite_serial_contracts": "passed",
+    "fresh": {
+      "files": 50,
+      "total": 50,
+      "statements": 965,
+      "error": null
+    },
+    "reconstructed_upgrade": {
+      "files": 32,
+      "total": 32,
+      "statements": 493,
+      "error": null
+    },
+    "upgraded_history_rows": 50,
+    "http_followup": [
+      {
+        "name": "CAP-006 correction HTTP success",
+        "passed": true
+      },
+      {
+        "name": "CAP-006 original amount retained in source row",
+        "passed": true
+      },
+      {
+        "name": "CAP-006 audit retains original row and links event",
+        "passed": true
+      },
+      {
+        "name": "CAP-006 cancellation writes status rather than deleting",
+        "passed": true
+      },
+      {
+        "name": "CAP-006 cancellation preserves original value/activity link",
+        "passed": true
+      },
+      {
+        "name": "LED-005 contact cash payment commits one confirmed row and reduces obligation by 300 centavos",
+        "passed": true
+      },
+      {
+        "name": "PRO-001 valid profile update commits and reports 200",
+        "passed": true
+      },
+      {
+        "name": "PRO-001 invalid profile write does not report success or commit",
+        "passed": true
+      },
+      {
+        "name": "PRO-001 stale owner binding rejects without commit",
+        "passed": true
+      },
+      {
+        "name": "PRO-003 friend action HTTP success and persisted deletion",
+        "passed": true
+      },
+      {
+        "name": "PRO-003 group archive does not delete or mutate shared ledger",
+        "passed": true
+      },
+      {
+        "name": "HOME-002 settled balance is zero after API refresh",
+        "passed": true
+      },
+      {
+        "name": "HOME-002 settled reminder is retained only as cancelled history",
+        "passed": true
+      },
+      {
+        "name": "HOME-004 idempotency replay returns one persisted nudge",
+        "passed": true
+      },
+      {
+        "name": "HOME-004 API throttle returns HTTP 429 and allows no second nudge after 61 seconds",
+        "passed": true
+      },
+      {
+        "name": "SEC-004 expected-owner rejects stale session write",
+        "passed": true
+      }
+    ],
+    "http_group_privacy": [
+      {
+        "name": "GRP-001 uninvolved group member balance",
+        "passed": true
+      },
+      {
+        "name": "GRP-002 all shares and payer selection grp2A",
+        "passed": true
+      },
+      {
+        "name": "GRP-002 all shares and payer selection grp2B",
+        "passed": true
+      },
+      {
+        "name": "GRP-002 all shares and payer selection grp2C",
+        "passed": true
+      },
+      {
+        "name": "GRP-003 group cannot be payer or payee",
+        "passed": true
+      },
+      {
+        "name": "GRP-004 member-insert fault rolls back, retry creates one complete group",
+        "passed": true
+      },
+      {
+        "name": "GRP-005 all M1 malformed-currency RPCs return stable PT400 and commit no row",
+        "passed": true
+      },
+      {
+        "name": "PAY-001 confirming payment does not add a second payment row",
+        "passed": true
+      },
+      {
+        "name": "SEC-005 export is subject-scoped and contains no counterpart contact",
+        "passed": true
+      },
+      {
+        "name": "SEC-005 deletion request/review completes while former counterpart retains shared records",
+        "passed": true
+      }
+    ],
+    "loopback_proxy_response_loss": {
+      "first_client_response": "connection reset after PostgREST HTTP 200",
+      "client_observed_loss": true,
+      "postgrest_upstream_status": 200,
+      "replay_status": 200,
+      "same_committed_result": true,
+      "changed_payload_status": 400,
+      "matching_rows": 1
+    },
+    "concurrent_confirmation": {
+      "submit_statuses": [
+        200,
+        200
+      ],
+      "confirm_statuses": [
+        200,
+        400
+      ],
+      "confirmed_centavos": 700,
+      "pending_rows": 1,
+      "overpayment_status": 400
+    },
+    "azure_get_only": {
+      "timestamp": "2026-11-13T08:21:01.240Z",
+      "origin": "https://tabby-7abf436e-20261113.eastasia.cloudapp.azure.com",
+      "checks": [
+        {
+          "name": "TLS and Auth health with client key",
+          "status": 200,
+          "outcome": "passed"
+        },
+        {
+          "name": "Auth signup disabled during migration",
+          "status": 200,
+          "outcome": "passed"
+        },
+        {
+          "name": "Requests without API key denied",
+          "status": 401,
+          "outcome": "passed"
+        },
+        {
+          "name": "Client key reaches PostgREST",
+          "status": 404,
+          "outcome": "passed"
+        },
+        {
+          "name": "OpenAPI protected from client roles",
+          "status": 403,
+          "outcome": "passed"
+        },
+        {
+          "name": "Admin dashboard requires authentication",
+          "status": 401,
+          "outcome": "passed"
+        }
+      ],
+      "data_migration": "not assessed by this probe",
+      "limitation": "Platform probes do not verify restored accounts, financial RPCs, Storage ownership or device acceptance."
+    },
+    "current_android_device": "unavailable: empty adb device/mDNS/default AVD lists",
+    "ios_runtime": "unavailable: Windows without Xcode"
+  },
+  "isolated_debug_artifact": {
+    "application_id": "com.zalweb.tabby.usbtest",
+    "version_name": "1.0.4",
+    "version_code": 5,
+    "debuggable": true,
+    "sha256": "513f7879847f1c3169827400c1643b9fc85fdd6ab2af5e6e5e851fdaf250317b",
+    "bytes": 205738661,
+    "static_zip_16kb": "passed",
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libVkLayer_khronos_validation.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384
+      },
+      {
+        "name": "lib/x86_64/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384
+      },
+      {
+        "name": "lib/x86_64/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384
+      }
+    ],
+    "release_candidate": false,
+    "runtime_16kb": "not tested"
+  },
+  "local_http_harness": {
+    "path": ".dart_tool/native-db/qa001-local-api-additional.mjs",
+    "sha256": "53026c7ba47222f2f833fa5dd86896b54329c7fada49005aa7b582f0f41167a6",
+    "historical_catalog_inputs": [
+      {
+        "path": ".dart_tool/native-db/live-baseline-readonly.json",
+        "sha256": "c1f682de4b600d55d7ef512d92d0f5bbdbd2d5376a0b8254d23e1151258671c5"
+      },
+      {
+        "path": ".dart_tool/native-db/live-baseline-extra-readonly.json",
+        "sha256": "d463f3028d7a32750542e5ae1e353e04b323b6e008d8beabf0bd5104ee288350"
+      }
+    ],
+    "limits": "Ignored machine-local orchestration, synthetic Auth/Storage fixtures and self-issued JWTs. No full Supabase services or deployed inventory acceptance."
+  },
+  "local_logs": [
+    {
+      "path": ".dart_tool/readiness/flutter-baseline.log",
+      "sha256": "526d0c3a9c7ce0fdfe678839dd10c9d96100215d81a2476947c112ec02c784af"
+    },
+    {
+      "path": ".dart_tool/readiness/analyze-baseline.log",
+      "sha256": "f469fdbf4841adbb4c6172ad6e88f8ca4656b8ca19fc4b4775e6f94332b32a2c"
+    },
+    {
+      "path": ".dart_tool/readiness/node-baseline.log",
+      "sha256": "5a48ff7bdf70b02ae9be5295effd2e92bf2a58798180e1dbdebb0ddebb8bd3ef"
+    },
+    {
+      "path": ".dart_tool/readiness/native-baseline.log",
+      "sha256": "c663b8e2dbb64cfd93a6bbd6e2da9e2066fb761997f4bcca32d736af98e6407c"
+    },
+    {
+      "path": ".dart_tool/readiness/reproduction.log",
+      "sha256": "eb67fa2ed7ca97e6cdb76b7d005e08a57e52e6dd7995ed339079b41fb3f6bc89"
+    },
+    {
+      "path": ".dart_tool/readiness/repair-targeted.log",
+      "sha256": "4063c00c9ab18e8d8a3d6cac9765dc0e7f84e75c5a838ad0314285f7e0e1e32e"
+    },
+    {
+      "path": ".dart_tool/readiness/repair-targeted-final.log",
+      "sha256": "e92cd62d9e32c9241351ee655288e15b91adebbfd2bb207384b68a02a100ddfa"
+    },
+    {
+      "path": ".dart_tool/readiness/scoped-analysis-final.log",
+      "sha256": "f11c684220a3c725c22e9ba2c2624b5f92bec5aa9f28f421b39963e5db56b644"
+    },
+    {
+      "path": ".dart_tool/readiness/flutter-final.log",
+      "sha256": "bd94656829febaa24b56cb085917f1e38aa57b94a1573b6abbdb2fe1dc37bb6d"
+    },
+    {
+      "path": ".dart_tool/readiness/analyze-final.log",
+      "sha256": "33f396193956c0a9aea66f225ce3e9dc64c2eb2de023f9bdcff2675a53d08a62"
+    },
+    {
+      "path": ".dart_tool/readiness/node-final.log",
+      "sha256": "4181059a316f46cbfc6075a4861118cf0aba353fa52ddd7ec59d30586ecb68ac"
+    },
+    {
+      "path": ".dart_tool/readiness/pglite-final.log",
+      "sha256": "d5e9eea3646817d2745459e39bde42bbb09e6f0e5bb1daf8d6309c31b381c07f"
+    },
+    {
+      "path": ".dart_tool/readiness/local-http-full.log",
+      "sha256": "5a540519f2b1f828504d48a46bb724ba44843c169df682412bdf4feff07b2547"
+    },
+    {
+      "path": ".dart_tool/readiness/contracts-workflow.log",
+      "sha256": "0309daaf469de65e9bdd63771f4bca6464262e5ed7acd53addd6117146e332c0"
+    },
+    {
+      "path": ".dart_tool/readiness/contracts-workflow-final.log",
+      "sha256": "393b0f37b57acc55a74acea998d23711db5b9fa4a0eeb1bc6593e372fef165d8"
+    },
+    {
+      "path": ".dart_tool/readiness/android-build.log",
+      "sha256": "e8d43c138e295c9abffcc52358e4a8b93636cf6b049afb0b4ebcda5a2a5f1213"
+    }
+  ],
+  "limitations": [
+    "All tests apply to dirty source, not a clean signed candidate. Full Flutter/build/analysis checkpoints preceded formatting-only and unused-catch-variable cleanup; final targeted25 and scoped analysis passed on the final source manifest.",
+    "No current physical Android/iOS, upgrade, OAuth, 16KB runtime, independent review or release authorization.",
+    "No remote data mutations/deployment/endpoint changes."
+  ],
+  "preservation": {
+    "tracked_preexisting_code_config": [
+      {
+        "path": ".github/workflows/project-memory.yml",
+        "unchanged_from_preflight": true
+      },
+      {
+        "path": "android/app/build.gradle.kts",
+        "unchanged_from_preflight": true
+      },
+      {
+        "path": "android/app/src/main/AndroidManifest.xml",
+        "unchanged_from_preflight": true
+      },
+      {
+        "path": "docs/project/DECISIONS.md",
+        "unchanged_from_preflight": true
+      },
+      {
+        "path": "test/platform_configuration_test.dart",
+        "unchanged_from_preflight": true
+      }
+    ],
+    "preexisting_shared_summary_changes": [
+      "docs/INDEX.md: additive audit links only",
+      "docs/progress/STATUS.md: generated projection including QA-003"
+    ],
+    "unrelated_untracked_work": "AZ-001/QA-002 backend/deployment/scripts/tests/docs retained; no staging or commits"
+  },
+  "final_git_status": [
+    " M .github/workflows/project-memory.yml",
+    " M android/app/build.gradle.kts",
+    " M android/app/src/main/AndroidManifest.xml",
+    " M docs/INDEX.md",
+    " M docs/plans/home-and-notifications.md",
+    " M docs/plans/settlement-and-receipts.md",
+    " M docs/progress/STATUS.md",
+    " M docs/progress/tasks/PAY-002.md",
+    " M docs/progress/tasks/PAY-003.md",
+    " M docs/progress/tasks/REL-001.md",
+    " M docs/project/ARCHITECTURE.md",
+    " M docs/project/DECISIONS.md",
+    " M ios/Runner/AppDelegate.swift",
+    " M lib/core/services/receipt_attachment_service.dart",
+    " M test/features/receipt_upload_transport_test.dart",
+    " M test/platform_configuration_test.dart",
+    " M test/release_workflow_test.js",
+    "?? .github/workflows/deploy-azure-workers.yml",
+    "?? Prompt.md.txt",
+    "?? backend/",
+    "?? deploy/",
+    "?? docs/progress/tasks/AZ-001.md",
+    "?? docs/progress/tasks/QA-002.md",
+    "?? docs/progress/tasks/QA-003.md",
+    "?? docs/project/AZURE_DEPLOYMENT.md",
+    "?? docs/project/AZURE_MIGRATION.md",
+    "?? docs/project/USB_TESTING.md",
+    "?? docs/verification/BUG_FIX_CHANGELOG.md",
+    "?? docs/verification/PRODUCTION_READINESS_REPORT.md",
+    "?? docs/verification/QA-003-local-results.json",
+    "?? docs/verification/QA-003-source-manifest.json",
+    "?? docs/verification/REMAINING_ISSUES.md",
+    "?? docs/verification/VER-AZ-001.md",
+    "?? docs/verification/VER-QA-002-AZURE-FULL.md",
+    "?? docs/verification/VER-QA-002-AZURE-INVENTORY.md",
+    "?? docs/verification/VER-QA-002-AZURE-RESTORE.md",
+    "?? docs/verification/VER-QA-002-USB-AUTOMATION.md",
+    "?? docs/verification/VER-QA-002-WIFI-TABLET.md",
+    "?? docs/verification/VER-QA-003-MOBILE.md",
+    "?? integration_test/usb_live_test.dart",
+    "?? integration_test/usb_seed_test.dart",
+    "?? integration_test/usb_smoke_test.dart",
+    "?? scripts/azure-appservice.ps1",
+    "?? scripts/azure-full-export-assets.ps1",
+    "?? scripts/azure-full-prepare-export.cjs",
+    "?? scripts/azure-full-prepare-export.test.cjs",
+    "?? scripts/azure-full-prepare-smtp.cjs",
+    "?? scripts/azure-full-prepare-upgrade.cjs",
+    "?? scripts/azure-full-probe.cjs",
+    "?? scripts/azure-full-seal.cjs",
+    "?? scripts/azure-full-seal.test.cjs",
+    "?? scripts/azure-full-template.cjs",
+    "?? scripts/azure-full-template.test.cjs",
+    "?? scripts/azure-full-verify-backup.cjs",
+    "?? scripts/azure-package.cjs",
+    "?? scripts/azure-package.test.mjs",
+    "?? scripts/azure-verify.mjs",
+    "?? scripts/usb-test.cjs",
+    "?? scripts/usb-test.test.cjs",
+    "?? test/ios_notification_configuration_test.dart"
+  ]
+}

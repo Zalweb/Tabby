@@ -1,0 +1,305 @@
+{
+  "schema": 1,
+  "at": "2026-11-17T19:31:49.240Z",
+  "base_commit": "8ba583aa31955fbdfa5a4fcb7c6bb7bbb18166d6",
+  "dirty_tree": true,
+  "source_scope": "accepted21 including articulated mascots plus existing-tab guard and zero-share wire fixes",
+  "regression": {
+    "cases": 903,
+    "outcome": "passed",
+    "frozen_source": true
+  },
+  "analysis": {
+    "outcome": "passed",
+    "fatal_infos": true
+  },
+  "android": {
+    "outcome": "passed",
+    "device": "Lenovo TB321FU API36 ARM64 4096-byte pages",
+    "form_cases": 15,
+    "native_encrypted_storage_cases": 1,
+    "controlled_form_keyboard": true,
+    "form_storage": "mock secure-storage boundary",
+    "native_storage": "actual encrypted native SQLite plus Android secure storage, close and reopen",
+    "production_financial_seed": false,
+    "spare_usbtest_preserved": true,
+    "started_at": "2026-11-17T19:20:42.920Z",
+    "finished_at": "2026-11-17T19:23:25.008Z"
+  },
+  "runner_guards": {
+    "cases": 11,
+    "outcome": "passed"
+  },
+  "backend": {
+    "postgres": "17.11",
+    "postgrest": "16.5",
+    "fresh_migrations": 52,
+    "upgrade_migrations": 34,
+    "outcome": "passed",
+    "acceptance": {
+      "pair_lookup_both_actors": true,
+      "selection_writes": 0,
+      "lost_response_parallel_retries": 8,
+      "replay_rows": 1,
+      "intentional_second_rows": 2,
+      "final_balances_centavos": [
+        30000,
+        -30000
+      ],
+      "custom_balances_centavos": [
+        45000,
+        -15000,
+        -30000
+      ],
+      "sum_mismatch_denied": true,
+      "outsider_rows": 0,
+      "provenance": "native PostgreSQL plus PostgREST; self-issued local JWT; no Google/GoTrue or Realtime assertion"
+    },
+    "auth_provenance": "self-issued local signed JWTs and SQL Auth fixtures; not Google/GoTrue login or Realtime websocket delivery",
+    "production_deployment": false
+  },
+  "previews": {
+    "cases": 6,
+    "light_dark": true,
+    "outcome": "passed",
+    "inspected": true
+  },
+  "review": {
+    "local_integration": "passed",
+    "independent_integration": "unverified"
+  },
+  "installation": {
+    "installed_at": "2026-11-17T19:28:18.865Z",
+    "package": "com.zalweb.tabby",
+    "before_version": 21,
+    "installed_version": 22,
+    "device": "Lenovo TB321FU API36 ARM64 4KB",
+    "install_mode": "adb install -r; no clear or uninstall",
+    "first_install_time_preserved": true,
+    "certificate_matches": true,
+    "apk_sha256": "2c007275b283361fc647b1c48e8c72dafd2b2b57db1a90a5c921bcc27495502a",
+    "installed_apk_sha256": "2c007275b283361fc647b1c48e8c72dafd2b2b57db1a90a5c921bcc27495502a",
+    "exact_installed_bytes_match": true,
+    "spare_usbtest_preserved": true,
+    "owner_logout": false,
+    "owner_financial_seed": false,
+    "owner_financial_screenshot": false,
+    "activity_launch": "Status: ok"
+  },
+  "limitations": [
+    "No public release or general production approval",
+    "Real two-device Realtime, iOS and screen reader remain unverified",
+    "No advanced M2 tax/service feature rollout"
+  ],
+  "tablet_health": {
+    "at": "2026-11-17T19:29:04.677Z",
+    "installed_version": 22,
+    "known_tablet": true,
+    "process_running": true,
+    "scoped_fatal_loader_framework_errors": 0,
+    "temporary_entrytest_removed": true,
+    "spare_usbtest_preserved": true,
+    "owner_data_clear": false,
+    "owner_financial_seed": false
+  },
+  "release_build": {
+    "started_at": "2026-11-17T19:24:31.503Z",
+    "finished_at": "2026-11-17T19:27:13.237Z",
+    "commit": "b840c44f94a01521eb1fb624a9ba99edbc718c8e",
+    "dirty_tree": true,
+    "frozen_source": true,
+    "candidate_scope": "accepted21 including articulated mascots plus existing-tab guard and zero-share wire fixes",
+    "source_changes_during_build": [],
+    "actual_flutter_exit_code": 0,
+    "build_number": 22,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64,android-x64",
+    "public_config_fields": 6,
+    "native_cases": 16,
+    "native_report": ".dart_tool\\usb-tests\\2026-11-17T19-20-42-918Z\\report.json",
+    "outcome": "passed"
+  },
+  "android_artifact": {
+    "schema": 1,
+    "commit": "b840c44f94a01521eb1fb624a9ba99edbc718c8e",
+    "apk_sha256": "2c007275b283361fc647b1c48e8c72dafd2b2b57db1a90a5c921bcc27495502a",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 22,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "native16kb": {
+    "at": "2026-11-17T19:29:26.612Z",
+    "environment": "owned API36 x86_64 native16KB emulator",
+    "page_size": 16384,
+    "physical_tablet_touched": false,
+    "action": "install",
+    "before_version": 20,
+    "installed_version": 22,
+    "exact_installed_bytes_match": true,
+    "apk_sha256": "2c007275b283361fc647b1c48e8c72dafd2b2b57db1a90a5c921bcc27495502a",
+    "first_install_time_preserved": true,
+    "native_runtime_abi": "x86_64",
+    "activity_launch": "Status: ok",
+    "observation": {
+      "at": "2026-11-17T19:30:04.275Z",
+      "environment": "owned API36 x86_64 native16KB emulator",
+      "page_size": 16384,
+      "physical_tablet_touched": false,
+      "action": "observe",
+      "installed_version": 22,
+      "process_running": true,
+      "scoped_fatal_loader_errors": 0,
+      "welcome_observed": true,
+      "authenticated_journey": false
+    },
+    "owned_emulator_shutdown": true
+  },
+  "core_commit": "eb14e3e9b7f0d91bc0d47c66d11140f669da339d",
+  "reservations_released": true,
+  "next_normal_version_floor": 23,
+  "previous_deliveries": [
+    {
+      "installed_at": "2026-11-17T18:49:39.308Z",
+      "package": "com.zalweb.tabby",
+      "before_version": 19,
+      "installed_version": 20,
+      "device": "Lenovo TB321FU API36 ARM64 4KB",
+      "install_mode": "adb install -r; no clear or uninstall",
+      "first_install_time_preserved": true,
+      "certificate_matches": true,
+      "apk_sha256": "febe8741a8ec8996eb8916ef1ed2d836965a591f67626bbd168631a26e41e75d",
+      "installed_apk_sha256": "febe8741a8ec8996eb8916ef1ed2d836965a591f67626bbd168631a26e41e75d",
+      "exact_installed_bytes_match": true,
+      "spare_usbtest_preserved": true,
+      "owner_logout": false,
+      "owner_financial_seed": false,
+      "owner_financial_screenshot": false,
+      "activity_launch": "Status: ok"
+    },
+    {
+      "installed_at": "2026-11-17T19:06:37.054Z",
+      "package": "com.zalweb.tabby",
+      "before_version": 20,
+      "installed_version": 21,
+      "device": "Lenovo TB321FU API36 ARM64 4KB",
+      "install_mode": "adb install -r; no clear or uninstall",
+      "first_install_time_preserved": true,
+      "certificate_matches": true,
+      "apk_sha256": "2dba9b9ccb85abbe820738cd8c1fdfed8890ed788710ec8c0838f6d146aaf496",
+      "installed_apk_sha256": "2dba9b9ccb85abbe820738cd8c1fdfed8890ed788710ec8c0838f6d146aaf496",
+      "exact_installed_bytes_match": true,
+      "spare_usbtest_preserved": true,
+      "owner_logout": false,
+      "owner_financial_seed": false,
+      "owner_financial_screenshot": false,
+      "activity_launch": "Status: ok",
+      "candidate_scope": "accepted20 plus QA033 articulated mascot frames only",
+      "owner": "QA-033"
+    }
+  ],
+  "latest_tested_base": "b840c44f94a01521eb1fb624a9ba99edbc718c8e",
+  "sdk_wire": {
+    "cases": 12,
+    "outcome": "passed",
+    "roles": "either payer, registered user/contact",
+    "viewer_share_centavos": [
+      0,
+      15000,
+      45000
+    ],
+    "total_centavos": 45000,
+    "provenance": "actual repository/SDK request builder; controlled HTTP transport and debug actor, not real authentication or SQL"
+  },
+  "isolated_expense_regressions": {
+    "cases": 39,
+    "outcome": "passed"
+  },
+  "source_commits": [
+    "eb14e3e9b7f0d91bc0d47c66d11140f669da339d",
+    "b840c44f94a01521eb1fb624a9ba99edbc718c8e",
+    "ede9e287495807bac3c26a0a131729321cb2c4b8"
+  ],
+  "source_manifest": "QA-032-v22-source-manifest.json",
+  "runtime_integration_commit": "9d98ea79624c4a10cf40b50e407e64d314ba7e14",
+  "runtime_source_and_test_equivalence": {
+    "outcome": "passed",
+    "case_source": 903,
+    "unverified_ios_excluded": true
+  }
+}

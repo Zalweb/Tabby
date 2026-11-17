@@ -1,0 +1,249 @@
+{
+  "task": "QA-031",
+  "timestamp": "2026-11-17T14:37:16.091Z",
+  "base_commit": "8ba583aa31955fbdfa5a4fcb7c6bb7bbb18166d6",
+  "dirty_tree": true,
+  "candidate_scope": "QA031 mascot-only overlay; unverified QA032 excluded",
+  "source_manifest": "QA-031-source-manifest.json",
+  "source_file_count": 210,
+  "source_drift": [],
+  "regression": {
+    "full_passed": 853,
+    "failed": 0,
+    "focused_pose_motion_cases": 16,
+    "runner_guards_passed": 10,
+    "analysis": "No issues found!",
+    "full_run": {
+      "mode": "full",
+      "started_at": "2026-11-17T14:25:40.260Z",
+      "finished_at": "2026-11-17T14:27:51.497Z",
+      "exit": 0,
+      "signal": null,
+      "source": "accepted18 + mascot-only frozen snapshot"
+    },
+    "analysis_run": {
+      "mode": "analysis",
+      "started_at": "2026-11-17T14:32:07.561Z",
+      "finished_at": "2026-11-17T14:32:49.140Z",
+      "exit": 0,
+      "signal": null,
+      "source": "accepted18 + mascot-only frozen snapshot"
+    }
+  },
+  "native": {
+    "suite": "entry",
+    "package": "com.zalweb.tabby.entrytest",
+    "outcome": "passed",
+    "required_cases": 6,
+    "device": "Lenovo TB321FU API36 ARM64 4KB",
+    "synthetic_fixture": true,
+    "assertions": [
+      "All nine actual pose assets decode",
+      "Thinking body transform moves",
+      "Reduced motion remains untransformed",
+      "Existing Google, introduction, warm-page and form/sheet journeys retained"
+    ]
+  },
+  "visual_review": {
+    "synthetic_previews": 6,
+    "inspected": true,
+    "subjects": [
+      "Nine-pose grid light/dark",
+      "Production welcome light/dark",
+      "Production Home light/dark"
+    ],
+    "real_owner_financial_screenshots": false
+  },
+  "skill_validation": {
+    "repository": "passed",
+    "installed_default": "passed",
+    "current_account_copy_synchronized": true
+  },
+  "build": {
+    "started_at": "2026-11-17T14:29:09.984Z",
+    "finished_at": "2026-11-17T14:31:52.740Z",
+    "commit": "8ba583aa31955fbdfa5a4fcb7c6bb7bbb18166d6",
+    "dirty_tree": true,
+    "frozen_source": true,
+    "candidate_scope": "QA031 mascot-only overlay; unverified QA032 excluded",
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64,android-x64",
+    "build_number": 19,
+    "public_config_fields": 6,
+    "source_changes_during_build": [],
+    "outcome": "passed"
+  },
+  "artifact": {
+    "schema": 1,
+    "commit": "8ba583aa31955fbdfa5a4fcb7c6bb7bbb18166d6",
+    "apk_sha256": "748fd59cb40613c6ad7932d4e6273a5716dbe16cf64390829e62add89fe77c42",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 19,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "install": {
+    "installed_at": "2026-11-17T14:33:35.151Z",
+    "package": "com.zalweb.tabby",
+    "before_version": 18,
+    "installed_version": 19,
+    "device": "Lenovo TB321FU API36 ARM64 4KB",
+    "install_mode": "adb install -r; no data clear or uninstall",
+    "first_install_time_preserved": true,
+    "production_certificate_matches": true,
+    "apk_sha256": "748fd59cb40613c6ad7932d4e6273a5716dbe16cf64390829e62add89fe77c42",
+    "installed_apk_sha256": "748fd59cb40613c6ad7932d4e6273a5716dbe16cf64390829e62add89fe77c42",
+    "exact_installed_bytes_match": true,
+    "spare_usbtest_preserved": true,
+    "owner_logout": false,
+    "owner_financial_seed": false,
+    "owner_financial_screenshot": false,
+    "activity_launch": "Status: ok",
+    "candidate_scope": "QA031 mascot-only overlay; unverified QA032 excluded"
+  },
+  "startup": {
+    "observed_at": "2026-11-17T14:34:18.036Z",
+    "version": 19,
+    "package": "com.zalweb.tabby",
+    "application_process_running": true,
+    "current_process_fatal_or_loader_error": false,
+    "raw_logs_saved": false,
+    "temporary_entrytest_removed": true,
+    "spare_usbtest_preserved": true,
+    "owner_screenshot_captured": false,
+    "native_cases_passed": 6
+  },
+  "earlier_failures": [
+    "Initial thinking-role regression exposed generic blink instead of supplied art; corrected",
+    "Initial full run 851/853: two old Home Image.asset assertions updated to actual notebook painter/asset, final 853/853",
+    "Standalone synthetic expense-preview submission failed in mixed provider fixture and was not claimed as success evidence",
+    "Exact accepted pubspec reconstruction initially failed due line endings; recovered verified original from prior owned frozen baseline"
+  ],
+  "unverified": [
+    "Independent integration review",
+    "iOS runtime",
+    "Actual screen reader",
+    "Exact normal19 candidate on a 16KB runtime",
+    "Live Google/provider/payment/remote-notification acceptance"
+  ],
+  "release_scope": "Private same-key tablet update only; no backend migration or public release",
+  "repository_handoff": {
+    "timestamp": "2026-11-17T14:38:09.403Z",
+    "branch": "codex/m1-application-fixes",
+    "head": "8ba583aa31955fbdfa5a4fcb7c6bb7bbb18166d6",
+    "dirty_entries": 759,
+    "unrelated_work_preserved": true,
+    "committed": false,
+    "memory_plain": "passed",
+    "base_coverage": {
+      "exit": 1,
+      "existing_uncovered_count": 24,
+      "existing_uncovered": [
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/SKILL.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/antigravity-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/claude-code-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/codex-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/gemini-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/hermes-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/muse-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: .agents/skills/using-superpowers/references/pi-tools.md",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/180eff0e-1c2a-484c-9f7b-1c77ae34501f.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/2b99698d-48f5-4cd1-8746-8fe41d4f2b99.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/2ba19411-1bb9-471a-b719-ae144bfd67b1.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/4106b9b5-5ea7-4e32-bb16-9989400e9e6c.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/5233965d-3541-4745-9fa0-8d4fac80b9b0.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/78b58fa9-f1f3-479b-8fb0-2cda4e5ef69f.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/7b024bb7-4e75-4cff-9984-bd7fb4bccb41.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/7b3a7cd3-b35e-4ae5-8caa-54e9fa486e0b.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/973df76a-7652-4388-8077-49ca83d83ab2.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/97b4ac89-4dd1-447c-8775-88e7c705d10d.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/ab5f9d81-cccc-48ea-b366-686451e2c7f6.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/aced9c36-480e-46cd-9f52-4b624c89a0d6.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/be6e6fa0-dc79-4db9-820c-6866431947e5.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/bf033565-15ee-4bf0-b0f3-7eeeb2774417.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: assets/reference/introduction reference idea/db4534d5-b0b4-4d29-becc-8d5c6774f912.jpg",
+        "ERROR: Changed file lacks coverage in an updated task: skills-lock.json"
+      ]
+    },
+    "owned_whitespace": {
+      "exit": 0,
+      "errors": ""
+    }
+  }
+}

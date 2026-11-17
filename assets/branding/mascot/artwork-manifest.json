@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "created_at": "2026-11-17T14:06:22.147Z",
+  "modification": "Original PNG bytes copied unchanged; alpha-derived render bounds only",
+  "threshold": 8,
+  "entries": [
+    {
+      "pose": "thinking",
+      "asset": "assets/branding/mascot/tabby-thinking.png",
+      "source": "User-supplied generated PNG, approved in conversation",
+      "sha256": "a6605b27bf9ccbd7db0586d18ca331d1c175d35d21f10045ebe30eb72dfe9786",
+      "width": 1254,
+      "height": 1254,
+      "transparent_pixels": 1012868,
+      "bounds": [
+        201,
+        106,
+        800,
+        1048
+      ],
+      "normalized": [
+        0.16028708133971292,
+        0.08452950558213716,
+        0.6379585326953748,
+        0.835725677830941
+      ]
+    },
+    {
+      "pose": "waiting",
+      "asset": "assets/branding/mascot/tabby-waiting.png",
+      "source": "User-supplied generated PNG, approved in conversation",
+      "sha256": "bdb3b0751312bc9871d6469d38684ade8dddde1c816c17f7acf390e64b2536bb",
+      "width": 1254,
+      "height": 1254,
+      "transparent_pixels": 1011749,
+      "bounds": [
+        215,
+        117,
+        777,
+        1034
+      ],
+      "normalized": [
+        0.17145135566188197,
+        0.09330143540669857,
+        0.6196172248803827,
+        0.8245614035087719
+      ]
+    },
+    {
+      "pose": "helpful",
+      "asset": "assets/branding/mascot/tabby-helpful.png",
+      "source": "User-supplied generated PNG, approved in conversation",
+      "sha256": "97503fa8bdb0c2415cad0d7ed17f8b7c702c664357b7456139b41f92f1eea30f",
+      "width": 1254,
+      "height": 1254,
+      "transparent_pixels": 965328,
+      "bounds": [
+        188,
+        90,
+        831,
+        1090
+      ],
+      "normalized": [
+        0.14992025518341306,
+        0.07177033492822966,
+        0.6626794258373205,
+        0.8692185007974481
+      ]
+    },
+    {
+      "pose": "reminder",
+      "asset": "assets/branding/mascot/tabby-reminder.png",
+      "source": "User-supplied generated PNG, approved in conversation",
+      "sha256": "de2fd9b2526f486fd4f5c8b94066a76d2f66e7b63f13febd76b8394389c6bde9",
+      "width": 1254,
+      "height": 1254,
+      "transparent_pixels": 1004367,
+      "bounds": [
+        203,
+        106,
+        794,
+        1050
+      ],
+      "normalized": [
+        0.16188197767145135,
+        0.08452950558213716,
+        0.6331738437001595,
+        0.8373205741626795
+      ]
+    },
+    {
+      "pose": "celebrating",
+      "asset": "assets/branding/mascot/tabby-celebrating.png",
+      "source": "User-supplied generated PNG, approved in conversation",
+      "sha256": "61a6891e45daa71f492a3679217ced442d1e3c9c048d19b80ec1e7a1e78e6f84",
+      "width": 1254,
+      "height": 1254,
+      "transparent_pixels": 980714,
+      "bounds": [
+        180,
+        94,
+        879,
+        1081
+      ],
+      "normalized": [
+        0.14354066985645933,
+        0.07496012759170653,
+        0.7009569377990431,
+        0.8620414673046252
+      ]
+    },
+    {
+      "pose": "welcome",
+      "asset": "assets/branding/tabby-welcome-v3.png",
+      "source": "Existing approved Tabby artwork",
+      "sha256": "d9854641b32a0369c280fcb08860ed0bef8feaffa3355093a0a11cbe5921e4b6",
+      "width": 1254,
+      "height": 1254,
+      "transparent_pixels": 981034,
+      "bounds": [
+        175,
+        109,
+        910,
+        1078
+      ],
+      "normalized": [
+        0.13955342902711323,
+        0.08692185007974482,
+        0.7256778309409888,
+        0.8596491228070176
+      ]
+    },
+    {
+      "pose": "notebook",
+      "asset": "assets/branding/tabby-notebook-v3.png",
+      "source": "Existing approved Tabby artwork",
+      "sha256": "19d020bf85fdf5fd8792bab2e78dcd68c05cb60a5e370a3bda82028190885aae",
+      "width": 1254,
+      "height": 1254,
+      "transparent_pixels": 904942,
+      "bounds": [
+        152,
+        90,
+        859,
+        1113
+      ],
+      "normalized": [
+        0.12121212121212122,
+        0.07177033492822966,
+        0.6850079744816587,
+        0.8875598086124402
+      ]
+    }
+  ]
+}

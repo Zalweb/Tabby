@@ -1,0 +1,175 @@
+{
+  "recorded_at": "2026-11-17T07:49:51.102Z",
+  "base_commit": "f8b731463e2dd0efd5f160f82f093fa0c26da1e4",
+  "dirty_tree": true,
+  "provider": {
+    "recorded_at": "2026-11-17T07:12:52.237Z",
+    "project_id": "project-16899afb-9d76-433c-9a2",
+    "project_number": "794974227784",
+    "billing_enabled": false,
+    "billing_account_attached": false,
+    "android_apps": [
+      {
+        "package": "com.zalweb.tabby",
+        "app_id": "1:794974227784:android:24731550cda8da4066b77d",
+        "registered_sha_types": [
+          "SHA_1",
+          "SHA_256"
+        ],
+        "public_config_prepared": true
+      },
+      {
+        "package": "com.zalweb.tabby.usbtest",
+        "app_id": "1:794974227784:android:e8d9a4f5de27337a66b77d",
+        "registered_sha_types": [
+          "SHA_1",
+          "SHA_256"
+        ],
+        "public_config_prepared": true
+      }
+    ],
+    "service_account_configured": true,
+    "delivery_tested": true
+  },
+  "federation": {
+    "recorded_at": "2026-11-17T07:20:38.560Z",
+    "project_id": "project-16899afb-9d76-433c-9a2",
+    "billing_enabled": false,
+    "billing_account_attached": false,
+    "key_creation_rejected": true,
+    "downloadable_keys_created": 0,
+    "user_managed_key_count": 0,
+    "authentication": "Azure system-assigned identity to Google workload federation to FCM-only service account",
+    "pool": "projects/794974227784/locations/global/workloadIdentityPools/tabby-azure",
+    "provider": "projects/794974227784/locations/global/workloadIdentityPools/tabby-azure/providers/supabase-vm",
+    "exact_vm_oid_tenant_and_resource_condition": true,
+    "sender_role": "roles/firebasecloudmessaging.admin",
+    "vm_impersonation_role": "roles/iam.workloadIdentityUser",
+    "credential_config_public": true,
+    "token_exchange_tested": true,
+    "backend_deployed": true,
+    "delivery_tested": true
+  },
+  "live_federation_probe": {
+    "stage": "fcm-validation",
+    "outcome": "passed",
+    "tokens_logged": false,
+    "metadata_passed": true,
+    "sts_passed": true,
+    "impersonation_passed": true,
+    "fcm_http_status": 400,
+    "fcm_status": "INVALID_ARGUMENT",
+    "fcm_credential_accepted": true,
+    "actual_message_sent": false
+  },
+  "deployment": {
+    "run_id": "firebase-20261117T073658Z-1dedb1",
+    "outcome": "passed",
+    "project_id": "project-16899afb-9d76-433c-9a2",
+    "restarted_service": "functions",
+    "backup_recovery_verified": true,
+    "backup_ciphertext_sha256": "ecd54f07759312208799e2872ade5d3ee59282e1cc8308a464525ada74a2bde7",
+    "operator_sha256": "61624f196c140235fc23636ee547c967f26553f765c3e3facd5aa1ba338ed7f1",
+    "worker_sha256": {
+      "reminder-push/index.ts": "574a1d5254edcfebbe1cf6e8aed20217b8eadf363200c9aac82af75e8d893d80",
+      "reminder-push/worker.mjs": "daee4fd868136ce920c8c2c9d35083cb7a61721284e12694910b829ab554832d"
+    },
+    "auth_configuration_changed": false,
+    "financial_data_changed": false,
+    "scheduler_enabled": false,
+    "functions_running": true,
+    "deployed_runtime_authorization": true,
+    "queue_claimed": false,
+    "messages_sent": false
+  },
+  "device": {
+    "installed_at": "2026-11-17T07:37:09.343Z",
+    "package": "com.zalweb.tabby.usbtest",
+    "apk_sha256": "07503d59d982fa9641589440ae2417849e465327ae703a7e8e11a92b09215d6e",
+    "main_version_preserved": "12",
+    "main_first_install_time_preserved": true,
+    "private_fixture_only": true,
+    "model": "Lenovo TB321FU",
+    "api": 36,
+    "page_size": 4096,
+    "real_fcm_registration": true,
+    "background_data_message_provider_accepted": true,
+    "actual_native_notification_posted": true,
+    "notification_channel": "tabby_background_reminders",
+    "generic_private_notification_text_matches": true,
+    "main_owner_account_used": false,
+    "device_tokens_or_private_keys_saved_in_shared_evidence": false,
+    "first_delivery_log_sha256": "28043f9bf7fb96ebd5546b25796d21a034542c6e7ca476c457252a81f3a164f3"
+  },
+  "checks": {
+    "worker_tests": 12,
+    "neighbor_node_tests": 32,
+    "firebase_operator_guard_tests": 3,
+    "deno_entry_check": "passed",
+    "fixture_dart_analysis": "passed",
+    "configured_debug_build": "passed after resValues correction",
+    "worker_red": {
+      "tests": 12,
+      "passed": 9,
+      "failed": 3
+    },
+    "worker_final": 12
+  },
+  "source_sha256": {
+    "android/app/build.gradle.kts": "adaabaaab00fbe51fa721a9dfc64d190244cc6226169786d433151d9aa53a97f",
+    "integration_test/android_fcm_fixture.dart": "59f466474703f440c239845bf1c97926a2557ea837f9b64c6de9e1e9de0de1f8",
+    "supabase/functions/reminder-push/worker.mjs": "daee4fd868136ce920c8c2c9d35083cb7a61721284e12694910b829ab554832d",
+    "supabase/functions/reminder-push/index.ts": "574a1d5254edcfebbe1cf6e8aed20217b8eadf363200c9aac82af75e8d893d80",
+    "scripts/test-reminder-push-worker.mjs": "fcebbc739b3497bd797129ba220f760c62d6c2d0fdd20f09fe92bf4facee077e",
+    "deploy/azure-full/configure-firebase.py": "61624f196c140235fc23636ee547c967f26553f765c3e3facd5aa1ba338ed7f1",
+    "deploy/azure-full/test_firebase_configuration.py": "9feec149cbc3d0bb574ca630efa88e8bc2c94d294d5da14e650f4ad38ae46e2f"
+  },
+  "remaining": [
+    "Real backend push registration/queue/scheduler end-to-end not yet verified.",
+    "Force-stop/reboot/cold tap/account-switch/offline logout/token rotation and independent review remain unverified for FCM.",
+    "No billing attachment, automatic queue dispatch or global release approval.",
+    "First closed attempt had an asynchronous kill observation; final repeat confirmed no process before invoking the sender. No force-stop delivery is claimed.",
+    "Normal13 now carries public Firebase resources; owner preference/registration and actual backend reminder-queue delivery remain separately unverified."
+  ],
+  "native_scenarios": {
+    "background_actual_post": true,
+    "duplicate_no_additional_notification": true,
+    "closed_process_fresh_message_post": true,
+    "process_absence_verified_before_send": true,
+    "stale_binding_no_additional_notification": true,
+    "cleared_scope_removed_existing_and_suppressed_new": true,
+    "permission_denied_suppressed_new": true,
+    "permission_restored": true,
+    "temporary_package_removed": true,
+    "normal_main_data_cleared": false,
+    "normal_main_signed_out": false,
+    "notification_group_summary_excluded_from_event_counts": true,
+    "raw_device_report_sha256": {
+      "first": "28043f9bf7fb96ebd5546b25796d21a034542c6e7ca476c457252a81f3a164f3",
+      "duplicate": "28043f9bf7fb96ebd5546b25796d21a034542c6e7ca476c457252a81f3a164f3",
+      "closed": "77e6db115841fa0925d5ac9f5a7543ac00127a03ba87ee6c2d2764dd494f879f",
+      "stale": "77e6db115841fa0925d5ac9f5a7543ac00127a03ba87ee6c2d2764dd494f879f",
+      "disabled": "39134ce83e794b65360fe3f2f3981a2068031dc3a372d5e6ff9ae9fd6048da47",
+      "permission": "39134ce83e794b65360fe3f2f3981a2068031dc3a372d5e6ff9ae9fd6048da47"
+    }
+  },
+  "configured_apk_source": {
+    "archive_commit": "f8b731463e2dd0efd5f160f82f093fa0c26da1e4",
+    "gradle_sha256": "adaabaaab00fbe51fa721a9dfc64d190244cc6226169786d433151d9aa53a97f",
+    "fixture_sha256": "59f466474703f440c239845bf1c97926a2557ea837f9b64c6de9e1e9de0de1f8",
+    "build_log_sha256": "d7c54bd1ec6da3fa95db232efb63e97e2368feb3cc3e583a25ae244daf28dcc3",
+    "includes_concurrent_QA025_ui": false
+  },
+  "installed_normal_main": {
+    "verified_at": "2026-11-17T07:50:47.055Z",
+    "main_version": 13,
+    "apk_sha256": "a7e260f3674572cbc51adc4a31e105d52919b77012df3590a90208f9f291adb9",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "installed_main_bytes_match": true,
+    "firebase_four_public_resources_present": true,
+    "same_key_data_preservation_record_verified": true,
+    "test_package_removed": true,
+    "owner_account_or_financial_mutations": false,
+    "private_screenshot_captured": false
+  }
+}

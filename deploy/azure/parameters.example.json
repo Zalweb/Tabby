@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {"value": "southeastasia"},
+    "appName": {"value": "REPLACE-unique-tabby-workers"},
+    "planName": {"value": "asp-tabby-workers"},
+    "vaultName": {"value": "REPLACE-unique-vault"},
+    "supabaseUrl": {"value": "https://REPLACE.supabase.co"},
+    "firebaseProjectId": {"value": "REPLACE-firebase-project"}
+  }
+}

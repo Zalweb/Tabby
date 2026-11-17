@@ -1,0 +1,1701 @@
+{
+  "task_ids": [
+    "QA-014",
+    "QA-015",
+    "QA-016",
+    "QA-017",
+    "QA-018"
+  ],
+  "timestamp": "2026-11-14T06:21:51.567Z",
+  "tested_commit": "734d80093c1a340c87eab1b2b3b5303372e63319",
+  "dirty_tree": true,
+  "results": {
+    "node": {
+      "passed": 74,
+      "failed": 0
+    },
+    "python_operator_guard_tests": {
+      "passed": 4,
+      "failed": 0
+    },
+    "python_syntax": "passed",
+    "analysis": "No issues found",
+    "prior_unchanged_app_host_flutter": {
+      "passed": 736,
+      "rerun_in_this_batch": false,
+      "source_record": "QA-012-results.json",
+      "unchanged_production_and_host_test_files_verified": 221
+    },
+    "native_16kb_named_cases": 45,
+    "closed_local_alarm": "passed",
+    "reboot_local_alarm": "passed",
+    "physical_sdk_auth_realtime": "passed",
+    "azure_live_consent_checks": 24,
+    "firebase": "authenticated; project creation denied by account quota; no configuration or delivery acceptance"
+  },
+  "source_manifest": {
+    "base": "docs/verification/QA-013-results.json",
+    "base_sha256": "5f548b90e8dc5db1fe4396f9688591c6c8908881bedaafa7cac4320549f3371a",
+    "unchanged_base_files_verified": 463,
+    "updated_and_added": [
+      {
+        "path": ".gitignore",
+        "sha256": "053a31c635eaf44a04eb9534f6d0b93c68762aafa2a98750f76fbf1867781d7c"
+      },
+      {
+        "path": "deploy/azure-full/apply-readiness-patch.py",
+        "sha256": "11cbf67388db0760f454d7e93b6d6b0220ef4843bdd8422879eb87d74d277fe1"
+      },
+      {
+        "path": "deploy/azure-full/test_readiness_patch.py",
+        "sha256": "dce1038e4cacb86da26d5b8c4f792f81eb76eb53c87f9a5796da790926732f1b"
+      },
+      {
+        "path": "deploy/azure-full/verify-readiness-consent.py",
+        "sha256": "55c4ee5fd848fa60c371d228e191b84fbf98dd4522e1dab012e32f1e07abb249"
+      },
+      {
+        "path": "integration_test/android_notification_cold_launch_test.dart",
+        "sha256": "ed7804787a419dd24473cf44bbf9f016b711b30a82fdb37163fbaf8f85d5c31d"
+      },
+      {
+        "path": "integration_test/android_storage_cases.json",
+        "sha256": "f5c6fb713032c6d3564e62fe33162a5d533f59081dea677a894ad54ef9abfd19"
+      },
+      {
+        "path": "integration_test/android_storage_seed_test.dart",
+        "sha256": "27e1267422b967885f94b9e1fc61462248027f0a78bc0f66a489cc25cf4df945"
+      },
+      {
+        "path": "integration_test/android_storage_verify_test.dart",
+        "sha256": "a67f461019077c7779b166651c98d31ee1d513fa335e0ba570841026afbd9d69"
+      },
+      {
+        "path": "integration_test/native_storage_fixture.dart",
+        "sha256": "eb1774ea86fd4466bf46f23094bd047d31f4cbd63dc4107439d2255ae8a33504"
+      },
+      {
+        "path": "integration_test/usb_live_test.dart",
+        "sha256": "35faf8894375b48671672a90960cbd504446e01fde5d46661973f04d437ca18d"
+      },
+      {
+        "path": "scripts/android-cold-launch-test.cjs",
+        "sha256": "dfdd4143c00c4c890aa2c9d45db0a64b77d365da20b39de158e0a867d57e8f7a"
+      },
+      {
+        "path": "scripts/android-cold-launch-test.test.cjs",
+        "sha256": "4dac4037967074bd024f843fcbbc5b1ef948361be5f0307d9fb995f88dbc6f34"
+      },
+      {
+        "path": "scripts/android-emulator-test.cjs",
+        "sha256": "347f5612ca5fb295b0be95b4d769148780a0ec2e1ddce890ccf8080fab35cba8"
+      },
+      {
+        "path": "scripts/android-emulator-test.test.cjs",
+        "sha256": "a79f03a5266bee6d1882d69c72cd2876bd450bf061d067935526c6143ab498b1"
+      },
+      {
+        "path": "scripts/android-release.test.cjs",
+        "sha256": "c167a7a9ad9293cc6353a57fbeabd132a8e7e18e584aa8decbb9a70071e127c7"
+      },
+      {
+        "path": "scripts/usb-test.cjs",
+        "sha256": "215013eb367c240f48eaf075742dff4c10d91623249232428d40b09f9f3c7444"
+      },
+      {
+        "path": "scripts/verify-android-artifact.cjs",
+        "sha256": "af0d2d72eb37846ae019f9b62a152fd4ffdf43e03bde8b1e818714072a0936cd"
+      }
+    ],
+    "removed": [],
+    "total_source_files": 480
+  },
+  "android_16kb": {
+    "local_report": {
+      "path": ".dart_tool/emulator-tests/2026-11-14T04-21-31-633Z/report.json",
+      "sha256": "063f1b1d5fbb5e84d706bc36e08e65e248ed882f1dadbe545ba11fff90dec329"
+    },
+    "outcome": "passed",
+    "started_at": "2026-11-14T04:21:31.635Z",
+    "finished_at": "2026-11-14T04:28:50.276Z",
+    "package": "com.zalweb.tabby.usbtest",
+    "api": "36",
+    "page_size": 16384,
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed"
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu-preflight",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages-preflight",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi-preflight",
+        "outcome": "passed"
+      },
+      {
+        "name": "api",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "permission-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-android_storage_seed_test",
+        "outcome": "passed",
+        "required_cases": 1
+      },
+      {
+        "name": "stop-android_storage_seed_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "permission-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-android_storage_verify_test",
+        "outcome": "passed",
+        "required_cases": 3
+      },
+      {
+        "name": "stop-android_storage_verify_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "permission-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-android_receiving_scope_test",
+        "outcome": "passed",
+        "required_cases": 22
+      },
+      {
+        "name": "stop-android_receiving_scope_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "permission-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-android_auth_completion_test",
+        "outcome": "passed",
+        "required_cases": 15
+      },
+      {
+        "name": "stop-android_auth_completion_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "permission-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-android_notification_delivery_test",
+        "outcome": "passed",
+        "required_cases": 3
+      },
+      {
+        "name": "stop-android_notification_delivery_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "package-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "qemu-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "pages-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "abi-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "permission-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-android_notification_denied_test",
+        "outcome": "passed",
+        "required_cases": 1
+      },
+      {
+        "name": "restore-permission-android_notification_denied_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "stop-android_notification_denied_test",
+        "outcome": "passed"
+      }
+    ],
+    "dirty_tree": true,
+    "logs": [
+      {
+        "path": ".dart_tool/emulator-tests/2026-11-14T04-21-31-633Z/14-drive-android_storage_seed_test.log",
+        "sha256": "f1a609db06e4c5e49178227f5e590359c5b40674301b67928459e94490d010a7"
+      },
+      {
+        "path": ".dart_tool/emulator-tests/2026-11-14T04-21-31-633Z/24-drive-android_storage_verify_test.log",
+        "sha256": "4b56644b8c8484c74a818537b92ec9295eed8b665da55e46a3a946e770665edc"
+      },
+      {
+        "path": ".dart_tool/emulator-tests/2026-11-14T04-21-31-633Z/34-drive-android_receiving_scope_test.log",
+        "sha256": "fc962c8396bef8a7d246b232e549a5e5a217cb05c0efa91b05efcb6e835d19d1"
+      },
+      {
+        "path": ".dart_tool/emulator-tests/2026-11-14T04-21-31-633Z/44-drive-android_auth_completion_test.log",
+        "sha256": "80f14f324d105eb514fe2b0f5802c88b04a458d2054ec42e7528d6b36fe42844"
+      },
+      {
+        "path": ".dart_tool/emulator-tests/2026-11-14T04-21-31-633Z/54-drive-android_notification_delivery_test.log",
+        "sha256": "491abb9513d168510077c107cc617256da3f0447aa2a7c3e814cdb918e91634c"
+      },
+      {
+        "path": ".dart_tool/emulator-tests/2026-11-14T04-21-31-633Z/64-drive-android_notification_denied_test.log",
+        "sha256": "4f6a3e6d8de2480a899e83315431cfcd098e4c0533005ba6f6b76942ae2969d0"
+      }
+    ]
+  },
+  "lifecycle": {
+    "closed_final_source": {
+      "local_report": {
+        "path": ".dart_tool/lifecycle-tests/2026-11-14T06-16-05-960Z/report.json",
+        "sha256": "c2136aef9571114e5a65a7362f317464a00105df92cfa88556ddb452a1b26778"
+      },
+      "outcome": "passed",
+      "started_at": "2026-11-14T06:16:05.962Z",
+      "finished_at": "2026-11-14T06:18:44.385Z",
+      "package": "com.zalweb.tabby.usbtest",
+      "mode": "closed",
+      "steps": [
+        {
+          "name": "git-head",
+          "outcome": "passed"
+        },
+        {
+          "name": "git-status",
+          "outcome": "passed"
+        },
+        {
+          "name": "qemu",
+          "outcome": "passed"
+        },
+        {
+          "name": "pages",
+          "outcome": "passed"
+        },
+        {
+          "name": "abi",
+          "outcome": "passed"
+        },
+        {
+          "name": "build-fixture",
+          "outcome": "passed"
+        },
+        {
+          "name": "verify-package",
+          "outcome": "passed"
+        },
+        {
+          "name": "qemu",
+          "outcome": "passed"
+        },
+        {
+          "name": "pages",
+          "outcome": "passed"
+        },
+        {
+          "name": "abi",
+          "outcome": "passed"
+        },
+        {
+          "name": "install-fixture",
+          "outcome": "passed"
+        },
+        {
+          "name": "notification-permission",
+          "outcome": "passed"
+        },
+        {
+          "name": "drive-seed",
+          "outcome": "passed"
+        },
+        {
+          "name": "home-before-close",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "kill-owned-fixture-process",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "wake-test-emulator",
+          "outcome": "passed"
+        },
+        {
+          "name": "unlock-notification-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "kill-owned-cached-receiver",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "tap-exact-synthetic-notification",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "cold-fixture-log",
+          "outcome": "passed"
+        },
+        {
+          "name": "cold-fixture-log",
+          "outcome": "passed"
+        },
+        {
+          "name": "forward-cold-vm",
+          "outcome": "passed"
+        },
+        {
+          "name": "drive-cold-existing-app",
+          "outcome": "passed"
+        },
+        {
+          "name": "cold-fixture-final-log",
+          "outcome": "passed"
+        },
+        {
+          "name": "remove-owned-forward",
+          "outcome": "passed"
+        },
+        {
+          "name": "stop-completed-fixture",
+          "outcome": "passed"
+        }
+      ],
+      "dirty_tree": true,
+      "process_gone_before_due": true,
+      "actual_notification_visible": true,
+      "process_absent_before_tap": true,
+      "cold_launch_payload_and_encrypted_state": "passed",
+      "logs": [
+        {
+          "path": ".dart_tool/lifecycle-tests/2026-11-14T06-16-05-960Z/13-drive-seed.log",
+          "sha256": "ae387493521d347332c3b6296cf60d86b2607e3adcb8c8984a6ad28c46a86223"
+        },
+        {
+          "path": ".dart_tool/lifecycle-tests/2026-11-14T06-16-05-960Z/56-drive-cold-existing-app.log",
+          "sha256": "5d6a6fe62b93a6a0fbdedc1675c2fa9a352dcd1bb0a579b8095444375ee1e70b"
+        },
+        {
+          "path": ".dart_tool/lifecycle-tests/2026-11-14T06-16-05-960Z/57-cold-fixture-final-log.log",
+          "sha256": "ecaa5cfeb508567918429cbe21a784ac370328f2a44faa55bc68154df3d3b302"
+        }
+      ]
+    },
+    "reboot": {
+      "local_report": {
+        "path": ".dart_tool/lifecycle-tests/2026-11-14T04-50-32-942Z/report.json",
+        "sha256": "091416bc1ed8e3aaad23107f030ace28c5083a0cfca0b566bee736ef2bc8b75a"
+      },
+      "outcome": "passed",
+      "started_at": "2026-11-14T04:50:32.943Z",
+      "finished_at": "2026-11-14T04:53:54.522Z",
+      "package": "com.zalweb.tabby.usbtest",
+      "mode": "reboot",
+      "steps": [
+        {
+          "name": "git-head",
+          "outcome": "passed"
+        },
+        {
+          "name": "git-status",
+          "outcome": "passed"
+        },
+        {
+          "name": "qemu",
+          "outcome": "passed"
+        },
+        {
+          "name": "pages",
+          "outcome": "passed"
+        },
+        {
+          "name": "abi",
+          "outcome": "passed"
+        },
+        {
+          "name": "build-fixture",
+          "outcome": "passed"
+        },
+        {
+          "name": "verify-package",
+          "outcome": "passed"
+        },
+        {
+          "name": "qemu",
+          "outcome": "passed"
+        },
+        {
+          "name": "pages",
+          "outcome": "passed"
+        },
+        {
+          "name": "abi",
+          "outcome": "passed"
+        },
+        {
+          "name": "install-fixture",
+          "outcome": "passed"
+        },
+        {
+          "name": "notification-permission",
+          "outcome": "passed"
+        },
+        {
+          "name": "drive-seed",
+          "outcome": "passed"
+        },
+        {
+          "name": "home-before-close",
+          "outcome": "passed"
+        },
+        {
+          "name": "qemu",
+          "outcome": "passed"
+        },
+        {
+          "name": "pages",
+          "outcome": "passed"
+        },
+        {
+          "name": "abi",
+          "outcome": "passed"
+        },
+        {
+          "name": "emulator-reboot",
+          "outcome": "passed"
+        },
+        {
+          "name": "wait-disconnected",
+          "outcome": "passed"
+        },
+        {
+          "name": "wait-reconnected",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "boot-completed",
+          "outcome": "passed"
+        },
+        {
+          "name": "qemu",
+          "outcome": "passed"
+        },
+        {
+          "name": "pages",
+          "outcome": "passed"
+        },
+        {
+          "name": "abi",
+          "outcome": "passed"
+        },
+        {
+          "name": "unlock-test-emulator",
+          "outcome": "passed"
+        },
+        {
+          "name": "wake-test-emulator",
+          "outcome": "passed"
+        },
+        {
+          "name": "unlock-notification-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "expand-synthetic-drawer",
+          "outcome": "passed"
+        },
+        {
+          "name": "dump-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "read-emulator-ui",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "kill-owned-cached-receiver",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "tap-exact-synthetic-notification",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "fixture-pid",
+          "outcome": "passed"
+        },
+        {
+          "name": "cold-fixture-log",
+          "outcome": "passed"
+        },
+        {
+          "name": "cold-fixture-log",
+          "outcome": "passed"
+        },
+        {
+          "name": "cold-fixture-log",
+          "outcome": "passed"
+        },
+        {
+          "name": "cold-fixture-log",
+          "outcome": "passed"
+        },
+        {
+          "name": "forward-cold-vm",
+          "outcome": "passed"
+        },
+        {
+          "name": "drive-cold-existing-app",
+          "outcome": "passed"
+        },
+        {
+          "name": "cold-fixture-final-log",
+          "outcome": "passed"
+        },
+        {
+          "name": "remove-owned-forward",
+          "outcome": "passed"
+        },
+        {
+          "name": "stop-completed-fixture",
+          "outcome": "passed"
+        }
+      ],
+      "dirty_tree": true,
+      "emulator_rebooted": true,
+      "actual_notification_visible": true,
+      "process_absent_before_tap": true,
+      "cold_launch_payload_and_encrypted_state": "passed",
+      "logs": [
+        {
+          "path": ".dart_tool/lifecycle-tests/2026-11-14T04-50-32-942Z/102-drive-cold-existing-app.log",
+          "sha256": "c8631ee489f5d2f5f8793d6c4b111fc32d8c7a6c8dec9d48c001bfbb07f8dada"
+        },
+        {
+          "path": ".dart_tool/lifecycle-tests/2026-11-14T04-50-32-942Z/103-cold-fixture-final-log.log",
+          "sha256": "b8bc5a7bdb3745b379b79cf2e63db047f390b19ea32da07b15819e71f06ac694"
+        },
+        {
+          "path": ".dart_tool/lifecycle-tests/2026-11-14T04-50-32-942Z/13-drive-seed.log",
+          "sha256": "2140166c7088f4339d4c3cd182acb37b9b6b35800e43fc306dbe19ecdfe8783c"
+        }
+      ]
+    },
+    "earlier_closed_accepted_report": {
+      "path": ".dart_tool/lifecycle-tests/2026-11-14T04-47-40-114Z/report.json",
+      "sha256": "271670b250d2b3aa25fcb766f060f5b95d21a9a848c84fe975ede19cfe781582"
+    },
+    "first_closed_precondition_failed_report": {
+      "path": ".dart_tool/lifecycle-tests/2026-11-14T04-44-44-547Z/report.json",
+      "sha256": "4c83e53b05720de0e407948b8d8eb088f816f9d72716a929c58d47f5e620772c"
+    },
+    "limits": "Local alarm/payload/draft/PIN only; not FCM or authenticated membership/lock routing. Earlier closed pass needed manual wake; final closed rerun unattended/fresh XML passed. No personal tablet reboot."
+  },
+  "signing": {
+    "key_algorithm": "RSA4096",
+    "validity_days": 10000,
+    "acl": "Current Windows user and SYSTEM only",
+    "update_legacy_debug_installs": false,
+    "key_alias": "tabby-production",
+    "private_key_outside_repository": true,
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "properties_git_ignored": true,
+    "certificate_sha1": "68a0818a62f0ce3932afb5f00b664c95a9e3be2c",
+    "old_installed_debug_certificate_sha256": "1106adbd9a5c4d1bc275c07eb1322b09551c628c11a3f855873bc349c150ec3e",
+    "old_public_v1_0_3_debug_certificate_sha256": "90685d34604a00266a40e28f4416b1df06528204178353f632f54239e8e76488",
+    "secure_external_backup_still_required": true
+  },
+  "private_artifacts": [
+    {
+      "schema": 1,
+      "commit": "734d80093c1a340c87eab1b2b3b5303372e63319",
+      "apk_sha256": "51678db0c7dda3af734f152fe995a2ffba4e3a1df18ccc91b52a4cc3282864fd",
+      "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+      "application_id": "com.zalweb.tabby",
+      "version_code": 5,
+      "version_name": "1.0.4",
+      "debuggable": false,
+      "zip_16kb_aligned": true,
+      "native_libraries": [
+        {
+          "name": "lib/arm64-v8a/libapp.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 0,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/arm64-v8a/libdartjni.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/arm64-v8a/libflutter.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/arm64-v8a/libsqlite3mc.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libapp.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 0,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libdartjni.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libdatastore_shared_counter.so",
+          "load_segments": 2,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libflutter.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libsqlite3mc.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        }
+      ],
+      "dirty_tree": true,
+      "publication_approved": false,
+      "configuration": "Public-client-only Azure migration overrides, no synthetic login credentials or Firebase"
+    },
+    {
+      "schema": 1,
+      "commit": "734d80093c1a340c87eab1b2b3b5303372e63319",
+      "apk_sha256": "531a16c6e83e9a5d806e6aa47c3d28e66ab631d0a06d775d90743b0e4062febc",
+      "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+      "application_id": "com.zalweb.tabby",
+      "version_code": 6,
+      "version_name": "1.0.4",
+      "debuggable": false,
+      "zip_16kb_aligned": true,
+      "native_libraries": [
+        {
+          "name": "lib/arm64-v8a/libapp.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 0,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/arm64-v8a/libdartjni.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/arm64-v8a/libflutter.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/arm64-v8a/libsqlite3mc.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libapp.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 0,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libdartjni.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libdatastore_shared_counter.so",
+          "load_segments": 2,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libflutter.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        },
+        {
+          "name": "lib/x86_64/libsqlite3mc.so",
+          "load_segments": 3,
+          "minimum_alignment": 16384,
+          "relro_segments": 1,
+          "relro_16kb_compatible": true
+        }
+      ],
+      "dirty_tree": true,
+      "publication_approved": false,
+      "configuration": "Same staging configuration; private build-number override6, source pubspec unchanged"
+    }
+  ],
+  "signed_upgrade": {
+    "timestamp": "2026-11-14T06:02:38.851Z",
+    "device": "emulator-5580",
+    "page_size": 16384,
+    "from_version_code": 5,
+    "to_version_code": 6,
+    "same_application_app_id": true,
+    "apk_sha256": "531a16c6e83e9a5d806e6aa47c3d28e66ab631d0a06d775d90743b0e4062febc",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "package": "com.zalweb.tabby",
+    "install": "passed",
+    "legacy_debug_upgrade": false,
+    "scope": "New production-key private staging baseline5 to6; no old debug install was changed.",
+    "observed_after_upgrade": {
+      "auth_session_preserved": true,
+      "onboarding_preserved": true,
+      "route": "Complete your profile",
+      "synthetic_profile_phone_empty": true,
+      "financial_queue_upgrade_tested": false,
+      "observation": "Same synthetic display name and profile-completion gate after install-r, without entering credentials/onboarding again. Raw screenshots remain private/ignored."
+    }
+  },
+  "physical_live": {
+    "local_report": {
+      "path": ".dart_tool/usb-tests/2026-11-14T04-37-05-464Z/report.json",
+      "sha256": "4e7b05c74190679efb8861cac6246e3d61e27b252767fac8ea27090380bcb934"
+    },
+    "outcome": "passed",
+    "started_at": "2026-11-14T04:37:05.468Z",
+    "finished_at": "2026-11-14T04:38:04.922Z",
+    "package": "com.zalweb.tabby.usbtest",
+    "api": 36,
+    "page_size": 4096,
+    "steps": [
+      {
+        "name": "git-head",
+        "outcome": "passed"
+      },
+      {
+        "name": "git-status",
+        "outcome": "passed"
+      },
+      {
+        "name": "wifi-tls-service",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-serial",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-hardware-serial",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-model",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-api",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-page-size",
+        "outcome": "passed"
+      },
+      {
+        "name": "physical-device",
+        "outcome": "passed"
+      },
+      {
+        "name": "production-package-inventory",
+        "outcome": "passed"
+      },
+      {
+        "name": "flutter-version",
+        "outcome": "passed"
+      },
+      {
+        "name": "private-config-ignore-check",
+        "outcome": "passed"
+      },
+      {
+        "name": "build-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "verify-package-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "device-recheck-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "install-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "notification-permission-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "drive-1-usb_live_test",
+        "outcome": "passed"
+      },
+      {
+        "name": "validate-drive-1-usb_live_test",
+        "outcome": "passed",
+        "required_cases": 0
+      },
+      {
+        "name": "stop-1-usb_live_test",
+        "outcome": "passed"
+      }
+    ],
+    "dirty_tree": true,
+    "production_package_present": true,
+    "logs": [
+      {
+        "path": ".dart_tool/usb-tests/2026-11-14T04-37-05-464Z/18-drive-1-usb_live_test.log",
+        "sha256": "e5fd319bc0cb2dfe9fbc71968efc3a3458992f2fea392d145c609a699ef1acb3"
+      }
+    ],
+    "model": "TB321FU",
+    "phases": [
+      "fixtureAuthAndAuthorization",
+      "realtimeJoined",
+      "replicationReady",
+      "profileAckAndReadback",
+      "realtimeUpdateDelivered",
+      "fixtureProfileRestored"
+    ],
+    "first_timeout_report": {
+      "path": ".dart_tool/usb-tests/2026-11-14T04-30-08-337Z/report.json",
+      "sha256": "e5b81d5fa36edf21970f4b8f5f8f3763a00764c7e9478b4e5d4dd2cf5a6c32a0"
+    },
+    "first_timeout_root_cause": "Unestablished; retained failure, real host diagnostic then physical rerun passed."
+  },
+  "azure_patch": {
+    "run_id": "readiness-20261114T052749Z-de835256",
+    "packet_sha256": "79b5afa4da3cc4d3cbb143cb3acbefeaf155488f5471d8c9ca833b56196a5f82",
+    "outcome": "passed",
+    "mode": "commit",
+    "environment": "Approved Azure migration destination only",
+    "migration_count": 52,
+    "authenticated_friendship_insert": false,
+    "financial_history_unchanged": true,
+    "backup": {
+      "ciphertext_sha256": "b65d361d8c6b4ce9260a142c6491af10cc687f7b25ae76d1643ac692c890c98e",
+      "plaintext_sha256": "1bce4400b28ba2a5e6d7070015804c3a6d5a1391b0b07592db95f67f7cc06197",
+      "encrypted_bytes": 1430103,
+      "pg_restore_list": "passed",
+      "blob_name": "readiness-20261114T052749Z-de835256-prepatch.sealed.json",
+      "off_vm_verified": true,
+      "off_vm_operator_recovery_verified": true,
+      "plaintext_persisted": false,
+      "full_stack_restore_rehearsed": false
+    },
+    "applied_migrations": [
+      {
+        "version": "20261113000001",
+        "sha256": "6e4013f751d85e1e62e99e7439498f8ea8d29b7e8e0f544528cd09f1bc640bf1"
+      },
+      {
+        "version": "20261113000002",
+        "sha256": "a960f4cb56619d7a1ad307ceaaeba89f86bffc5c834f1a274bb55e8fe012776d"
+      }
+    ],
+    "live_consent": {
+      "run_id": "readiness-20261114T052749Z-de835256",
+      "outcome": "passed",
+      "checks": [
+        {
+          "name": "deployed52_and_insert_revoked",
+          "outcome": "passed"
+        },
+        {
+          "name": "history_matches_prepatch_backup_boundary",
+          "outcome": "passed"
+        },
+        {
+          "name": "create_tagged_a",
+          "outcome": "passed"
+        },
+        {
+          "name": "auth_tag_verified_a",
+          "outcome": "passed"
+        },
+        {
+          "name": "owned_profile_a",
+          "outcome": "passed"
+        },
+        {
+          "name": "create_tagged_b",
+          "outcome": "passed"
+        },
+        {
+          "name": "auth_tag_verified_b",
+          "outcome": "passed"
+        },
+        {
+          "name": "owned_profile_b",
+          "outcome": "passed"
+        },
+        {
+          "name": "create_tagged_outsider",
+          "outcome": "passed"
+        },
+        {
+          "name": "auth_tag_verified_outsider",
+          "outcome": "passed"
+        },
+        {
+          "name": "owned_profile_outsider",
+          "outcome": "passed"
+        },
+        {
+          "name": "direct_accepted_insert_denied",
+          "outcome": "passed"
+        },
+        {
+          "name": "stranger_profile_hidden",
+          "outcome": "passed"
+        },
+        {
+          "name": "opposing_requests_create_one_pending_and_one_inbound_notice",
+          "outcome": "passed"
+        },
+        {
+          "name": "opposing_requests_do_not_leak_unique_violation",
+          "outcome": "passed"
+        },
+        {
+          "name": "one_pending_pair_no_implicit_acceptance",
+          "outcome": "passed"
+        },
+        {
+          "name": "same_direction_replay_keeps_request_identity",
+          "outcome": "passed"
+        },
+        {
+          "name": "requester_cannot_accept",
+          "outcome": "passed"
+        },
+        {
+          "name": "outsider_cannot_accept",
+          "outcome": "passed"
+        },
+        {
+          "name": "recipient_accepts_and_gets_canonical_tab",
+          "outcome": "passed"
+        },
+        {
+          "name": "canonical_tab_has_exact_pair",
+          "outcome": "passed"
+        },
+        {
+          "name": "accepted_friend_profile_visible",
+          "outcome": "passed"
+        },
+        {
+          "name": "outsider_profile_remains_hidden",
+          "outcome": "passed"
+        },
+        {
+          "name": "existing_financial_history_unchanged",
+          "outcome": "passed"
+        }
+      ],
+      "real_account_operations": false,
+      "financial_writes": false,
+      "attempt_id": "20261114T054937Z-eac215",
+      "request_reply_summary": [
+        {
+          "http_status": 200,
+          "shape": "list",
+          "sqlstate": null
+        },
+        {
+          "http_status": 400,
+          "shape": "dict",
+          "sqlstate": "P0001"
+        }
+      ],
+      "tagged_fixture_accounts": 3,
+      "fixture_access_retired": true,
+      "checked_at": "2026-11-14T05:49:38.740218+00:00"
+    },
+    "original_supabase_changed": false,
+    "default_endpoint_changed": false,
+    "existing_financial_row_bodies_shared": false,
+    "prior_harness_failures": "Wrong environment path/origin failed bootstrap before accounts; then opposing-request test expectation corrected to accepted one200 and one400/P0001. SQL unchanged. Three fixtures from that attempt and three final fixtures retired."
+  },
+  "firebase": {
+    "cli_version": "15.36.0",
+    "login": "passed interactive localhost callback",
+    "gemini": false,
+    "telemetry": false,
+    "project_create": "denied: allotted Google Cloud project quota exceeded",
+    "project_id_attempted": "tabby-android-7abf436e",
+    "project_created": false,
+    "billing_linked": false,
+    "android_apps_registered": false,
+    "credentials_deployed": false,
+    "fcm_delivery": "unverified",
+    "next_action": "User designates an unused existing project ID or increases quota. Verify no billing before adding Firebase."
+  },
+  "logs": [
+    {
+      "path": ".dart_tool/readiness/qa018-node-final.log",
+      "sha256": "b5e5643ae0bf5eb9e19232af29fed5bdae7181db7a95a25b44d91fc543b7f9f6"
+    },
+    {
+      "path": ".dart_tool/readiness/qa018-analysis-final.log",
+      "sha256": "58acad698bb19a711c0beb553dd3b7489726bbb77c09f9f935025903a8d0aa56"
+    },
+    {
+      "path": ".dart_tool/readiness/qa016-closed-final.log",
+      "sha256": "440c382808e41a98200269831a09e523433acb4cda48a6d0870124ce80f61aae"
+    },
+    {
+      "path": ".dart_tool/readiness/qa015-signed-build-final.log",
+      "sha256": "02bb1671be24849581b0af2d2068fdfb5cc8f8d44016a6a0678be328fd1fa5be"
+    },
+    {
+      "path": ".dart_tool/readiness/qa015-upgrade-install-final.log",
+      "sha256": "21c5e9cc7b16c3720e51f1ddaf379203b29d7f13bca4295436ad538227a432b3"
+    },
+    {
+      "path": ".dart_tool/readiness/qa017-python-tests.log",
+      "sha256": "00bacac45ce46f3b4358c46584e74a74278bbb9a5c0fdc8e02a40b02b6db3a5e"
+    },
+    {
+      "path": ".dart_tool/readiness/qa017-commit-result.json",
+      "sha256": "4a1a767b9d0aac9d7bebc17388b7d427402d3ec86758c7f252f0fc3b9c006f80"
+    },
+    {
+      "path": ".dart_tool/readiness/qa017-live-result-final3.json",
+      "sha256": "447492ccc784182747437a3e28f2ce0661210144630641234253c79276788174"
+    },
+    {
+      "path": ".dart_tool/readiness/qa017-backup-recovery-proof.json",
+      "sha256": "87300e7c32584ffe3a5a8038e66c70019e3f97aaaa2331c29e4d8d0dedc45382"
+    }
+  ],
+  "limits": [
+    "No production/public release approval. Candidate is dirty-base private staging with incomplete provider configuration.",
+    "New signing identity cannot update legacy debug-signed installs. Same-key Auth/onboarding upgrade does not establish signed financial queued-data migration.",
+    "Actual16KB runtime is x86_64; ARM64 checked statically, not run on16KB ARM64 hardware.",
+    "Firebase project quota prevents configuration; local alarms are not FCM. Google/SMTP/Storage/remaining M1 device/provider acceptance and full cutover/recovery restore remain open.",
+    "Independent integration review unverified; tasks remain implemented/in_progress, not complete. iOS runtime deferred by user.",
+    "Log digests reference ignored private local evidence; raw credentials, receipts, financial rows, APKs, keys, backup and screenshots excluded."
+  ]
+}

@@ -1,0 +1,82 @@
+name: Build iOS IPA
+
+on:
+  workflow_call:
+    inputs:
+      build_number:
+        type: number
+        default: 23
+    secrets:
+      TABBY_IOS_BUILD_CONFIG:
+        required: true
+  workflow_dispatch:
+    inputs:
+      build_number:
+        description: Unsigned iOS build number
+        type: number
+        default: 23
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Verify and build unsigned sideload IPA
+    runs-on: macos-15
+    timeout-minutes: 40
+    env:
+      TABBY_BUILD_NUMBER: ${{ inputs.build_number || 23 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.8'
+          channel: stable
+          cache: true
+      - name: Verify source and configure CocoaPods
+        run: |
+          python3 scripts/ios-prepare.py --verify-source
+          flutter config --no-enable-swift-package-manager
+          flutter doctor -v
+          xcodebuild -version
+      - name: Get locked packages
+        run: flutter pub get --enforce-lockfile
+      - name: Prepare client configuration and native OAuth
+        env:
+          TABBY_IOS_BUILD_CONFIG: ${{ secrets.TABBY_IOS_BUILD_CONFIG }}
+        run: python3 scripts/ios-prepare.py --client-output "$RUNNER_TEMP/tabby-ios-client.json"
+      - name: Check shared source and platform regressions
+        run: |
+          python3 scripts/ios-build-tests.py
+          flutter analyze --fatal-infos lib test integration_test
+          flutter test --no-pub test/features/receiving_qr_export_test.dart test/ios_notification_configuration_test.dart test/platform_configuration_test.dart test/ios_sideload_configuration_test.dart
+      - name: Install native dependencies
+        working-directory: ios
+        run: pod install --repo-update
+      - name: Boot owned iOS simulator
+        run: python3 scripts/ios-simulator.py
+      - name: Check actual iOS channels, Keychain, encryption and images
+        run: flutter test --no-pub integration_test/ios_native_smoke_test.dart -d "$IOS_SIMULATOR_UDID" --reporter expanded
+      - name: Stop owned simulator
+        if: always() && env.IOS_SIMULATOR_UDID != ''
+        run: xcrun simctl shutdown "$IOS_SIMULATOR_UDID"
+      - name: Build unsigned archive
+        run: |
+          flutter build ipa --no-codesign --release \
+            --build-number="$TABBY_BUILD_NUMBER" \
+            --dart-define-from-file="$RUNNER_TEMP/tabby-ios-client.json"
+      - name: Inspect and package IPA
+        run: |
+          python3 scripts/ios-package.py \
+            --archive build/ios/archive/Runner.xcarchive \
+            --output "output/Tabby-1.0.4+$TABBY_BUILD_NUMBER-unsigned.ipa" \
+            --build-number "$TABBY_BUILD_NUMBER" \
+            --client-config "$RUNNER_TEMP/tabby-ios-client.json"
+      - name: Upload unsigned IPA and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tabby-ios-sideload-${{ github.run_number }}
+          path: output/
+          if-no-files-found: error
+          retention-days: 14

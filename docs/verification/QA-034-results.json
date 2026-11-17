@@ -1,0 +1,59 @@
+{
+  "task": "QA-034",
+  "timestamp": "2026-11-17T19:40:03.241Z",
+  "candidate_scope": "Exact accepted Android22 shared source/assets plus iOS QR/config/build overlay; no Android source behavior changed",
+  "android_baseline": {
+    "version": "1.0.4+22",
+    "apk_sha256": "2c007275b283361fc647b1c48e8c72dafd2b2b57db1a90a5c921bcc27495502a",
+    "accepted_app_files": 218
+  },
+  "host_tests": {
+    "full_passed": 906,
+    "failed": 0,
+    "platform_focused_passed": 17,
+    "python_packaging_config_tests": 7,
+    "analysis": "No issues found!",
+    "initial_ios_guard_red": "Expected supported=true, actual=false before iOS implementation",
+    "initial_analysis": "Six const-constructor lint infos in new iOS smoke corrected; final clean",
+    "initial_packaging_fixture": "Windows chmod does not preserve Unix executable flags; packaging now explicitly marks Runner executable and7 checks pass"
+  },
+  "publication": {
+    "repository": "Zalweb/Tabby",
+    "visibility": "public",
+    "branch": "codex/ios-sideload-20261118",
+    "commit": "f59dcd9208f89e7771fe3302adc48bd98ff12ef1",
+    "files": 428,
+    "source_hashes_verified": 426,
+    "pushed": false,
+    "reviewed_client_only_configuration": true,
+    "secret_name": "TABBY_IOS_BUILD_CONFIG",
+    "main_or_tag_change": false
+  },
+  "ios_native_simulator": "not run; awaiting authorized macOS CI",
+  "ipa": "not built",
+  "feature_parity": "Shared core source and backend configuration aligned; native exceptions explicitly documented",
+  "remaining_platform_gaps": [
+    "iOS remote APNs/FCM background reminders not implemented",
+    "iOS damaged-storage archival/reset not implemented"
+  ],
+  "unverified": [
+    "macOS archive/IPA",
+    "actual iOS simulator checks",
+    "physical iPhone sign-in/Files/share/wallet/notifications/biometrics",
+    "independent integration review"
+  ],
+  "full_run": {
+    "mode": "full",
+    "started_at": "2026-11-17T19:36:12.726Z",
+    "finished_at": "2026-11-17T19:39:17.103Z",
+    "exit": 0,
+    "candidate": "Exact accepted Android22 shared source/assets plus iOS QR/config/build overlay; no Android source behavior changed"
+  },
+  "analysis_run": {
+    "mode": "analysis",
+    "started_at": "2026-11-17T19:39:16.000Z",
+    "finished_at": "2026-11-17T19:39:23.642Z",
+    "exit": 0,
+    "candidate": "Exact accepted Android22 shared source/assets plus iOS QR/config/build overlay; no Android source behavior changed"
+  }
+}

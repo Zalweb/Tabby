@@ -1,0 +1,265 @@
+{
+  "task": "QA-030",
+  "timestamp": "2026-11-17T13:38:38.754Z",
+  "base_commit": "e3ff9042b48fb2b77e9ea1ca0e9581658344ee78",
+  "tested_commit": "b4f5671486e37eab468567bedb90d1f428b54302",
+  "dirty_tree": true,
+  "regression": {
+    "full_passed": 837,
+    "failed": 0,
+    "presentation_cases_passed": 11,
+    "existing_feedback_cases_passed": 7,
+    "broader_flow_cases_passed": 24,
+    "full_analysis": "No issues found!",
+    "runner_guards_passed": 10
+  },
+  "native": {
+    "started_at": "2026-11-17T13:30:45.914Z",
+    "suite": "entry",
+    "package": "com.zalweb.tabby.entrytest",
+    "required_cases": 5,
+    "outcome": "passed",
+    "final_source": true,
+    "synthetic_fixture": true,
+    "device": {
+      "model": "TB321FU",
+      "api": "36",
+      "page_size": "4096"
+    },
+    "assertions": [
+      "Full-screen Add viewport with no BottomSheet and visible Back",
+      "Blank Add validation visible in active full-screen host",
+      "Appearance actual surface covers tablet width in light/dark",
+      "Existing Google/intro/profile retry and warm page cases retained"
+    ]
+  },
+  "build": {
+    "started_at": "2026-11-17T13:34:05.441Z",
+    "finished_at": "2026-11-17T13:35:16.656Z",
+    "commit": "b4f5671486e37eab468567bedb90d1f428b54302",
+    "dirty_tree": true,
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64,android-x64",
+    "build_number": 18,
+    "public_config_fields": [
+      "FIREBASE_API_KEY",
+      "FIREBASE_APP_ID",
+      "FIREBASE_PROJECT_ID",
+      "FIREBASE_SENDER_ID",
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL"
+    ],
+    "changed_during_build": [],
+    "outcome": "passed"
+  },
+  "artifact": {
+    "schema": 1,
+    "commit": "b4f5671486e37eab468567bedb90d1f428b54302",
+    "apk_sha256": "e23b67b28ffe09e5ad84cf2fce1868dddaf5b43692191d93c27723fcffcd26b1",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 18,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "tablet_install": {
+    "timestamp": "2026-11-17T13:35:24.637Z",
+    "device": "Lenovo TB321FU / API36 / ARM64",
+    "transport": "authorized USB",
+    "hardware_identity_checked": true,
+    "primary_user_checked": true,
+    "before_version": 17,
+    "installed_version": 18,
+    "package": "com.zalweb.tabby",
+    "install_mode": "adb install -r; no uninstall or data clear",
+    "first_install_time_preserved": true,
+    "certificate_matches_previous": true,
+    "apk_sha256": "e23b67b28ffe09e5ad84cf2fce1868dddaf5b43692191d93c27723fcffcd26b1",
+    "installed_apk_sha256": "e23b67b28ffe09e5ad84cf2fce1868dddaf5b43692191d93c27723fcffcd26b1",
+    "exact_installed_bytes_match": true,
+    "activity_launch": "Status: ok",
+    "application_running": true
+  },
+  "exact_16kb_runtime": {
+    "install": {
+      "at": "2026-11-17T13:37:02.239Z",
+      "action": "install",
+      "environment": "owned API36 x86_64 native 16KB emulator",
+      "page_size": 16384,
+      "physical_tablet_touched": false,
+      "before_version": 17,
+      "installed_version": 18,
+      "apk_sha256": "e23b67b28ffe09e5ad84cf2fce1868dddaf5b43692191d93c27723fcffcd26b1",
+      "native_runtime_abi": "x86_64",
+      "exact_installed_bytes_match": true,
+      "first_install_time_preserved": true,
+      "activity_launch": "Status: ok",
+      "data_clear_or_fixture_seed": false
+    },
+    "observation": {
+      "at": "2026-11-17T13:37:21.993Z",
+      "action": "observe",
+      "environment": "owned API36 x86_64 native 16KB emulator",
+      "page_size": 16384,
+      "physical_tablet_touched": false,
+      "installed_version": 18,
+      "application_process_running": true,
+      "application_resumed": true,
+      "native_runtime_abi": "x86_64",
+      "native_loader_error": false,
+      "fatal_runtime_error": false,
+      "raw_logs_saved": false,
+      "actual_screen_result": "Signed-out Google welcome visually inspected on exact universal18, native x86_64 / 16KB"
+    },
+    "scope": "Startup/welcome on exact signed native x86_64 APK; physical UI cases are separate synthetic ARM64 entry fixture; not full emulator signed-in journey"
+  },
+  "source_verification": {
+    "candidate_files": 203,
+    "ui_files": 16,
+    "all_current_hashes_match": true,
+    "source_manifest_sha256": "7d1c7191885d531183fc378052107ae716d0ff491c8834925da8f324de2d18d5"
+  },
+  "previews": {
+    "count": 6,
+    "synthetic": true,
+    "states": [
+      "Add phone validation light/dark",
+      "Edit Profile phone light/dark",
+      "Full-width Appearance tablet light/dark"
+    ],
+    "font_substitution": "Arial fixture only",
+    "owner_financial_screenshot": false
+  },
+  "skill": {
+    "updated": "tabby-design",
+    "repo_and_user_copy_validated": true,
+    "additional_package_installed": false
+  },
+  "initial_failures": [
+    {
+      "phase": "geometry red",
+      "result": "Add was BottomSheet/partial-height before migration; full route now covers viewport"
+    },
+    {
+      "phase": "first focused e2e",
+      "result": "Tests assumed Close, BottomSheet fields and covered duplicate titles; adapted visible interactions without dropping save/ledger assertions"
+    },
+    {
+      "phase": "resize",
+      "result": "Captured opening width left gutters after resize; dynamic route width now passes"
+    },
+    {
+      "phase": "pinned header",
+      "result": "200% notification/keyboard case overflowed73px; optional count no longer steals header width at large text"
+    },
+    {
+      "phase": "first full828/835",
+      "result": "Five legacy modal/background assumptions and two physical/logical keyboard assertions failed; final837 pass after actual prefill and test repairs"
+    },
+    {
+      "phase": "existing contact red",
+      "result": "Old test saw covered background contact name; actual form had wrong selection. Fixed tab-only seed and verified same original tab/contact on10000-centavo append; removal/replacement uses new ID"
+    },
+    {
+      "phase": "memory",
+      "result": "Task headings initially incomplete; corrected template and passed refresh/plain"
+    },
+    {
+      "phase": "runtime helper",
+      "result": "Emulator had been stopped; restarted owned AVD without wipe. Copied baseline guard initially required18 instead of17 and rejected before install; corrected exact17 baseline, then18 install/observe/visual passed"
+    }
+  ],
+  "memory": {
+    "refresh": "passed",
+    "plain": "passed",
+    "base_coverage": "failed",
+    "preexisting_uncovered": 24,
+    "groups": [
+      "using-superpowers8",
+      "supplied reference images15",
+      "skills-lock1"
+    ],
+    "qa030_uncovered": 0
+  },
+  "limits": [
+    "Independent integration review remains open; implemented status only",
+    "iOS runtime and actual screen-reader acceptance unverified",
+    "No live backend/payment/notification acceptance inferred from UI fixtures",
+    "Private same-key dirty-tree update, no public release"
+  ]
+}

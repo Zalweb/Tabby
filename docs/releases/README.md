@@ -1,0 +1,13 @@
+# Android candidate publication contract
+
+Build workflows produce private candidate artifacts; they never publish releases. The manual publication workflow runs only from main and checks the exact build run, commit, APK signature, digest, package/version, ZIP alignment and native ELF alignment again. It uses the configured `ANDROID_RELEASE_CERT_SHA256` repository variable, not a caller-selected certificate. Missing signing configuration fails release builds. Debug builds remain available for development.
+
+Before publication, add `docs/releases/<candidate-commit>.json` on a documentation-only descendant of the candidate commit. All M1 tasks, QA-001 and REL-001 must be complete. Required actual verification and existing session release authorization must already exist. Do not create a passing candidate file from mocks, a debug APK or this template.
+
+The JSON contains `commit`, `apk_sha256`, `certificate_sha256`, `application_id`, `version_name`, `version_code`, `release_tag` (`v<version_name>+<version_code>`) and `checks`. Each check has `category` and a repository-relative `evidence` path under `docs/verification/`. Required categories are regression, analysis, integration, backend-integration, android-device, upgrade, oauth, 16kb-device, release-artifact and release-authorization.
+
+Each referenced verification metadata block must record the exact `tested_commit`, `dirty_tree: false`, `apk_sha256`, `certificate_sha256`, actual environment and a passed result for its category. Physical device upgrade/data preservation, OAuth, a 16 KB runtime, applied migration inventory and live backend authorization remain required in addition to ZIP/ELF source checks. Review evidence before marking tasks complete. Existing [verification instructions](../verification/README.md) still apply.
+
+Configure signing secrets and `ANDROID_RELEASE_CERT_SHA256` (64 hexadecimal characters without colons) without storing keys/passwords in Git. Configure the `android-release` GitHub environment with required reviewers and protected main. These server settings and the real certificate/upgrade are unverified until recorded. Then dispatch Publish Release APK with the successful mobile build run ID and exact candidate SHA. Publication rechecks all gates; no automatic main/tag publication remains. This document does not authorize a public release.
+
+The artifact verifier follows [Android APK signing](https://developer.android.com/tools/apksigner), [ZIP alignment](https://developer.android.com/tools/zipalign) and [16 KB ELF guidance](https://developer.android.com/guide/practices/page-sizes). It does not replace device runtime testing.

@@ -1,0 +1,252 @@
+{
+  "task": "QA-023",
+  "timestamp": "2026-11-17T03:31:32.954Z",
+  "tested_commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+  "dirty_tree": true,
+  "configuration": "Same public-only Azure migration acceptance client configuration as previous tablet app; no test login or fixture flags",
+  "artifact": {
+    "schema": 1,
+    "commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+    "apk_sha256": "8e6d959f734029a1627681b5075cbe74670c53875f172754245c2060e2a9401f",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 11,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "previous_artifact": {
+    "schema": 1,
+    "commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+    "apk_sha256": "9b5ccd7554c90c9248ef65dcc2e50e16722e075609746be9a2e285c31f540751",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 10,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "build": {
+    "started_at": "2026-11-17T03:16:49.092Z",
+    "finished_at": "2026-11-17T03:17:45.792Z",
+    "commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+    "dirty_tree": true,
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "build_number": 11,
+    "public_config_fields": [
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL"
+    ],
+    "changed_during_build": [],
+    "outcome": "passed"
+  },
+  "first_failed_build": {
+    "started_at": "2026-11-17T03:14:27.496Z",
+    "finished_at": "2026-11-17T03:15:58.543Z",
+    "commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+    "dirty_tree": true,
+    "actual_flutter_exit_code": 1,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "build_number": 11,
+    "public_config_fields": [
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL"
+    ],
+    "changed_during_build": [],
+    "outcome": "failed"
+  },
+  "installation": {
+    "timestamp": "2026-11-17T03:21:21.793Z",
+    "device": "Lenovo TB321FU / API36 / ARM64",
+    "transport": "authorized USB",
+    "hardware_identity_checked": true,
+    "primary_user_checked": true,
+    "before_version": 10,
+    "installed_version": 11,
+    "package": "com.zalweb.tabby",
+    "install_mode": "adb install -r; no uninstall or data clear",
+    "first_install_time_preserved": true,
+    "certificate_matches_previous": true,
+    "apk_sha256": "8e6d959f734029a1627681b5075cbe74670c53875f172754245c2060e2a9401f",
+    "installed_apk_sha256": "8e6d959f734029a1627681b5075cbe74670c53875f172754245c2060e2a9401f",
+    "exact_installed_bytes_match": true,
+    "activity_launch": "Status: ok",
+    "application_running": true
+  },
+  "checks": {
+    "focused_tests": {
+      "passed": 37,
+      "failed": 0
+    },
+    "full_flutter_tests": {
+      "passed": 749,
+      "failed": 0
+    },
+    "dart_analysis": "No issues found across lib/test/integration_test",
+    "source_unchanged_during_build": true,
+    "source_unchanged_at_handoff": true,
+    "native_visual": "Observed full-body mascot on empty sign-in screen; screenshot 03 partially closed eyes and 05 open eyes from 28 read-only captures",
+    "independent_integration_review": "unverified",
+    "ios_runtime": "unverified",
+    "exact_candidate_16kb_runtime": "unverified",
+    "documentation_plain": "passed",
+    "documentation_base_coverage": "failed: unrelated concurrent .agents/skills/using-superpowers files and skills-lock.json lack an updated owning task"
+  },
+  "artwork": {
+    "assets/branding/tabby-blink-sheet.png": "c7c42bc9de643e1a5f4c1db36c32cdb64b233e1dd2d14f413d4c56280bcca3ea",
+    "assets/branding/tabby-launcher-foreground-v2.png": "20464869f905b2e842829aeea5ea201044f3c3229ffe8582cd4d8c10ba024025",
+    "assets/branding/tabby-launcher-v2.png": "2057ae9c5379037df8caee2d11f4aa478211972d200f71319c0f52831ae28e19"
+  },
+  "limits": [
+    "Dirty-tree private tablet update includes separately owned QA-022 source changes; no live Google/provider acceptance inferred",
+    "Existing Java native-access, package_info_plus future-KGP and Cupertino font warnings",
+    "No public release, backend changes, login, seeded financial records, uninstall or data clear"
+  ]
+}

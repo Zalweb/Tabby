@@ -1,0 +1,125 @@
+{
+  "task": "QA-024",
+  "timestamp": "2026-11-17T06:49:04.179Z",
+  "tested_commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+  "dirty_tree": true,
+  "build": {
+    "started_at": "2026-11-17T06:45:02.771Z",
+    "finished_at": "2026-11-17T06:47:33.515Z",
+    "commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+    "dirty_tree": true,
+    "actual_flutter_exit_code": 0,
+    "mode": "release",
+    "target": "lib/main.dart",
+    "target_platform": "android-arm64",
+    "build_number": 12,
+    "public_config_fields": [
+      "SUPABASE_ANON_KEY",
+      "SUPABASE_URL"
+    ],
+    "changed_during_build": [],
+    "outcome": "passed"
+  },
+  "artifact": {
+    "schema": 1,
+    "commit": "1c1d8373829ddd46eed1dd281a90441d129c1faf",
+    "apk_sha256": "3747e7d8e81599f95d5a7bc567decccd5804cb1e53cbc2716f50e830f0d62206",
+    "certificate_sha256": "4867d92f6e3d814223134049eeb7b610751131c878844eeb39037ec74885e85a",
+    "application_id": "com.zalweb.tabby",
+    "version_code": 12,
+    "version_name": "1.0.4",
+    "debuggable": false,
+    "zip_16kb_aligned": true,
+    "native_libraries": [
+      {
+        "name": "lib/arm64-v8a/libapp.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 0,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libdatastore_shared_counter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libflutter.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/arm64-v8a/libsqlite3mc.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdartjni.so",
+        "load_segments": 3,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      },
+      {
+        "name": "lib/x86_64/libdatastore_shared_counter.so",
+        "load_segments": 2,
+        "minimum_alignment": 16384,
+        "relro_segments": 1,
+        "relro_16kb_compatible": true
+      }
+    ]
+  },
+  "installation": {
+    "timestamp": "2026-11-17T06:47:40.772Z",
+    "device": "Lenovo TB321FU / API36 / ARM64",
+    "transport": "authorized USB",
+    "hardware_identity_checked": true,
+    "primary_user_checked": true,
+    "before_version": 11,
+    "installed_version": 12,
+    "package": "com.zalweb.tabby",
+    "install_mode": "adb install -r; no uninstall or data clear",
+    "first_install_time_preserved": true,
+    "certificate_matches_previous": true,
+    "apk_sha256": "3747e7d8e81599f95d5a7bc567decccd5804cb1e53cbc2716f50e830f0d62206",
+    "installed_apk_sha256": "3747e7d8e81599f95d5a7bc567decccd5804cb1e53cbc2716f50e830f0d62206",
+    "exact_installed_bytes_match": true,
+    "activity_launch": "Status: ok",
+    "application_running": true
+  },
+  "checks": {
+    "focused_tests_passed": 54,
+    "full_tests_passed": 759,
+    "isolated_pin_tests_passed": 6,
+    "full_suite_options": "--no-pub --concurrency=2 --timeout=2m",
+    "first_full_run": "754 passed; one existing production PBKDF2 test hit its 30-second timeout under parallel load; isolated 6/6 then full rerun",
+    "dart_analysis": "No issues found",
+    "qa022_auth_callback_additions_preserved": true,
+    "source_hashes_match_at_handoff": true,
+    "responsive": "Phone stack and tablet side-by-side; 200% text on 320x568, 568x320 and 1280x800; dark/keyboard/form validation",
+    "visual": "Production-widget phone/tablet render inspected; Arial substitute for Inter, Material Icons loaded",
+    "native_login_visual": "Unverified while owner stays signed in; no forced logout or private Home capture",
+    "independent_review": "unverified",
+    "ios_runtime": "unverified",
+    "exact_candidate_16kb_runtime": "unverified"
+  },
+  "configuration": "Same public-only client configuration as preceding tablet install; no fixture/login secrets",
+  "limitations": [
+    "Current dirty tree includes separate QA-022 provider/auth work and earlier QA-023 branding; no live authentication acceptance inferred",
+    "Global base coverage still flags unrelated concurrent skill installation lacking task coverage",
+    "Existing Cupertino-font, Java native-access and future package_info_plus KGP warnings"
+  ]
+}

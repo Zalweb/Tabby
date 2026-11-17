@@ -1,0 +1,10 @@
+{
+  "android_notification_delivery_test.dart": [
+    "native immediate alert is active and account switch removes it",
+    "native preferences suppress disabled alerts and remove active ones",
+    "native scheduled reminder becomes active and cancellation removes it"
+  ],
+  "android_notification_denied_test.dart": [
+    "native denied permission suppresses immediate and scheduled alerts"
+  ]
+}
