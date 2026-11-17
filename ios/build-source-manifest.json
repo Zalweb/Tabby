@@ -38,7 +38,7 @@
     "docs/verification/QA-034-results.json": "7b4398af29c8c006105564efee060799576ebed279cd5880f007908a294f4fe0",
     "docs/verification/QA-034-source-manifest.json": "15b42980100af5f4f1c96f91ed742d7e7c9090e35a4c534a001ba56e2d1848f8",
     "docs/verification/VER-QA-034-IOS-PARITY.md": "e25f480eb72554770883394785ddc9a8efd508dbb1fb317a00da82b34bbb163d",
-    "integration_test/ios_native_smoke_test.dart": "1be422278e6b3487f26e9e4902774ca3accfee5cd5046720e1eaa1ffcac873b9",
+    "integration_test/ios_native_smoke_test.dart": "05a36a99781aaaccf18c1b91c32d9aabee057fcf8e35a51dbab69016bc043d53",
     "ios/Podfile": "b3dc749d8bfb9f6708bbaaacb8f6e5076e7651040d05f37b5ba76b6fdcce9f3c",
     "ios/client-config-hashes.json": "74a2be5153226f90dd37f9b277988a829e9a4ea42badd80d963ac48ec4759e43",
     "scripts/ios-build-tests.py": "a567a1b318f9d8d7f2ac0937b37fc1bfaababde8b75641f40aa47d4def5e6892",
@@ -959,5 +959,5 @@
     "web/manifest.json": "1d3912fae3772c97cbc9d8d0b6d6d90911a990d355e861ed391b22454bc5f725",
     ".gitattributes": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
   },
-  "updated_at": "2026-11-17T19:57:35.389Z"
+  "updated_at": "2026-11-17T20:14:53.040Z"
 }

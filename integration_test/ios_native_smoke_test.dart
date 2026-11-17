@@ -45,7 +45,8 @@ void main() {
       final directory = await Directory.systemTemp.createTemp('tabby-ios-ci-');
       final first = NativeLedgerCacheStorage(directory: () async => directory);
       final key = 'ios-ci-${DateTime.now().microsecondsSinceEpoch}';
-      const value = 'synthetic-ios-encrypted-storage-only';
+    // The ledger cache stores versioned JSON documents, not arbitrary text.
+    const value = '{"marker":"synthetic-ios-encrypted-storage-only"}';
       try {
         await first.write(key: key, value: value);
         expect(await first.read(key: key), value);
