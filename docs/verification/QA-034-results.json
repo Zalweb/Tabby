@@ -1,6 +1,6 @@
 {
   "task": "QA-034",
-  "timestamp": "2026-11-17T21:47:29Z",
+  "timestamp": "2026-11-17T22:50:00Z",
   "candidate_scope": "Exact accepted Android22 shared source/assets plus iOS QR/config/build overlay; no Android source behavior changed",
   "android_baseline": {
     "version": "1.0.4+22",
@@ -31,12 +31,12 @@
     "main_unchanged": true,
     "reviewed_client_only_configuration": true
   },
-  "ios_native_simulator": "3/3 named cases from run44167297902 reused only after exact input-hash match (231 hashes) at unchanged native app inputs; actual simulator steps skipped by the reuse gate",
+  "ios_native_simulator": "3/3 named cases from run44167297902 reused only after exact input-hash match (231 hashes) at unchanged native app inputs in run44172480877; after the committed lock added native inputs, run44188415197 executed all 3 named cases fresh in an actual simulator and passed",
   "ipa": {
     "built": true,
     "file": "Tabby-1.0.4+23-unsigned.ipa",
-    "sha256": "0c0cea8eae1032eca5f4782a5eddc4cdddb4dafe9043d553eba21d2c0efcb8d6",
-    "bytes": 31633697,
+    "sha256": "cadb1bc6522f681263b50894c073d1b98ccf08704d2ff686d818acaed24196fe",
+    "bytes": 31633694,
     "bundle_id": "com.zalweb.tabby",
     "version": "1.0.4",
     "build_number": "23",
@@ -46,11 +46,18 @@
     "branding_assets_verified": 24,
     "private_material_found": false,
     "physical_iphone_verified": false,
-    "run_id": 44172480877,
-    "source_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
-    "artifact_id": 14370265229,
-    "artifact_name": "Tabby-ios-sideload-20",
-    "artifact_url": "https://github.com/Zalweb/Tabby/actions/runs/44172480877/artifacts/14370265229"
+    "run_id": 44188415197,
+    "source_commit": "70ab9f393f359b1e99a439b5a8c509a1da761871",
+    "artifact_id": 14377496912,
+    "artifact_name": "Tabby-ios-sideload-22",
+    "artifact_url": "https://github.com/Zalweb/Tabby/actions/runs/44188415197/artifacts/14377496912",
+    "previous": {
+      "sha256": "0c0cea8eae1032eca5f4782a5eddc4cdddb4dafe9043d553eba21d2c0efcb8d6",
+      "bytes": 31633697,
+      "run_id": 44172480877,
+      "source_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+      "artifact_id": 14370265229
+    }
   },
   "integration_review": {
     "outcome": "passed",
@@ -73,6 +80,30 @@
       "ipa_sha256_matches_sidecar": true,
       "credential_scan": "no real credential material found"
     }
+  },
+  "podfile_lock": {
+    "committed": true,
+    "commit": "70ab9f393f359b1e99a439b5a8c509a1da761871",
+    "workflow_commit": "0bdccde7d84f4d3b022583a53633bf779d1ea5d9",
+    "generated_by_run": 44184965803,
+    "generated_at_commit": "0bdccde7d84f4d3b022583a53633bf779d1ea5d9",
+    "lock_sha256": "813b9eb09557fa3ac34e696064303b5e1be3c5af06a6d2f52f5854720108c03f",
+    "lock_bytes": 5249,
+    "cocoapods_version": "1.17.0",
+    "pod_entries": 40,
+    "podfile_checksum": "5bfdf9108c6226ec630101f571d0557d7585e921",
+    "podfile_sha1": "5bfdf9108c6226ec630101f571d0557d7585e921",
+    "checksum_matches_podfile": true,
+    "drift_enforcement": "the workflow now copies ios/Podfile.lock into the artifact and fails pod install if it would rewrite a tracked lock",
+    "rebuild_run": 44188415197,
+    "rebuild_result": "pod install --repo-update reproduced the committed lock without drift; the reuse gate correctly required fresh simulator checks because native inputs changed; all 3 named native cases passed; artifact lock byte-identical to the committed lock",
+    "rebuild_ipa": {
+      "sha256": "cadb1bc6522f681263b50894c073d1b98ccf08704d2ff686d818acaed24196fe",
+      "bytes": 31633694,
+      "artifact_id": 14377496912,
+      "artifact_name": "Tabby-ios-sideload-22"
+    },
+    "resolution": "Supersedes integration-review residual risk 1 (no ios/Podfile.lock): pod versions are now pinned by a CocoaPods lockfile generated on the macOS runner, committed byte-for-byte and reproduced on rebuild."
   },
   "feature_parity": "Shared core source and backend configuration aligned; native exceptions explicitly documented",
   "remaining_platform_gaps": [
@@ -100,21 +131,45 @@
   "ci": {
     "latest": {
       "conclusion": "success",
-      "createdAt": "2026-11-17T20:44:32Z",
-      "databaseId": 44172480877,
+      "createdAt": "2026-11-17T22:16:30Z",
+      "databaseId": 44188415197,
       "headBranch": "codex/ios-sideload-20261118",
-      "headSha": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+      "headSha": "70ab9f393f359b1e99a439b5a8c509a1da761871",
       "status": "completed",
-      "url": "https://github.com/Zalweb/Tabby/actions/runs/44172480877",
-      "source_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+      "url": "https://github.com/Zalweb/Tabby/actions/runs/44188415197",
+      "source_commit": "70ab9f393f359b1e99a439b5a8c509a1da761871",
       "publication_branch": "codex/ios-sideload-20261118",
-      "duration": "12m59s",
+      "duration": "26m42s",
       "required_steps": {
+        "install native dependencies": "success; committed lock reproduced without drift",
+        "record resolved cocoaPods lock": "success",
+        "reuse matching native smoke evidence": "success; gate requested fresh simulator run",
+        "check actual ios channels keychain encryption and images": "success; 3/3 named cases fresh",
         "build unsigned archive": "success",
-        "inspect and package IPA": "success",
-        "upload unsigned IPA and evidence": "success",
-        "reuse matching native smoke evidence": "success"
+        "inspect and package ipa": "success",
+        "upload unsigned ipa and evidence": "success"
       }
+    },
+    "prior_success": {
+      "conclusion": "success",
+      "databaseId": 44172480877,
+      "headSha": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+      "duration": "12m59s",
+      "url": "https://github.com/Zalweb/Tabby/actions/runs/44172480877"
+    },
+    "lock_generation": {
+      "conclusion": "success",
+      "createdAt": "2026-11-17T21:56:15Z",
+      "databaseId": 44184965803,
+      "headSha": "0bdccde7d84f4d3b022583a53633bf779d1ea5d9",
+      "duration": "18m14s",
+      "url": "https://github.com/Zalweb/Tabby/actions/runs/44184965803",
+      "artifact": {
+        "id": 14375836506,
+        "name": "Tabby-ios-sideload-21",
+        "ipa_sha256": "b51b4d003d4531238c47dcc3702e03bf5cf20ceecc5980b3b3e986fb3c60f66d"
+      },
+      "native_evidence": "reused exact native app inputs"
     },
     "native_evidence": {
       "mode": "reused exact native app inputs",
@@ -123,6 +178,14 @@
       "cases": 3,
       "matching_input_hashes": 231,
       "outcome": "passed"
+    },
+    "native_evidence_fresh": {
+      "mode": "fresh actual simulator run",
+      "run_id": 44188415197,
+      "source_commit": "70ab9f393f359b1e99a439b5a8c509a1da761871",
+      "cases": 3,
+      "outcome": "passed",
+      "flutter_framework_revision": "737ba8f885dc774b53b442759999a312c9461e4e"
     },
     "failed_runs": [
       {

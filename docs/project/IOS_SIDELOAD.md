@@ -21,6 +21,8 @@ The pinned Flutter3.47.8 engine requires iOS15 or later. Podfile and Xcode deplo
 
 The Mac workflow verifies a frozen source manifest and public client configuration hashes, runs host and actual iOS simulator checks, then builds a release archive without codesigning. `scripts/ios-package.py` checks bundle/version/arm64/callback schemes, artwork hashes and absence of private signing material, and preserves executable flags in `Payload/Runner.app`. The generated IPA is **unsigned** and must be signed by AltStore/Sideloadly using the user's own Apple account. No Apple password/certificate is requested by this repository workflow. This does not publish to TestFlight/App Store.
 
+The resolved CocoaPods lockfile `ios/Podfile.lock` is committed, and the workflow fails `pod install` if it would rewrite that lock once it is tracked. Pod versions therefore stay pinned to the reviewed build instead of being re-resolved silently; update the lock deliberately when the plugin set changes.
+
 Keep the same signer/bundle ID when upgrading so iOS can retain sandbox and Keychain access. A sideloader may change the bundle ID; native Google client registration can then differ. The existing browser OAuth fallback and callback scheme remain. Actual Google/wallet/notification/Face ID journeys should be tested on the target iPhone after signing.
 
 `TABBY_IOS_BUILD_CONFIG` holds exactly four public client identifiers (Supabase URL/anon-or-publishable key, iOS Google client, Web Google client). It must match the reviewed Android/backend hashes and is written only to the runner's temporary directory, never an artifact or `.env` asset. Server/service-role credentials are rejected. No paid Apple signing or new backend deployment is implied.
