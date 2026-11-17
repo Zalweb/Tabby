@@ -33,11 +33,11 @@
     "assets/reference/introduction reference idea/bf033565-15ee-4bf0-b0f3-7eeeb2774417.jpg": "c05799ad0e61092bb205efaa15c865078840dd36cb8dcb06c2d167a7622fcacb",
     "assets/reference/introduction reference idea/db4534d5-b0b4-4d29-becc-8d5c6774f912.jpg": "1614d1c4d267a33df4808f1b6fa873cefe17219ac968434f9e7e054dd58883c1",
     "docs/plans/ios-sideload-and-parity.md": "f5340c2814b0c10601effbe892957f6319908cb2e2f66e4a2cda9a8caa3f483e",
-    "docs/progress/tasks/QA-034.md": "466643df9a430157187199ffe36c380159c534534b55b431fdfdeaa2c8f14a25",
+    "docs/progress/tasks/QA-034.md": "a43dfef170fe878dbb138f80658d84b8821375b7f974621dc9a2f5ca42006c1e",
     "docs/project/IOS_SIDELOAD.md": "ebc2b1fff917b0d8a30509fc9c5fddf490a36be720042ef4c9e2fb9b2eb80b1a",
-    "docs/verification/QA-034-results.json": "3f89fead849e2b8de0bd1366d824a7159426adeb30a004b98f85d4473c6dafb0",
+    "docs/verification/QA-034-results.json": "b602658a6fa525bd5637c803b8074bdfbb2c24bbcd354c492ea4d763e15d0f4b",
     "docs/verification/QA-034-source-manifest.json": "15b42980100af5f4f1c96f91ed742d7e7c9090e35a4c534a001ba56e2d1848f8",
-    "docs/verification/VER-QA-034-IOS-PARITY.md": "b252103b7ab149e5bbacdf15b479cb34f5a1fd5cf6f1603c619ca320cac7282d",
+    "docs/verification/VER-QA-034-IOS-PARITY.md": "9b624116dc54b416232962ba975ad7e25d1b35c60434b52029ad09b6cac1ce7f",
     "integration_test/ios_native_smoke_test.dart": "05a36a99781aaaccf18c1b91c32d9aabee057fcf8e35a51dbab69016bc043d53",
     "ios/Podfile": "b3dc749d8bfb9f6708bbaaacb8f6e5076e7651040d05f37b5ba76b6fdcce9f3c",
     "ios/client-config-hashes.json": "74a2be5153226f90dd37f9b277988a829e9a4ea42badd80d963ac48ec4759e43",
@@ -961,6 +961,6 @@
     "scripts/ios-native-evidence.py": "4a7fe21292363cd02625f87b4ed1991f8d44932e0381c15a610bed2e6f0602ef",
     "ios/native-smoke-evidence.json": "6369886a5b8c09186c04ddd081ba1414606bb2330d6798f7afa64be7cc5f2aa0"
   },
-  "updated_at": "2026-11-17T21:41:08.435Z",
+  "updated_at": "2026-11-17T21:48:24.457Z",
   "artifact_build_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff"
 }

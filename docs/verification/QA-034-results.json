@@ -1,6 +1,6 @@
 {
   "task": "QA-034",
-  "timestamp": "2026-11-17T21:40:20Z",
+  "timestamp": "2026-11-17T21:47:29Z",
   "candidate_scope": "Exact accepted Android22 shared source/assets plus iOS QR/config/build overlay; no Android source behavior changed",
   "android_baseline": {
     "version": "1.0.4+22",
@@ -52,6 +52,28 @@
     "artifact_name": "Tabby-ios-sideload-20",
     "artifact_url": "https://github.com/Zalweb/Tabby/actions/runs/44172480877/artifacts/14370265229"
   },
+  "integration_review": {
+    "outcome": "passed",
+    "reviewer": "Qoder CLI (independent of the authoring session)",
+    "reviewed_at": "2026-11-17T21:47:29Z",
+    "base_commit": "2741f7c3c9d97701226b0f4eb2df329ccd6ec043",
+    "artifact_source_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+    "changed_paths": 59,
+    "blocking_findings": 0,
+    "residual_risks": [
+      "no ios/Podfile.lock; pod install --repo-update resolves pod versions at build time",
+      "native smoke test does not automate Files/share UI completions",
+      "Keychain coverage indirect through the encrypted-cache reopen path",
+      "native-evidence reuse trusts the repo-owned manifest for unchanged inputs (231 hashes)"
+    ],
+    "spot_checks": {
+      "frozen_source_hashes_verified": 951,
+      "ios_fixture_checks_passed": 9,
+      "run_steps_reconfirmed": "44172480877 required steps success; 44167297902 actual simulator step success",
+      "ipa_sha256_matches_sidecar": true,
+      "credential_scan": "no real credential material found"
+    }
+  },
   "feature_parity": "Shared core source and backend configuration aligned; native exceptions explicitly documented",
   "remaining_platform_gaps": [
     "iOS remote APNs/FCM background reminders not implemented",
@@ -59,8 +81,7 @@
   ],
   "unverified": [
     "physical iPhone sign-in/Files/share/wallet/notifications/biometrics",
-    "AltStore/Sideloadly user signing and install",
-    "independent integration review"
+    "AltStore/Sideloadly user signing and install"
   ],
   "full_run": {
     "mode": "full",
