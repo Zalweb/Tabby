@@ -3,6 +3,19 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('iOS deployment target matches the pinned Flutter 3.47 minimum', () {
+    expect(
+      File('ios/Podfile').readAsStringSync(),
+      contains("platform :ios, '15.0'"),
+    );
+    final project = File('ios/Runner.xcodeproj/project.pbxproj')
+        .readAsStringSync();
+    expect(project, isNot(contains('IPHONEOS_DEPLOYMENT_TARGET = 13.0;')));
+    expect(
+      RegExp(r'IPHONEOS_DEPLOYMENT_TARGET = 15\.0;').allMatches(project).length,
+      3,
+    );
+  });
   test(
     'iOS OAuth uses app_links without a competing Flutter route handler',
     () {

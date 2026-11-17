@@ -2,6 +2,8 @@
 
 User selected an unsigned IPA for AltStore/Sideloadly. Use the latest accepted Android shared source, not the older remote main branch. [QA-034](../progress/tasks/QA-034.md) records actual build/testing evidence; source support alone is not an iPhone pass.
 
+The pinned Flutter3.47.8 engine requires iOS15 or later. Podfile and Xcode deployment settings match that minimum; the earlier iOS13 project defaults cannot build this SDK.
+
 | Capability | Android | iOS candidate |
 |---|---|---|
 | Google-only entry, intro, Home, tabs/groups, debt entry, payments/receipts, profile | Accepted shared Flutter source | Same source; native Google/device journey needs iPhone verification |
