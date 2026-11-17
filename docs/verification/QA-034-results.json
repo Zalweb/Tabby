@@ -1,6 +1,6 @@
 {
   "task": "QA-034",
-  "timestamp": "2026-11-17T19:40:03.241Z",
+  "timestamp": "2026-11-17T21:40:20Z",
   "candidate_scope": "Exact accepted Android22 shared source/assets plus iOS QR/config/build overlay; no Android source behavior changed",
   "android_baseline": {
     "version": "1.0.4+22",
@@ -15,31 +15,51 @@
     "analysis": "No issues found!",
     "initial_ios_guard_red": "Expected supported=true, actual=false before iOS implementation",
     "initial_analysis": "Six const-constructor lint infos in new iOS smoke corrected; final clean",
-    "initial_packaging_fixture": "Windows chmod does not preserve Unix executable flags; packaging now explicitly marks Runner executable and7 checks pass"
+    "initial_packaging_fixture": "Windows chmod does not preserve Unix executable flags; packaging now explicitly marks Runner executable and7 checks pass",
+    "deployment_config_regression_passed": 8
   },
   "publication": {
     "repository": "Zalweb/Tabby",
     "visibility": "public",
     "branch": "codex/ios-sideload-20261118",
-    "commit": "f59dcd9208f89e7771fe3302adc48bd98ff12ef1",
-    "files": 428,
-    "source_hashes_verified": 426,
-    "pushed": false,
-    "reviewed_client_only_configuration": true,
-    "secret_name": "TABBY_IOS_BUILD_CONFIG",
-    "main_or_tag_change": false
+    "commit": "2224486c5789897e03cdb32bd314d4d7c09f9678",
+    "files": 950,
+    "source_hashes_verified": 949,
+    "pushed": true,
+    "pushed_at": "2026-11-17T19:51:54.778Z",
+    "all_sessions_included": true,
+    "main_unchanged": true,
+    "reviewed_client_only_configuration": true
   },
-  "ios_native_simulator": "not run; awaiting authorized macOS CI",
-  "ipa": "not built",
+  "ios_native_simulator": "3/3 named cases from run44167297902 reused only after exact input-hash match (231 hashes) at unchanged native app inputs; actual simulator steps skipped by the reuse gate",
+  "ipa": {
+    "built": true,
+    "file": "Tabby-1.0.4+23-unsigned.ipa",
+    "sha256": "0c0cea8eae1032eca5f4782a5eddc4cdddb4dafe9043d553eba21d2c0efcb8d6",
+    "bytes": 31633697,
+    "bundle_id": "com.zalweb.tabby",
+    "version": "1.0.4",
+    "build_number": "23",
+    "minimum_ios": "15.0",
+    "arm64_macho": true,
+    "zip_crc": "passed",
+    "branding_assets_verified": 24,
+    "private_material_found": false,
+    "physical_iphone_verified": false,
+    "run_id": 44172480877,
+    "source_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+    "artifact_id": 14370265229,
+    "artifact_name": "Tabby-ios-sideload-20",
+    "artifact_url": "https://github.com/Zalweb/Tabby/actions/runs/44172480877/artifacts/14370265229"
+  },
   "feature_parity": "Shared core source and backend configuration aligned; native exceptions explicitly documented",
   "remaining_platform_gaps": [
     "iOS remote APNs/FCM background reminders not implemented",
     "iOS damaged-storage archival/reset not implemented"
   ],
   "unverified": [
-    "macOS archive/IPA",
-    "actual iOS simulator checks",
     "physical iPhone sign-in/Files/share/wallet/notifications/biometrics",
+    "AltStore/Sideloadly user signing and install",
     "independent integration review"
   ],
   "full_run": {
@@ -55,5 +75,62 @@
     "finished_at": "2026-11-17T19:39:23.642Z",
     "exit": 0,
     "candidate": "Exact accepted Android22 shared source/assets plus iOS QR/config/build overlay; no Android source behavior changed"
-  }
+  },
+  "ci": {
+    "latest": {
+      "conclusion": "success",
+      "createdAt": "2026-11-17T20:44:32Z",
+      "databaseId": 44172480877,
+      "headBranch": "codex/ios-sideload-20261118",
+      "headSha": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+      "status": "completed",
+      "url": "https://github.com/Zalweb/Tabby/actions/runs/44172480877",
+      "source_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+      "publication_branch": "codex/ios-sideload-20261118",
+      "duration": "12m59s",
+      "required_steps": {
+        "build unsigned archive": "success",
+        "inspect and package IPA": "success",
+        "upload unsigned IPA and evidence": "success",
+        "reuse matching native smoke evidence": "success"
+      }
+    },
+    "native_evidence": {
+      "mode": "reused exact native app inputs",
+      "run_id": 44167297902,
+      "source_commit": "5bea03d2b72fdf7493cafd4885e5277e9e01aad6",
+      "cases": 3,
+      "matching_input_hashes": 231,
+      "outcome": "passed"
+    },
+    "failed_runs": [
+      {
+        "id": 44163163677,
+        "cause": "CocoaPods Flutter minimum iOS15 vs project13",
+        "passed_before_failure": [
+          "source hashes",
+          "locked package resolution",
+          "public config",
+          "analysis",
+          "17 platform checks",
+          "7 Python fixtures"
+        ]
+      },
+      {
+        "id": 44167297902,
+        "cause": "packaging checker rejected a source asset containing spaces (URI-encoded Flutter bundle name); actual simulator 3/3 and the unsigned archive passed before the failed packaging stage",
+        "passed_before_failure": [
+          "actual iOS simulator 3/3",
+          "unsigned archive"
+        ]
+      }
+    ],
+    "cancelled_runs": [
+      {
+        "id": 44171064845,
+        "cause": "workflow revision superseded the queued run before artifact delivery"
+      }
+    ]
+  },
+  "ios_minimum": "15.0"
 }

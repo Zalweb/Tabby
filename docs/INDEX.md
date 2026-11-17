@@ -108,3 +108,5 @@ Run `node scripts/check-project-memory.cjs --write` after task metadata changes,
 - [Articulated mascot frames and prompts](assets/articulated-mascot-frames.md), [implementation plan](plans/articulated-mascot-frames.md), [verification](verification/VER-QA-033-ARTICULATED-MASCOTS.md).
 
 - [Create Tab and custom amounts — user summary](plans/expense-entry-update-summary.md), [Android22 source](verification/QA-032-v22-source-manifest.json).
+
+- [iOS sideload and Android parity](project/IOS_SIDELOAD.md), [unsigned IPA evidence](verification/VER-QA-034-IOS-PARITY.md).
