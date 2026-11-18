@@ -6,16 +6,19 @@
   "task_ids": [
     "WEB-001"
   ],
-  "timestamp": "2026-11-18T19:43:59+08:00",
+  "timestamp": "2026-11-18T20:05:35+08:00",
   "tested_commit": "a7394bdfb5bdae53c8a24bec6f1d8addd32abae9",
   "dirty_tree": true,
-  "environment": "Windows 11; Node.js v26.13.0; headless Brave (Chromium 157) against a local Python static server; live Vercel HTTP probe",
+  "environment": "Windows 11; Node.js v26.13.0; headless Brave (Chromium 157) against a local Python static server; Vercel production HTTP checks for `main` commit 58ee23f",
   "commands": [
     "node test/web_landing_test.js",
     "flutter test --no-pub test/features/marketing_capture_test.dart (TABBY_CAPTURE_MARKETING=true with Inter font env)",
     "headless Brave CDP navigation at 1440x1000 and 390x844",
     "node scripts/check-project-memory.cjs --write",
-    "node scripts/check-project-memory.cjs --base a7394bdfb5bdae53c8a24bec6f1d8addd32abae9"
+    "node scripts/check-project-memory.cjs --base a7394bdfb5bdae53c8a24bec6f1d8addd32abae9",
+    "node test/web_landing_test.js in a clean worktree based on 1bdf86e",
+    "node scripts/check-project-memory.cjs --base 1bdf86e in the deployment worktree",
+    "curl production page and cmp against landing/index.html"
   ],
   "checks": [
     {
@@ -36,7 +39,7 @@
     },
     {
       "category": "deployment",
-      "outcome": "unverified"
+      "outcome": "passed"
     },
     {
       "category": "integration-review",
@@ -59,6 +62,7 @@ Actual:
 - Legal pages retained their dark legal hero and readable card layout at desktop and mobile widths without overflow; branding uses `assets/tabby-launcher.png`, and desktop legal navigation fits one row.
 - Desktop navigation fits one row from 1021px through 1600px; the 960px breakpoint switches to the mobile menu, and 901–960px no longer wraps nav labels.
 - Visual captures at desktop and mobile show the hero phone plus floating mascot, three mascot feature cards, six-screen marquee, stats/principles, offline panel, FAQ grid, dark release card, community card, and dark footer as intended.
+- Deployment: `main` commit `58ee23f6c2405cbe79db3a4eaa6dfe34bc9fb42a` triggered successful Vercel production deployments for `tabby-web` and `tabby-app`. `https://tabby-web-fawn.vercel.app` returned HTTP 200 with a 34,917-byte page byte-identical to `landing/index.html`; `/app.js`, `/styles.css`, `/privacy`, `/terms`, the launcher icon, a screenshot and two mascots all returned HTTP 200.
 
 Screenshots are local, ignored artifacts under `build_artifacts/landing-verify/` (full-page and section captures such as `desktop-full.png`, `mobile-full.png`, `final-desktop-release.png`, `final-mobile-release-top.png`, `final-mobile-changelog-open.png`, and legal-page captures). The marketing capture fixture produced `build_artifacts/marketing/{login,home,detail,profile}-{light,dark}.png` from synthetic Maria Santos data; the profile capture was not published because it contained a “Not available yet” placeholder.
 
@@ -73,4 +77,4 @@ Issues found and corrected during verification: the hero glow pseudo-element ext
 
 ## Limits and next action
 
-The live Vercel site was not redeployed and still serves the previous landing page; the HTTP shell test only confirms the old title and download CTA until deployment. This task does not deploy, publish, tag, or change release assets. Browser coverage is local headless Chromium only: Safari, Firefox, real mobile devices, and a formal accessibility audit are unverified. Independent integration review is unverified. The marketing captures require the gated fixture and a local Inter font; normal CI does not run them. The next action is to deploy the updated `landing/` and `docs/` mirror with existing authorization, then recheck the live page, release metadata, mobile navigation, and both download buttons.
+The live Vercel production site was redeployed and verified at the HTTP/page level; the interactive browser pass was performed before deployment against identical page sources, not against the production URL. This task did not publish a GitHub release, tag, app artifact or backend change. Browser coverage is local headless Chromium only: Safari, Firefox, real mobile devices, and a formal accessibility audit are unverified. Independent integration review is unverified. The marketing captures require the gated fixture and a local Inter font; normal CI does not run them. The next action is an independent integration review and an interactive live browser pass of release metadata, mobile navigation and both download buttons.
