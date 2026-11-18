@@ -143,21 +143,11 @@
           <div class="phone-frame hero-phone">
             <img src="assets/screens/home-light.png" width="780" height="1688" alt="Tabby home screen showing a net balance, active tabs, confirmed payments, and an upcoming reminder." fetchpriority="high">
           </div>
-          <img class="hero-mascot" src="assets/mascot-welcome.png" width="720" height="720" alt="Tabby the cat waving hello">
           <span class="hero-chip hero-chip-top">
             <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M20 6 9 17l-5-5"></path>
             </svg>
             Recipient confirmed
-          </span>
-          <span class="hero-chip hero-chip-bottom">
-            <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="5" y="3" width="14" height="18" rx="2"></rect>
-              <path d="M8.5 7h7"></path>
-              <path d="M8.5 11h7"></path>
-              <path d="M8.5 15h4"></path>
-            </svg>
-            Exact to the centavo
           </span>
         </div>
       </div>
@@ -177,7 +167,7 @@
         <div class="feature-grid">
           <article class="feature-card feature-card-cream reveal">
             <div class="feature-media">
-              <img src="assets/mascot-thinking.png" width="640" height="640" alt="Tabby thinking beside a running tab" loading="lazy">
+              <img class="feature-mascot feature-mascot-thinking" src="assets/mascot-thinking.png" width="640" height="640" alt="Tabby thinking beside a running tab" loading="lazy">
             </div>
             <h3>One tab per friendship</h3>
             <p>Every friend and every group gets one running ledger. Balances, history, and reminders stay in one place instead of a dozen chat threads.</p>
@@ -190,7 +180,7 @@
 
           <article class="feature-card reveal reveal-delay-1">
             <div class="feature-media">
-              <img src="assets/mascot-notebook.png" width="720" height="720" alt="Tabby holding a notebook and checking the split" loading="lazy">
+              <img class="feature-mascot feature-mascot-notebook" src="assets/mascot-notebook.png" width="720" height="720" alt="Tabby holding a notebook and checking the split" loading="lazy">
             </div>
             <h3>Split it how you shared it</h3>
             <p>Split a bill evenly or set a custom amount for each person. Every share is stored as an integer number of centavos, so the math never drifts.</p>
@@ -203,7 +193,7 @@
 
           <article class="feature-card feature-card-soft reveal reveal-delay-2">
             <div class="feature-media">
-              <img src="assets/mascot-celebrating.png" width="640" height="640" alt="Tabby celebrating a confirmed payment" loading="lazy">
+              <img class="feature-mascot feature-mascot-celebrating" src="assets/mascot-celebrating.png" width="640" height="640" alt="Tabby celebrating a confirmed payment" loading="lazy">
             </div>
             <h3>Settle with proof</h3>
             <p>Save your GCash, Maya, or QR Ph details in your profile. Attach a receipt when you pay — and the tab only clears when the recipient confirms.</p>
@@ -532,9 +522,8 @@
       <div class="page">
         <div class="download-card reveal">
           <div class="download-copy">
-            <p class="eyebrow eyebrow-light"><span class="eyebrow-dot" aria-hidden="true"></span> Download Tabby</p>
-            <h2>Ready when your barkada is.</h2>
-            <p class="download-lede">Get the latest signed build for Android, or sideload the iOS build. Tabby is distributed directly rather than through an app store.</p>
+            <h2>Download Tabby</h2>
+            <p class="download-lede">Install the latest build on Android or iOS.</p>
 
             <div class="download-actions">
               <a href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk"
@@ -550,7 +539,7 @@
                 </span>
                 <span class="store-badge-text">
                   <strong>Download for Android</strong>
-                  <span>APK · <span data-role="version-tag">v1.0.4+24</span> · <span data-role="apk-size">70.2 MB</span></span>
+                  <span>APK · Android 8.0+</span>
                 </span>
               </a>
 
@@ -567,73 +556,18 @@
                 </span>
                 <span class="store-badge-text">
                   <strong>Download for iOS</strong>
-                  <span>IPA · <span data-role="ipa-size">30.2 MB</span> · iOS 15+</span>
+                  <span>IPA · iOS 15+</span>
                 </span>
               </a>
             </div>
 
+            <p class="download-note">The iOS IPA is unsigned and requires AltStore or Sideloadly.</p>
             <p class="download-meta">
               <span class="status-dot" aria-hidden="true"></span>
               <span data-role="live-status">Checking for latest build…</span>
             </p>
           </div>
 
-          <div class="release-panel">
-            <div class="release-head">
-              <h3>Release details</h3>
-              <span class="release-badge" data-role="version-tag">v1.0.4+24</span>
-            </div>
-
-            <dl class="release-list">
-              <div class="release-row">
-                <dt>Build</dt>
-                <dd><span data-role="version-tag">v1.0.4+24</span></dd>
-              </div>
-              <div class="release-row">
-                <dt>Released</dt>
-                <dd><span data-role="release-date">November 18, 2026</span></dd>
-              </div>
-              <div class="release-row">
-                <dt>Android APK</dt>
-                <dd><span data-role="apk-size">70.2 MB</span> · <code data-role="apk-filename">Tabby.apk</code></dd>
-              </div>
-              <div class="release-row">
-                <dt>iOS IPA</dt>
-                <dd><span data-role="ipa-size">30.2 MB</span> · unsigned sideload</dd>
-              </div>
-              <div class="release-row">
-                <dt>Requirements</dt>
-                <dd>Android 8.0+ · iOS 15+</dd>
-              </div>
-              <div class="release-row">
-                <dt>Package</dt>
-                <dd><code>com.zalweb.tabby</code></dd>
-              </div>
-            </dl>
-
-            <details class="changelog">
-              <summary id="changelogToggle">
-                What's new
-                <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="m6 9 6 6 6-6"></path>
-                </svg>
-              </summary>
-              <div class="changelog-content" id="changelogContainer" data-role="changelog-body">
-                <ul>
-                  <li>Warm redesign across welcome, home, tabs, and profile.</li>
-                  <li>Custom individual split amounts for every participant.</li>
-                  <li>Durable offline queue for expenses and receipt uploads.</li>
-                  <li>Recipient-confirmed payment proofs.</li>
-                  <li>Group tabs, reminders, and situation mascots.</li>
-                </ul>
-              </div>
-            </details>
-
-            <div class="release-foot">
-              <span>Release-signed Android build.</span>
-              <a href="https://github.com/Zalweb/Tabby/releases/latest">All releases</a>
-            </div>
-          </div>
         </div>
       </div>
     </section>

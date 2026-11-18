@@ -23,17 +23,27 @@ assert(html.includes('id="how-it-works"') && html.includes('id="download"') && h
 assert(html.includes('data-role="apk-download-btn"'), 'Must have APK download buttons');
 assert(html.includes('data-role="ipa-download-btn"'), 'Must have IPA download buttons');
 assert(html.includes('data-role="version-tag"'), 'Must have version tag elements');
-assert(html.includes('data-role="release-date"'), 'Must have release date elements');
 assert(html.includes('data-role="apk-size"'), 'Must have APK size elements');
 assert(html.includes('data-role="ipa-size"'), 'Must have IPA size elements');
-assert(html.includes('data-role="apk-filename"'), 'Must have APK filename element');
 assert(html.includes('data-role="live-status"'), 'Must have live release status elements');
-assert(html.includes('data-role="changelog-body"'), 'Must have a changelog body target');
 assert(html.includes('data-nav-toggle'), 'Must have a mobile navigation toggle');
 assert(html.includes('app.js') && html.includes('styles.css'), 'Must load app.js and styles.css');
 
+const hero = html.slice(html.indexOf('<!-- Hero -->'), html.indexOf('<!-- Features -->'));
+assert(hero.includes('assets/screens/home-light.png'), 'Hero must keep the current Home screenshot');
+assert(!hero.includes('hero-mascot') && !hero.includes('waving hello'), 'Hero must not include the decorative waving cat');
+assert(!hero.includes('hero-chip-bottom') && !hero.includes('Exact to the centavo'), 'Hero must not include the centavo decoration');
+
+const downloadSection = html.slice(html.indexOf('id="download"'), html.indexOf('<!-- Community -->'));
+assert(downloadSection.includes('<h2>Download Tabby</h2>'), 'Download card must have a clear Download Tabby heading');
+assert(downloadSection.includes('Download for Android') && downloadSection.includes('Download for iOS'), 'Download card must keep both platform actions');
+assert(downloadSection.includes('APK · Android 8.0+') && downloadSection.includes('IPA · iOS 15+'), 'Download card must state formats and minimum requirements');
+assert(downloadSection.includes('unsigned') && downloadSection.includes('AltStore or Sideloadly'), 'Download card must explain iOS sideloading');
+assert(!downloadSection.includes('Release details') && !downloadSection.includes('What\'s new'), 'Download card must omit the redundant release and changelog panels');
+assert(!html.includes('data-role="changelog-body"'), 'Landing HTML must not expose a release-note insertion target');
+
 assert(html.includes('assets/tabby-launcher.png'), 'Must use the current launcher icon');
-assert(html.includes('assets/mascot-welcome.png') && html.includes('assets/mascot-notebook.png'), 'Must use the welcome and notebook mascot artwork');
+assert(html.includes('assets/mascot-notebook.png'), 'Must keep the notebook feature mascot artwork');
 assert(html.includes('assets/mascot-thinking.png') && html.includes('assets/mascot-celebrating.png') && html.includes('assets/mascot-reminder.png'), 'Must use situation mascot artwork');
 assert(html.includes('assets/screens/home-light.png') && html.includes('assets/screens/home-dark.png'), 'Must show current light and dark home screenshots');
 assert(html.includes('assets/screens/login-light.png') && html.includes('assets/screens/detail-light.png'), 'Must show welcome and tab detail screenshots');
@@ -62,7 +72,6 @@ const htmlEmojiMatches = html.match(emojiRegex) || [];
 assert.strictEqual(htmlEmojiMatches.length, 0, `HTML must not contain emojis. Found: ${htmlEmojiMatches.join(' ')}`);
 
 assert((html.match(/<details class="faq-card/g) || []).length >= 6, 'Must include at least six FAQ cards');
-assert(html.includes('<details class="changelog">'), 'Changelog must work without JavaScript');
 assert(html.includes('name="viewport"') && html.includes('meta name="description"'), 'Must include responsive viewport and meta description');
 
 console.log('✓ docs/index.html structure, content, and asset references verified');
@@ -78,11 +87,17 @@ assert(css.includes('--amber: #ffb342'), 'Must use the brand amber token');
 assert(css.includes('--page-width: 1080px'), 'Must use the 1080px page width');
 assert(css.includes('--radius-card: 28px'), 'Must use 28px card corners');
 assert(css.includes('.hero-title') && css.includes('.title-pill'), 'Must style the hero headline and inline pill');
+assert(!css.includes('.hero-mascot') && !css.includes('.hero-chip-bottom'), 'Must retire styles for removed hero decorations');
 assert(css.includes('.store-badge-dark') && css.includes('.store-badge-outline'), 'Must style the download badges');
 assert(css.includes('.feature-grid') && css.includes('.principle-grid'), 'Must style feature and principle grids');
 assert(css.includes('.marquee-track') && css.includes('@keyframes marquee-scroll'), 'Must style the screenshot marquee');
 assert(css.includes('.faq-card'), 'Must style FAQ cards');
-assert(css.includes('.download-card') && css.includes('.release-panel'), 'Must style the release download card');
+assert(css.includes('.download-card') && !css.includes('.release-panel'), 'Must style the simplified download card without release details');
+assert(css.includes('.feature-mascot-thinking') && css.includes('@keyframes feature-thinking-settle'), 'Thinking mascot must animate on feature-card entrance');
+assert(css.includes('.feature-mascot-notebook') && css.includes('@keyframes feature-notebook-settle'), 'Notebook mascot must have its own entrance motion');
+assert(css.includes('.feature-mascot-celebrating') && css.includes('@keyframes feature-celebration'), 'Celebrating mascot must have a finite entrance motion');
+assert(css.includes('@media (prefers-reduced-motion: no-preference)'), 'Mascot motion must be disabled when reduced motion is preferred');
+assert(!css.includes('.changelog') && !css.includes('.release-row'), 'Must retire unused release panel and changelog styles');
 assert(css.includes('.community-card') && css.includes('.pay-chip'), 'Must style the community card');
 assert(css.includes('.site-footer') && css.includes('.footer-grid'), 'Must style the dark footer');
 assert(css.includes('.has-reveal .reveal') && css.includes('.reveal.is-visible'), 'Must implement scroll reveal states');
@@ -106,7 +121,10 @@ assert(js.includes('releases/latest/download/Tabby.apk'), 'Must keep the canonic
 assert(js.includes('releases/latest/download/Tabby.ipa'), 'Must keep the canonical IPA fallback');
 assert(js.includes('applyReleaseData'), 'Must apply fetched release data');
 assert(js.includes('ipa-size'), 'Must update IPA size labels');
-assert(js.includes('escapeHtml') && js.includes('simpleMarkdown'), 'Must escape release notes before rendering');
+assert(!js.includes('escapeHtml') && !js.includes('simpleMarkdown'), 'Release-note rendering must be removed');
+assert(!js.includes('changelog') && !js.includes('innerHTML'), 'Release notes must never be inserted into the landing DOM');
+assert(js.includes("button.setAttribute('href', apkUrl)"), 'Latest release must update APK links');
+assert(js.includes("button.setAttribute('href', ipaUrl)"), 'Latest release must update IPA links');
 assert(js.includes('setupMobileNav'), 'Must initialize the mobile navigation toggle');
 assert(js.includes('setupRevealAnimations'), 'Must initialize scroll reveal');
 assert(js.includes('setupHeaderState'), 'Must initialize the sticky header state');
@@ -158,67 +176,98 @@ for (const asset of sharedAssets) {
 
 console.log('✓ landing/ and docs/ mirror pages and shared assets');
 
-// 5. Simulate release update logic
-function simulateUpdate(release) {
-  let apkAsset = null;
-  let ipaAsset = null;
-  if (Array.isArray(release.assets)) {
-    apkAsset = release.assets.find(a => a.name && a.name.endsWith('.apk') && a.name.includes('-')) ||
-               release.assets.find(a => a.name && a.name.endsWith('.apk'));
-    ipaAsset = release.assets.find(a => a.name && a.name.endsWith('.ipa'));
-  }
-  const apkUrl = apkAsset ? apkAsset.browser_download_url : 'https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk';
-  const ipaUrl = ipaAsset ? ipaAsset.browser_download_url : 'https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.ipa';
-  return {
-    tagName: release.tag_name,
-    apkUrl,
-    ipaUrl,
-    sizeMb: apkAsset ? (apkAsset.size / (1024 * 1024)).toFixed(1) + ' MB' : '70.2 MB',
-    ipaSizeMb: ipaAsset ? (ipaAsset.size / (1024 * 1024)).toFixed(1) + ' MB' : '30.2 MB',
-    filename: apkAsset ? apkAsset.name : 'Tabby.apk'
+// 5. Execute the real release updater against a sanitized published-release fixture.
+async function verifyReleaseRuntime() {
+  const vm = require('vm');
+  const createElements = (count) => Array.from({ length: count }, () => ({
+    attributes: {},
+    textContent: '',
+    setAttribute(name, value) { this.attributes[name] = String(value); },
+    getAttribute(name) { return this.attributes[name] || null; },
+  }));
+  const elements = {
+    '[data-role="apk-download-btn"]': createElements(3),
+    '[data-role="ipa-download-btn"]': createElements(2),
+    '[data-role="version-tag"]': createElements(2),
+    '[data-role="apk-size"]': createElements(1),
+    '[data-role="ipa-size"]': createElements(1),
+    '[data-role="live-status"]': createElements(1),
+    '.reveal': [],
   };
+  let onReady;
+  const document = {
+    querySelectorAll(selector) { return elements[selector] || []; },
+    querySelector() { return null; },
+    getElementById() { return null; },
+    addEventListener(type, handler) { if (type === 'DOMContentLoaded') onReady = handler; },
+    documentElement: { classList: { add() {} } },
+  };
+  const release = {
+    tag_name: 'v1.0.4+24',
+    published_at: '2026-11-18T00:00:00Z',
+    body: '<script>must not be inserted</script>',
+    assets: [
+      {
+        name: 'Tabby-v1.0.4+24.apk',
+        browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4%2B24/Tabby-v1.0.4%2B24.apk',
+        size: 73609244,
+      },
+      {
+        name: 'Tabby-v1.0.4+24.ipa',
+        browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4%2B24/Tabby-v1.0.4%2B24.ipa',
+        size: 31633412,
+      },
+    ],
+  };
+  const context = {
+    document,
+    window: { scrollY: 0, addEventListener() {} },
+    localStorage: { getItem() { return null; }, setItem() {} },
+    fetch: async () => ({ ok: true, json: async () => release }),
+    console: { warn() {} },
+    Date,
+    Promise,
+    requestAnimationFrame(callback) { callback(); },
+  };
+  vm.runInNewContext(js, context, { filename: 'docs/app.js' });
+  assert.strictEqual(typeof onReady, 'function', 'Release updater must initialize on DOMContentLoaded');
+  onReady();
+  await new Promise(resolve => setImmediate(resolve));
+
+  const apkUrl = release.assets[0].browser_download_url;
+  const ipaUrl = release.assets[1].browser_download_url;
+  for (const button of elements['[data-role="apk-download-btn"]']) {
+    assert.strictEqual(button.getAttribute('href'), apkUrl, 'Every APK action must use the published asset URL');
+    assert.strictEqual(button.getAttribute('download'), release.assets[0].name, 'APK action must use its published filename');
+  }
+  for (const button of elements['[data-role="ipa-download-btn"]']) {
+    assert.strictEqual(button.getAttribute('href'), ipaUrl, 'Every IPA action must use the published asset URL');
+  }
+  assert(elements['[data-role="version-tag"]'].every(element => element.textContent === 'v1.0.4+24'), 'Version labels must follow the fetched release');
+  assert.strictEqual(elements['[data-role="apk-size"]'][0].textContent, '70.2 MB');
+  assert.strictEqual(elements['[data-role="ipa-size"]'][0].textContent, '30.2 MB');
+  assert.strictEqual(elements['[data-role="live-status"]'][0].textContent, 'Latest build: v1.0.4+24 (Live)');
+  console.log('✓ Live release updater changed APK/IPA links and metadata without inserting release notes');
 }
 
-const current = simulateUpdate({
-  tag_name: 'v1.0.4+24',
-  assets: [
-    { name: 'Tabby-v1.0.4.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4/Tabby-v1.0.4.apk', size: 73609244 },
-    { name: 'Tabby.ipa', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4/Tabby.ipa', size: 31633412 }
-  ]
-});
-assert.strictEqual(current.tagName, 'v1.0.4+24');
-assert.strictEqual(current.apkUrl, 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4/Tabby-v1.0.4.apk');
-assert.strictEqual(current.ipaUrl, 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4/Tabby.ipa');
-assert.strictEqual(current.filename, 'Tabby-v1.0.4.apk');
-assert.strictEqual(current.sizeMb, '70.2 MB');
-assert.strictEqual(current.ipaSizeMb, '30.2 MB');
-
-const next = simulateUpdate({
-  tag_name: 'v1.0.5+25',
-  assets: [
-    { name: 'Tabby-v1.0.5.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.5/Tabby-v1.0.5.apk', size: 75000000 }
-  ]
-});
-assert.strictEqual(next.tagName, 'v1.0.5+25');
-assert.strictEqual(next.filename, 'Tabby-v1.0.5.apk');
-assert.strictEqual(next.sizeMb, '71.5 MB');
-assert.strictEqual(next.ipaSizeMb, '30.2 MB');
-
-console.log('✓ Release sync simulation verified');
-
-// 6. Verify live Vercel deployment (page shell assertions only)
-const https = require('https');
-https.get('https://tabby-web-fawn.vercel.app', (res) => {
-  assert.strictEqual(res.statusCode, 200, 'Live Vercel URL must return 200 OK');
-  let data = '';
-  res.on('data', chunk => data += chunk);
-  res.on('end', () => {
-    assert(data.includes('Tabby — Keep tabs. Settle up.'), 'Live site must contain the Tabby title');
-    assert(data.includes('Download APK') || data.includes('Download Tabby APK'), 'Live site must contain a download CTA');
-    console.log('✓ Live Vercel deployment reachable with the Tabby title and download CTA.');
-    console.log('ALL WEB TESTS PASSED SUCCESSFULLY (100%)');
+verifyReleaseRuntime().then(() => {
+  // 6. Verify live Vercel deployment (page shell assertions only)
+  const https = require('https');
+  https.get('https://tabby-web-fawn.vercel.app', (res) => {
+    assert.strictEqual(res.statusCode, 200, 'Live Vercel URL must return 200 OK');
+    let data = '';
+    res.on('data', chunk => data += chunk);
+    res.on('end', () => {
+      assert(data.includes('Tabby — Keep tabs. Settle up.'), 'Live site must contain the Tabby title');
+      assert(data.includes('Download APK') || data.includes('Download Tabby APK'), 'Live site must contain a download CTA');
+      console.log('✓ Live Vercel deployment reachable with the Tabby title and download CTA.');
+      console.log('ALL WEB TESTS PASSED SUCCESSFULLY (100%)');
+    });
+  }).on('error', (err) => {
+    console.error('Live URL error:', err);
+    process.exitCode = 1;
   });
-}).on('error', (err) => {
-  console.error('Live URL error:', err);
+}).catch((error) => {
+  console.error('Release runtime verification failed:', error);
   process.exitCode = 1;
 });
