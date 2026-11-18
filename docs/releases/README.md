@@ -16,6 +16,8 @@ The reconciliation workflow runs after successful main mobile builds, when relea
 
 Eligible assets are uploaded as `Tabby.apk` and `Tabby.ipa` to a draft. The publisher checks both GitHub asset digests against the verified artifact bytes before marking that draft as the public latest release. If a build, check or upload fails, the current published release remains available. Existing tags with different bytes, older version codes and mismatched tag targets cannot replace a release. Re-running the same exact release is idempotent.
 
+The landing page keeps both stable GitHub latest asset URLs in its HTML. Those links follow the latest published pair at click time, including on an already-open page and when JavaScript or the GitHub metadata request is unavailable. Each page load fetches fresh version and size labels for the matching alias pair. Publication requires no landing-page rebuild.
+
 The protected `android-release` GitHub environment remains in the path. Any required reviewer is approving the public release after the candidate checks; no separate manual publication dispatch is required for normal delivery. `Publish Release APK` remains a recovery entry point only and invokes this same guarded paired publisher with an exact run ID and commit.
 
 ## Shared version source

@@ -36,14 +36,15 @@ void main() {
         expect(html, isNot(contains('class="changelog"')));
       });
 
-      test('published assets still update the Android and iOS download links', () {
-        expect(source, contains("document.querySelectorAll('[data-role=\"apk-download-btn\"]')"));
-        expect(source, contains("document.querySelectorAll('[data-role=\"ipa-download-btn\"]')"));
-        expect(source, contains("button.setAttribute('href', apkUrl)"));
-        expect(source, contains("button.setAttribute('href', ipaUrl)"));
-        expect(source, contains("button.setAttribute('download', apkFilenameText)"));
-        expect(source, contains('releases/latest/download/Tabby.apk'));
-        expect(source, contains('releases/latest/download/Tabby.ipa'));
+      test('published metadata leaves canonical Android and iOS links unchanged', () {
+        expect(source, contains("asset.name === 'Tabby.apk'"));
+        expect(source, contains("asset.name === 'Tabby.ipa'"));
+        expect(source, isNot(contains('localStorage')));
+        expect(source, isNot(contains("setAttribute('href'")));
+        expect(source, isNot(contains("setAttribute('download'")));
+        expect(html, contains('href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk"'));
+        expect(html, contains('href="https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.ipa"'));
+        expect(html, contains('download="Tabby.apk"'));
       });
     });
   }

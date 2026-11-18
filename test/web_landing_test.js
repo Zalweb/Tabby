@@ -26,6 +26,22 @@ assert(html.includes('data-role="version-tag"'), 'Must have version tag elements
 assert(html.includes('data-role="apk-size"'), 'Must have APK size elements');
 assert(html.includes('data-role="ipa-size"'), 'Must have IPA size elements');
 assert(html.includes('data-role="live-status"'), 'Must have live release status elements');
+assert(html.includes('data-role="version-tag">Latest</span>'), 'No-script version label must stay neutral');
+assert(html.includes('data-role="apk-size">Android app</span>'), 'No-script APK label must use generic platform information');
+assert(html.includes('data-role="ipa-size">iOS sideload</span>'), 'No-script IPA label must use generic platform information');
+assert(!html.includes('v1.0.4+24') && !html.includes('70.2 MB') && !html.includes('30.2 MB'), 'HTML must not hardcode old release metadata');
+const downloadButtons = [...html.matchAll(/<a\b[^>]*\bdata-role="(apk|ipa)-download-btn"[^>]*>/g)];
+assert(downloadButtons.length >= 2, 'Must have platform download buttons');
+for (const button of downloadButtons) {
+  const platform = button[1];
+  const openingTag = button[0];
+  const asset = platform === 'apk' ? 'Tabby.apk' : 'Tabby.ipa';
+  const canonicalUrl = `https://github.com/Zalweb/Tabby/releases/latest/download/${asset}`;
+  assert(openingTag.includes(`href="${canonicalUrl}"`), `Every ${platform.toUpperCase()} button must use its stable latest URL`);
+  if (platform === 'apk') {
+    assert(openingTag.includes('download="Tabby.apk"'), 'Every APK button must keep the stable filename');
+  }
+}
 assert(html.includes('data-nav-toggle'), 'Must have a mobile navigation toggle');
 assert(html.includes('app.js') && html.includes('styles.css'), 'Must load app.js and styles.css');
 
@@ -115,15 +131,15 @@ assert(fs.existsSync(jsPath), 'docs/app.js must exist');
 const js = fs.readFileSync(jsPath, 'utf8');
 
 assert(js.includes('api.github.com/repos/') && js.includes('Zalweb') && js.includes('Tabby'), 'Must fetch releases from the GitHub API');
-assert(js.includes('apk-download-btn') && js.includes('ipa-download-btn'), 'Must update both download button groups');
-assert(js.includes('releases/latest/download/Tabby.apk'), 'Must keep the canonical APK fallback');
-assert(js.includes('releases/latest/download/Tabby.ipa'), 'Must keep the canonical IPA fallback');
 assert(js.includes('applyReleaseData'), 'Must apply fetched release data');
 assert(js.includes('ipa-size'), 'Must update IPA size labels');
+assert(js.includes("asset.name === 'Tabby.apk'") && js.includes("asset.name === 'Tabby.ipa'"), 'Metadata must come from the exact stable-named asset pair');
+assert(!js.includes('localStorage'), 'Release metadata must not be read from or written to local storage');
+assert(!/\.setAttribute\(\s*['"](?:href|download)['"]/.test(js), 'Release metadata must never change download URLs or filenames');
+assert(!js.includes('v1.0.4+24') && !js.includes('70.2 MB') && !js.includes('30.2 MB'), 'Updater must not contain fixed old release metadata');
+assert(html.includes('releases/latest/download/Tabby.apk') && html.includes('releases/latest/download/Tabby.ipa'), 'HTML must declare both canonical latest URLs');
 assert(!js.includes('escapeHtml') && !js.includes('simpleMarkdown'), 'Release-note rendering must be removed');
 assert(!js.includes('changelog') && !js.includes('innerHTML'), 'Release notes must never be inserted into the landing DOM');
-assert(js.includes("button.setAttribute('href', apkUrl)"), 'Latest release must update APK links');
-assert(js.includes("button.setAttribute('href', ipaUrl)"), 'Latest release must update IPA links');
 assert(js.includes('setupMobileNav'), 'Must initialize the mobile navigation toggle');
 assert(js.includes('setupRevealAnimations'), 'Must initialize scroll reveal');
 assert(js.includes('setupHeaderState'), 'Must initialize the sticky header state');
@@ -175,24 +191,28 @@ for (const asset of sharedAssets) {
 
 console.log('✓ landing/ and docs/ mirror pages and shared assets');
 
-// 5. Execute the real release updater against a sanitized published-release fixture.
-async function verifyReleaseRuntime() {
+// 5. Execute the real release updater against stable-name metadata and stale-cache failure fixtures.
+async function runReleaseUpdater({ release, fetchError, cachedRelease }) {
   const vm = require('vm');
-  const createElements = (count) => Array.from({ length: count }, () => ({
-    attributes: {},
-    textContent: '',
+  const createElements = (count, attributes = {}, textContent = '') => Array.from({ length: count }, () => ({
+    attributes: { ...attributes },
+    textContent,
     setAttribute(name, value) { this.attributes[name] = String(value); },
     getAttribute(name) { return this.attributes[name] || null; },
   }));
+  const apkHref = 'https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk';
+  const ipaHref = 'https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.ipa';
   const elements = {
-    '[data-role="apk-download-btn"]': createElements(3),
-    '[data-role="ipa-download-btn"]': createElements(2),
-    '[data-role="version-tag"]': createElements(2),
-    '[data-role="apk-size"]': createElements(1),
-    '[data-role="ipa-size"]': createElements(1),
-    '[data-role="live-status"]': createElements(1),
+    '[data-role="apk-download-btn"]': createElements(3, { href: apkHref, download: 'Tabby.apk' }),
+    '[data-role="ipa-download-btn"]': createElements(2, { href: ipaHref }),
+    '[data-role="version-tag"]': createElements(2, {}, 'Latest'),
+    '[data-role="apk-size"]': createElements(1, {}, 'Android app'),
+    '[data-role="ipa-size"]': createElements(1, {}, 'iOS sideload'),
+    '[data-role="live-status"]': createElements(2, {}, 'Latest release downloads'),
     '.reveal': [],
   };
+  let storageReads = 0;
+  let storageWrites = 0;
   let onReady;
   const document = {
     querySelectorAll(selector) { return elements[selector] || []; },
@@ -201,28 +221,17 @@ async function verifyReleaseRuntime() {
     addEventListener(type, handler) { if (type === 'DOMContentLoaded') onReady = handler; },
     documentElement: { classList: { add() {} } },
   };
-  const release = {
-    tag_name: 'v1.0.4+24',
-    published_at: '2026-11-18T00:00:00Z',
-    body: '<script>must not be inserted</script>',
-    assets: [
-      {
-        name: 'Tabby-v1.0.4+24.apk',
-        browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4%2B24/Tabby-v1.0.4%2B24.apk',
-        size: 73609244,
-      },
-      {
-        name: 'Tabby-v1.0.4+24.ipa',
-        browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4%2B24/Tabby-v1.0.4%2B24.ipa',
-        size: 31633412,
-      },
-    ],
-  };
   const context = {
     document,
     window: { scrollY: 0, addEventListener() {} },
-    localStorage: { getItem() { return null; }, setItem() {} },
-    fetch: async () => ({ ok: true, json: async () => release }),
+    localStorage: {
+      getItem() { storageReads += 1; return cachedRelease; },
+      setItem() { storageWrites += 1; },
+    },
+    fetch: async () => {
+      if (fetchError) throw fetchError;
+      return { ok: true, json: async () => release };
+    },
     console: { warn() {} },
     Date,
     Promise,
@@ -233,20 +242,76 @@ async function verifyReleaseRuntime() {
   onReady();
   await new Promise(resolve => setImmediate(resolve));
 
-  const apkUrl = release.assets[0].browser_download_url;
-  const ipaUrl = release.assets[1].browser_download_url;
-  for (const button of elements['[data-role="apk-download-btn"]']) {
-    assert.strictEqual(button.getAttribute('href'), apkUrl, 'Every APK action must use the published asset URL');
-    assert.strictEqual(button.getAttribute('download'), release.assets[0].name, 'APK action must use its published filename');
+  return { elements, storageReads, storageWrites, apkHref, ipaHref };
+}
+
+async function verifyReleaseRuntime() {
+  const newRelease = {
+    tag_name: 'v2.0.0+40',
+    body: '<script>must not be inserted</script>',
+    assets: [
+      {
+        name: 'Tabby-v2.0.0+40.apk',
+        browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v2.0.0%2B40/Tabby-v2.0.0%2B40.apk',
+        size: 1024,
+      },
+      {
+        name: 'Tabby-v2.0.0+40.ipa',
+        browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v2.0.0%2B40/Tabby-v2.0.0%2B40.ipa',
+        size: 2048,
+      },
+      {
+        name: 'Tabby.apk',
+        browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v2.0.0%2B40/Tabby.apk',
+        size: 80 * 1024 * 1024,
+      },
+      {
+        name: 'Tabby.ipa',
+        browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v2.0.0%2B40/Tabby.ipa',
+        size: 40 * 1024 * 1024,
+      },
+    ],
+  };
+  const updated = await runReleaseUpdater({ release: newRelease });
+  for (const button of updated.elements['[data-role="apk-download-btn"]']) {
+    assert.strictEqual(button.getAttribute('href'), updated.apkHref, 'Every APK action must keep its canonical latest URL');
+    assert.strictEqual(button.getAttribute('download'), 'Tabby.apk', 'APK actions must keep their canonical filename');
   }
-  for (const button of elements['[data-role="ipa-download-btn"]']) {
-    assert.strictEqual(button.getAttribute('href'), ipaUrl, 'Every IPA action must use the published asset URL');
+  for (const button of updated.elements['[data-role="ipa-download-btn"]']) {
+    assert.strictEqual(button.getAttribute('href'), updated.ipaHref, 'Every IPA action must keep its canonical latest URL');
   }
-  assert(elements['[data-role="version-tag"]'].every(element => element.textContent === 'v1.0.4+24'), 'Version labels must follow the fetched release');
-  assert.strictEqual(elements['[data-role="apk-size"]'][0].textContent, '70.2 MB');
-  assert.strictEqual(elements['[data-role="ipa-size"]'][0].textContent, '30.2 MB');
-  assert.strictEqual(elements['[data-role="live-status"]'][0].textContent, 'Latest build: v1.0.4+24 (Live)');
-  console.log('✓ Live release updater changed APK/IPA links and metadata without inserting release notes');
+  assert(updated.elements['[data-role="version-tag"]'].every(element => element.textContent === 'v2.0.0+40'), 'Version labels must follow the fetched release');
+  assert.strictEqual(updated.elements['[data-role="apk-size"]'][0].textContent, '80.0 MB', 'APK size must come from the exact Tabby.apk asset');
+  assert.strictEqual(updated.elements['[data-role="ipa-size"]'][0].textContent, '40.0 MB', 'IPA size must come from the exact Tabby.ipa asset');
+  assert(updated.elements['[data-role="live-status"]'].every(element => element.textContent === 'Latest build: v2.0.0+40 (Live)'));
+  assert.strictEqual(updated.storageReads, 0, 'Updater must not read old cached metadata');
+  assert.strictEqual(updated.storageWrites, 0, 'Updater must not cache release metadata');
+
+  const staleCache = JSON.stringify({
+    data: {
+      tag_name: 'v0.9.0+1',
+      assets: [
+        { name: 'Tabby-v0.9.0+1.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v0.9.0/Tabby-v0.9.0+1.apk', size: 1024 },
+        { name: 'Tabby-v0.9.0+1.ipa', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v0.9.0/Tabby-v0.9.0+1.ipa', size: 2048 },
+      ],
+    },
+    timestamp: Date.now(),
+  });
+  const failed = await runReleaseUpdater({ cachedRelease: staleCache, fetchError: new Error('simulated release API failure') });
+  for (const button of failed.elements['[data-role="apk-download-btn"]']) {
+    assert.strictEqual(button.getAttribute('href'), failed.apkHref, 'API failure must leave every APK latest URL stable');
+    assert.strictEqual(button.getAttribute('download'), 'Tabby.apk', 'API failure must leave the APK filename stable');
+  }
+  for (const button of failed.elements['[data-role="ipa-download-btn"]']) {
+    assert.strictEqual(button.getAttribute('href'), failed.ipaHref, 'API failure must leave every IPA latest URL stable');
+  }
+  assert(failed.elements['[data-role="version-tag"]'].every(element => element.textContent === 'Latest'), 'API failure must keep a neutral version label');
+  assert.strictEqual(failed.elements['[data-role="apk-size"]'][0].textContent, 'Android app');
+  assert.strictEqual(failed.elements['[data-role="ipa-size"]'][0].textContent, 'iOS sideload');
+  assert(failed.elements['[data-role="live-status"]'].every(element => element.textContent === 'Latest release downloads'));
+  assert.strictEqual(failed.storageReads, 0, 'Existing stale cache must not be read after API failure');
+  assert.strictEqual(failed.storageWrites, 0, 'Existing stale cache must not be rewritten after API failure');
+  console.log('✓ Latest stable APK/IPA metadata updates without changing links; stale-cache API failure stays neutral and does not insert release notes');
 }
 
 verifyReleaseRuntime().then(() => {

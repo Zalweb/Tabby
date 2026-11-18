@@ -1,7 +1,8 @@
 /**
  * Tabby — automated release sync, mobile navigation, and scroll reveal.
- * Fetches the latest published release from Zalweb/Tabby, updates every
- * download links, and keeps the page's light interactions accessible.
+ * Fetches optional metadata for the latest published release from
+ * Zalweb/Tabby and keeps the page's light interactions accessible. Download
+ * buttons always use the stable URLs declared in the HTML.
  */
 
 (function () {
@@ -10,90 +11,78 @@
   const GITHUB_OWNER = 'Zalweb';
   const GITHUB_REPO = 'Tabby';
   const RELEASES_API_URL = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
-  const CANONICAL_APK_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/Tabby.apk`;
-  const CANONICAL_IPA_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest/download/Tabby.ipa`;
-
-  const DEFAULT_VERSION = 'v1.0.4+24';
-  const DEFAULT_APK_SIZE = '70.2 MB';
-  const DEFAULT_IPA_SIZE = '30.2 MB';
-
-  const apkDownloadBtns = document.querySelectorAll('[data-role="apk-download-btn"]');
-  const ipaDownloadBtns = document.querySelectorAll('[data-role="ipa-download-btn"]');
   const versionTags = document.querySelectorAll('[data-role="version-tag"]');
   const apkSizes = document.querySelectorAll('[data-role="apk-size"]');
   const ipaSizes = document.querySelectorAll('[data-role="ipa-size"]');
   const liveStatusTexts = document.querySelectorAll('[data-role="live-status"]');
 
-  function formatBytes(bytes, fallback) {
-    if (!bytes || isNaN(bytes)) return fallback;
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return null;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   function applyReleaseData(release) {
-    const tagName = release.tag_name || DEFAULT_VERSION;
+    const assets = release && Array.isArray(release.assets) ? release.assets : [];
+    const apkAsset = assets.find((asset) => asset && asset.name === 'Tabby.apk');
+    const ipaAsset = assets.find((asset) => asset && asset.name === 'Tabby.ipa');
 
-    let apkAsset = null;
-    let ipaAsset = null;
-    if (Array.isArray(release.assets)) {
-      apkAsset =
-        release.assets.find((asset) => asset.name && asset.name.endsWith('.apk') && asset.name.includes('-')) ||
-        release.assets.find((asset) => asset.name && asset.name.endsWith('.apk'));
-      ipaAsset = release.assets.find((asset) => asset.name && asset.name.endsWith('.ipa'));
+    // Only a complete stable-name pair describes the release that the
+    // canonical download buttons serve.
+    if (!apkAsset || !ipaAsset) return false;
+
+    const tagName = typeof release.tag_name === 'string' && release.tag_name.trim()
+      ? release.tag_name.trim()
+      : null;
+    const apkSizeText = formatBytes(apkAsset.size);
+    const ipaSizeText = formatBytes(ipaAsset.size);
+
+    if (tagName) {
+      versionTags.forEach((element) => {
+        element.textContent = tagName;
+      });
+      liveStatusTexts.forEach((element) => {
+        element.textContent = `Latest build: ${tagName} (Live)`;
+      });
+    } else {
+      liveStatusTexts.forEach((element) => {
+        element.textContent = 'Latest release downloads';
+      });
     }
 
-    const apkUrl = apkAsset ? apkAsset.browser_download_url : CANONICAL_APK_URL;
-    const apkFilenameText = apkAsset ? apkAsset.name : 'Tabby.apk';
-    const apkSizeText = apkAsset ? formatBytes(apkAsset.size, DEFAULT_APK_SIZE) : DEFAULT_APK_SIZE;
-    const ipaUrl = ipaAsset ? ipaAsset.browser_download_url : CANONICAL_IPA_URL;
-    const ipaSizeText = ipaAsset ? formatBytes(ipaAsset.size, DEFAULT_IPA_SIZE) : DEFAULT_IPA_SIZE;
+    if (apkSizeText) {
+      apkSizes.forEach((element) => {
+        element.textContent = apkSizeText;
+      });
+    }
 
-    apkDownloadBtns.forEach((button) => {
-      button.setAttribute('href', apkUrl);
-      button.setAttribute('download', apkFilenameText);
-    });
+    if (ipaSizeText) {
+      ipaSizes.forEach((element) => {
+        element.textContent = ipaSizeText;
+      });
+    }
 
-    ipaDownloadBtns.forEach((button) => {
-      button.setAttribute('href', ipaUrl);
-    });
+    return true;
+  }
 
+  function showLatestDownloads() {
     versionTags.forEach((element) => {
-      element.textContent = tagName;
+      element.textContent = 'Latest';
     });
-
     apkSizes.forEach((element) => {
-      element.textContent = apkSizeText;
+      element.textContent = 'Android app';
     });
-
     ipaSizes.forEach((element) => {
-      element.textContent = ipaSizeText;
+      element.textContent = 'iOS sideload';
     });
-
     liveStatusTexts.forEach((element) => {
-      element.textContent = `Latest build: ${tagName} (Live)`;
+      element.textContent = 'Latest release downloads';
     });
-
-    try {
-      localStorage.setItem('tabby_latest_release', JSON.stringify({
-        data: { tag_name: release.tag_name, assets: release.assets },
-        timestamp: Date.now(),
-      }));
-    } catch (error) {
-      // Storage can be unavailable in private or restricted contexts.
-    }
   }
 
   async function fetchLatestRelease() {
-    try {
-      const cached = localStorage.getItem('tabby_latest_release');
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 300000) {
-          applyReleaseData(data);
-        }
-      }
-    } catch (error) {
-      // Ignore a stale or malformed cache.
-    }
+    liveStatusTexts.forEach((element) => {
+      element.textContent = 'Checking for latest build…';
+    });
 
     try {
       const response = await fetch(`${RELEASES_API_URL}?t=${Date.now()}`, {
@@ -104,22 +93,12 @@
         throw new Error(`Release API returned status ${response.status}`);
       }
       const release = await response.json();
-      applyReleaseData(release);
+      if (!applyReleaseData(release)) {
+        showLatestDownloads();
+      }
     } catch (error) {
-      console.warn('[Tabby] Release sync unavailable; canonical download URLs stay active.', error);
-      apkDownloadBtns.forEach((button) => {
-        if (!button.getAttribute('href') || button.getAttribute('href') === '#') {
-          button.setAttribute('href', CANONICAL_APK_URL);
-        }
-      });
-      ipaDownloadBtns.forEach((button) => {
-        if (!button.getAttribute('href') || button.getAttribute('href') === '#') {
-          button.setAttribute('href', CANONICAL_IPA_URL);
-        }
-      });
-      liveStatusTexts.forEach((element) => {
-        element.textContent = 'Always serving the newest build';
-      });
+      console.warn('[Tabby] Release metadata unavailable; stable download URLs remain active.', error);
+      showLatestDownloads();
     }
   }
 
