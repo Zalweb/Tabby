@@ -4,7 +4,7 @@
 {
   "id": "VER-WEB-002-LANDING",
   "task_ids": ["WEB-002"],
-  "timestamp": "2026-11-18T22:28:00+08:00",
+  "timestamp": "2026-11-18T23:17:41+08:00",
   "tested_commit": "adb4662babb188aded797ddfd3a7a1d835676f38",
   "dirty_tree": true,
   "environment": "Isolated Windows worktree, Node 26, Python 3.12, headless Brave/Chromium and current public GitHub release endpoints",
@@ -21,7 +21,7 @@
     {"category": "browser-layout", "outcome": "passed"},
     {"category": "release-sync", "outcome": "passed"},
     {"category": "integration-review", "outcome": "passed"},
-    {"category": "deployment", "outcome": "unverified"},
+    {"category": "deployment", "outcome": "passed"},
     {"category": "hosted-release", "outcome": "unverified"}
   ]
 }
@@ -43,3 +43,16 @@ The browser reported zero overflow and no unresolved image or anchor targets at 
 
 The platform artifact checks used fixtures locally. Android CI signing and exact public release acceptance are still required for the first hosted release. Main previously failed iOS configuration because the pin lagged the already-rotated secret. The updated public hashes match the prior successful production iOS build recorded in REL-003. Live website deployment verification follows successful integration with current main.
 
+
+## Production and hosted verification
+
+2026-11-18T23:17:41+08:00 — Main commit `18efbf53fdaddd413644a3941b0c411cd04b1d25` deployed successfully to both Vercel projects. The live landing page passed Chromium checks at 1440, 390 and 320 pixels plus the mobile no-JavaScript case. Both stable download aliases continued to serve v1.0.4+24.
+
+- [Production landing](https://tabby-web-fawn.vercel.app/)
+- [Production Vercel deployment](https://vercel.com/zalwebs-projects/tabby-web/FdnLfaAVgqMUKJUjXmcxKMJoDLsg)
+- [Project memory workflow](https://github.com/Zalweb/Tabby/actions/runs/44332969472) passed.
+- [Hosted publisher](https://github.com/Zalweb/Tabby/actions/runs/44332969447) found no reviewed candidate and skipped mutation, as expected.
+- [Initial mobile build](https://github.com/Zalweb/Tabby/actions/runs/44332969490) stopped at missing Android signing secrets. The iOS job passed source/version and the production client pin, then its Python fixture exposed a canonical path mismatch on macOS: Git checkout analysis compares the resolved tracked file path against an unresolved temporary root. The actual iOS archive and public release remain unverified.
+
+
+2026-11-18T23:21:34+08:00 — The coordinator reproduced the hosted iOS fixture failure on Windows by supplying a noncanonical path to the same manifest check. The Luna follow-up resolves the checkout root before validating tracked path containment. The full 13-case Python suite passed after the fix. Hosted archive generation and the first complete public app release still require verification.

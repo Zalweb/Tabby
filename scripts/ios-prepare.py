@@ -71,6 +71,7 @@ def resolve_build_number(root, requested, require_pubspec=False):
 
 
 def generate_current_manifest(root, expected_commit=None):
+    root = Path(root).resolve()
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip().lower()
     if not re.fullmatch(r"[a-f0-9]{40}", commit) or (expected_commit and commit != expected_commit.lower()):
         raise ValueError("Current iOS source must match the exact checked-out GitHub commit")
