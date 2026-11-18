@@ -4,9 +4,9 @@
 {
   "id": "VER-REL-003-LANDING",
   "task_ids": ["REL-003"],
-  "tested_commit": "8e5a139780bedd8ebdad4203726fec8edfe9e007",
-  "dirty_tree": true,
-  "timestamp": "2026-11-18T18:46:00+08:00",
+  "tested_commit": "8ee6b972de8d85afd8889541e8cdb5e4ec500e91",
+  "dirty_tree": false,
+  "timestamp": "2026-11-18T19:03:00+08:00",
   "environment": "Windows 10.0.26300; Playwright 1.56.1 headless Chromium (chrome-headless-shell 1254) at desktop viewport; Node 26; Python 3 ios-prepare/ios-build-tests; live Vercel site https://tabby-web-fawn.vercel.app, GitHub Releases API and GitHub Actions API",
   "checks": [
     {"category": "local-regression", "outcome": "passed"},
@@ -14,7 +14,8 @@
     {"category": "release-artifact", "outcome": "passed"},
     {"category": "static-fallback-deploy", "outcome": "passed"},
     {"category": "source-manifest", "outcome": "passed"},
-    {"category": "ci-ios", "outcome": "unverified"},
+    {"category": "integration-review", "outcome": "passed"},
+    {"category": "ci-ios", "outcome": "failed"},
     {"category": "mobile-browser", "outcome": "unverified"},
     {"category": "full-download", "outcome": "unverified"}
   ],
@@ -32,7 +33,7 @@
 
 ## Expected and actual results
 
-Tested content: `origin/main` at `8e5a139780bedd8ebdad4203726fec8edfe9e007` plus the uncommitted REL-003 fallback edits (32 insertions / 32 deletions across the four mirrored files); the task/verification records themselves are also untracked, hence `dirty_tree: true`. Tested before the change was committed or deployed.
+Tested in stages: initial checks against `origin/main` at `8e5a139780bedd8ebdad4203726fec8edfe9e007` plus the uncommitted fallback edits (dirty tree); post-deploy checks on `997dca6`; review on `e3a39a5`; and manifest-refresh plus final checks on `8ee6b972de8d85afd8889541e8cdb5e4ec500e91` (clean tree; metadata reflects this final commit). The landing files are byte-identical from `997dca6` through `8ee6b97`; only records and `ios/build-source-manifest.json` changed after deployment.
 
 - `node test/web_landing_test.js` passed every assertion, including strict byte equality of `landing/index.html` ↔ `docs/index.html`, `landing/app.js` ↔ `docs/app.js`, the simulated release rendering, and a live `200` status check of the production URL.
 - Rendered live page before deployment (headless Chromium, network idle plus explicit wait for version tags): release engine applied; all six `[data-role="version-tag"]` pills read `v1.0.4+24`; release date read `November 18, 2026`; APK size read `70.2 MB`; APK filename read `Tabby-v1.0.4+24.apk`; live-status badges read `Latest Build: v1.0.4+24 (Live)`; changelog body contained the published release notes; no console errors or page errors were observed.
@@ -60,9 +61,16 @@ Transcript JSON output from the browser run (version tags, hrefs, sizes, dates, 
 - The push-triggered iOS run `44284627274` failed `Verify source and configure CocoaPods` with `Candidate source does not match its frozen manifest: docs/INDEX.md`. Audit of all 952 `ios/build-source-manifest.json` entries: 946 matched, 6 stale (`docs/INDEX.md`, `docs/app.js`, `docs/index.html`, `docs/progress/STATUS.md`, `landing/app.js`, `landing/index.html`), none missing. Refreshed exactly those six documentation/landing hashes; `python scripts/ios-prepare.py --verify-source` reports `Frozen source hashes verified: 952`, and `python scripts/ios-build-tests.py` passes 9/9, including the fixture asserting that documentation/packaging changes must not alter native reuse inputs. No app, native, asset, dependency or client-config hash changed.
 - The Android job fails at `Configure Android release signing` on this commit and on base `8e5a139`; this is a pre-existing signing-secret failure owned by the release-signing workflow, not a REL-003 change.
 
+CI confirmation on `8ee6b97` (run `44289031790`, push to `main`): the Project memory workflow passed; the iOS `Verify source and configure CocoaPods` step passed, confirming the manifest refresh fixed the earlier failure. The iOS job then failed later in `Prepare client configuration and native OAuth` with `Client configuration differs from the reviewed Android/backend candidate` (`scripts/ios-prepare.py:72`). Attribution shows this is external to REL-003:
+
+- `TABBY_IOS_BUILD_CONFIG` was updated at `2026-11-18T09:15:23Z`.
+- The base main run `44210852625` started at `00:48:38Z`, before the rotation, and passed that step against main's staging hashes.
+- Production-branch run `44274221017` started at `09:15:28Z`, passed the same step and the whole job against the branch's reviewed production hashes (`ios/client-config-hashes.json` sha256 `28b280d1…`).
+- Main's `ios/client-config-hashes.json` is unchanged since the base commit (sha256 `74a2be51…`) and REL-003 touches neither it nor the comparison logic, so any main push after the secret rotation fails here until main adopts the reviewed production binding (REL-002/QA-034 follow-up).
+
 ## Limits and next action
 
-The browser passes verify the rendered live state and the download redirect targets, not a complete byte-for-byte download through the UI. No physical mobile browser was used; the corrected static text is directly present in the served HTML, so the no-JavaScript case is covered by content inspection rather than a JS-disabled browser pass. Confirmation that the refreshed manifest restores the push-triggered iOS job is pending and is appended below when available. The Android workflow's signing failure is pre-existing on `main` and outside REL-003. No further action is required for this fallback update; any future release changes the shared rendering path and should repeat these checks.
+The browser passes verify the rendered live state and the download redirect targets, not a complete byte-for-byte download through the UI. No physical mobile browser was used; the corrected static text is directly present in the served HTML, so the no-JavaScript case is covered by content inspection rather than a JS-disabled browser pass. The iOS source-verification regression is confirmed fixed; the remaining iOS job failure is the external client-config snapshot mismatch described above, not a REL-003 acceptance check. The Android signing failure is pre-existing on `main` and outside REL-003. All REL-003 required checks pass. Adopting the reviewed production client configuration on `main` remains a REL-002/QA-034 follow-up. No further action is required for this fallback update; any future release changes the shared rendering path and should repeat these checks.
 
 ## Deployment
 
