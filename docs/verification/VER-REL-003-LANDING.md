@@ -6,13 +6,13 @@
   "task_ids": ["REL-003"],
   "tested_commit": "8e5a139780bedd8ebdad4203726fec8edfe9e007",
   "dirty_tree": true,
-  "timestamp": "2026-11-18T18:18:00+08:00",
+  "timestamp": "2026-11-18T18:20:00+08:00",
   "environment": "Windows 10.0.26300; Playwright 1.56.1 headless Chromium (chrome-headless-shell 1254) at desktop viewport; Node 26; live Vercel site https://tabby-web-fawn.vercel.app and GitHub Releases API",
   "checks": [
     {"category": "local-regression", "outcome": "passed"},
     {"category": "browser-ui", "outcome": "passed"},
     {"category": "release-artifact", "outcome": "passed"},
-    {"category": "static-fallback-deploy", "outcome": "unverified"},
+    {"category": "static-fallback-deploy", "outcome": "passed"},
     {"category": "mobile-browser", "outcome": "unverified"},
     {"category": "full-download", "outcome": "unverified"}
   ],
@@ -38,10 +38,19 @@ Tested content: `origin/main` at `8e5a139780bedd8ebdad4203726fec8edfe9e007` plus
 
 Transcript JSON output from the browser run (version tags, hrefs, sizes, dates, changelog present, HTTP statuses, redirect targets) and a desktop screenshot `live-before.png` captured outside the repository in the temporary verification directory. `test/web_landing_test.js` printed its full pass output. Screenshot is not committed (contains no private material but is redundant with the recorded values).
 
+## Post-deploy confirmation
+
+2026-11-18T18:20:00+08:00 — Commit `997dca6` was pushed from `8e5a139` to `origin/main`. The Vercel production deployment picked it up before the second poll (about 15 seconds after the push). Served HTML and script now carry the corrected fallback:
+
+- `https://tabby-web-fawn.vercel.app/` returns `200`; raw HTML contains `0` occurrences of `v1.0.3`, `Tabby-v1.0.3.apk`, `74.8 MB` and `September 19`; it contains `v1.0.4+24` ×7, `Tabby-v1.0.4+24.apk` ×1, `70.2 MB` ×2 and `November 18, 2026` ×2.
+- Served `app.js` defaults now read `v1.0.4+24`, `70.2 MB` and `November 18, 2026` (five matching lines).
+- Rendered page re-checked in headless Chromium after deployment: HTTP `200`, release engine applied, all six version pills `v1.0.4+24`, three APK links and one IPA link to the versioned GitHub assets, sizes `70.2 MB`, filename `Tabby-v1.0.4+24.apk`, dates `November 18, 2026`, live badges `Latest Build: v1.0.4+24 (Live)`, changelog populated from the release body, and no console errors. Both asset URLs returned `302` with `attachment` content-disposition filenames `Tabby-v1.0.4+24.apk` and `Tabby-v1.0.4+24.ipa`.
+- Post-deploy screenshot `live-after.png` captured next to `live-before.png` in the temporary verification directory.
+
 ## Limits and next action
 
-The browser pass verifies the JavaScript-applied live state and the download redirect targets, not a complete byte-for-byte download through the UI. No mobile browser, JavaScript-disabled device, or post-deploy served-HTML check had run at this timestamp. Next: deploy the fallback edits to production and confirm the served HTML and rendered page, appended below.
+The browser passes verify the rendered live state and the download redirect targets, not a complete byte-for-byte download through the UI. No physical mobile browser was used; the corrected static text is directly present in the served HTML, so the no-JavaScript case is covered by content inspection rather than a JS-disabled browser pass. No further action is required for this fallback update; any future release changes the shared rendering path and should repeat these checks.
 
 ## Deployment
 
-Not yet confirmed at this timestamp. The change is committed on `main`, whose Vercel production deployment serves the tested URL; post-deploy evidence is appended when available.
+Confirmed in production at `https://tabby-web-fawn.vercel.app/` from commit `997dca6` (see the post-deploy confirmation above). No other deployment surface changed.
