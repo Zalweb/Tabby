@@ -18,7 +18,7 @@ assert(html.includes('One running tab per friendship'), 'Hero must describe the 
 assert(html.includes('GCash, Maya, or QR Ph'), 'Hero must mention supported settlement rails');
 assert(html.includes('No money held by Tabby'), 'Hero must state that Tabby never holds funds');
 assert(html.includes('id="features"') && html.includes('id="screens"') && html.includes('id="why-tabby"'), 'Must have features, screens, and why-tabby sections');
-assert(html.includes('id="how-it-works"') && html.includes('id="download"') && html.includes('id="faq"'), 'Must have how-it-works, download, and FAQ sections');
+assert(!html.includes('id="how-it-works"') && html.includes('id="download"') && html.includes('id="faq"'), 'Must omit how-it-works and keep download and FAQ sections');
 
 assert(html.includes('data-role="apk-download-btn"'), 'Must have APK download buttons');
 assert(html.includes('data-role="ipa-download-btn"'), 'Must have IPA download buttons');
@@ -43,7 +43,7 @@ assert(!downloadSection.includes('Release details') && !downloadSection.includes
 assert(!html.includes('data-role="changelog-body"'), 'Landing HTML must not expose a release-note insertion target');
 
 assert(html.includes('assets/tabby-launcher.png'), 'Must use the current launcher icon');
-assert(html.includes('assets/mascot-notebook.png'), 'Must keep the notebook feature mascot artwork');
+assert(html.includes('class="feature-mascot feature-mascot-notebook"'), 'Must keep the notebook mascot in the feature cards');
 assert(html.includes('assets/mascot-thinking.png') && html.includes('assets/mascot-celebrating.png') && html.includes('assets/mascot-reminder.png'), 'Must use situation mascot artwork');
 assert(html.includes('assets/screens/home-light.png') && html.includes('assets/screens/home-dark.png'), 'Must show current light and dark home screenshots');
 assert(html.includes('assets/screens/login-light.png') && html.includes('assets/screens/detail-light.png'), 'Must show welcome and tab detail screenshots');
@@ -53,12 +53,11 @@ assert(!html.includes('tabby-icon.jpg'), 'Must not reference the legacy icon ass
 assert(html.includes('One tab per friendship'), 'Feature cards must describe one tab per friendship');
 assert(html.includes('Custom amounts'), 'Feature cards must describe custom split amounts');
 assert(html.includes('Centavo-exact'), 'Feature cards must describe centavo-exact math');
-assert(html.includes('Recipient confirmed') && html.includes('recipient confirms'), 'Must describe recipient-confirmed payments');
+assert(!html.includes('Recipient confirmed') && html.includes('recipient confirms'), 'Must describe recipient-confirmed payments outside the removed hero chip');
 assert(html.includes('Append-only history'), 'Must describe append-only ledger history');
 assert(html.includes('Offline-durable'), 'Must describe durable offline behavior');
 assert(html.includes('Encrypted at rest'), 'Must describe encrypted payment fields');
 assert(html.includes('Group tabs'), 'Must describe group tabs');
-assert(html.includes('Works at the table — even with no signal.'), 'Must include the offline feature panel');
 assert(html.includes('Good to know before you split.'), 'Must include the FAQ section');
 assert(html.includes('Privacy Policy') && html.includes('Terms of Service'), 'Must link the legal pages');
 

@@ -650,36 +650,6 @@ button {
     filter 0.5s ease;
 }
 
-.hero-chip {
-  position: absolute;
-  z-index: 3;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-soft);
-  color: var(--ink);
-  font-size: 12.5px;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-  white-space: nowrap;
-}
-
-.hero-chip svg {
-  width: 16px;
-  height: 16px;
-  color: var(--success);
-  flex: none;
-}
-
-.hero-chip-top {
-  top: 9%;
-  right: 0;
-}
-
 @media (hover: hover) {
   .hero-art:hover .hero-phone {
     transform: rotate(0deg) scale(1.05);
@@ -1131,125 +1101,6 @@ button {
   color: var(--secondary);
   font-size: 14px;
   line-height: 1.62;
-}
-
-/* How it works ------------------------------------------------------------ */
-
-.feature-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-  align-items: center;
-  gap: 40px;
-  padding: 52px;
-  border-radius: 32px;
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-
-.feature-panel-copy {
-  max-width: 560px;
-}
-
-.feature-panel h2 {
-  max-width: 18ch;
-  font-size: clamp(30px, 3.8vw, 42px);
-}
-
-.feature-panel-copy > p {
-  margin-top: 14px;
-  max-width: 46ch;
-  color: var(--secondary);
-  font-size: 16px;
-  line-height: 1.7;
-}
-
-.steps {
-  display: grid;
-  gap: 18px;
-  margin-top: 28px;
-}
-
-.step {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
-}
-
-.step-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--soft);
-  color: var(--burnt);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.step h3 {
-  padding-top: 4px;
-  font-size: 16px;
-  letter-spacing: -0.015em;
-}
-
-.step p {
-  margin-top: 3px;
-  color: var(--secondary);
-  font-size: 14.5px;
-  line-height: 1.6;
-}
-
-.feature-panel .btn {
-  margin-top: 28px;
-}
-
-.feature-panel-art {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 430px;
-  border-radius: 26px;
-  background: radial-gradient(
-    circle at 50% 54%,
-    #ffe4b4 0%,
-    #fff3df 58%,
-    rgba(255, 243, 223, 0) 78%
-  );
-}
-
-.feature-panel-art img {
-  width: min(86%, 350px);
-  filter: drop-shadow(0 26px 36px rgba(64, 42, 20, 0.2));
-}
-
-.offline-chip {
-  position: absolute;
-  left: 8%;
-  bottom: 9%;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-soft);
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-  backdrop-filter: blur(8px);
-}
-
-.offline-chip svg {
-  width: 16px;
-  height: 16px;
-  color: var(--burnt);
-  flex: none;
 }
 
 /* FAQ --------------------------------------------------------------------- */
@@ -1766,7 +1617,6 @@ button {
     min-height: 560px;
   }
 
-  .feature-panel,
   .download-card {
     padding: 40px;
   }
@@ -1836,10 +1686,6 @@ button {
     width: min(78%, 300px);
   }
 
-  .hero-chip-top {
-    right: 6%;
-  }
-
   .section {
     padding-top: 64px;
   }
@@ -1880,15 +1726,6 @@ button {
 
   .principle-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .feature-panel {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 36px;
-  }
-
-  .feature-panel-art {
-    min-height: 360px;
   }
 
   .faq-grid {
@@ -1974,10 +1811,6 @@ button {
     width: min(84%, 280px);
   }
 
-  .hero-chip {
-    display: none;
-  }
-
   .section {
     padding-top: 56px;
   }
@@ -2029,21 +1862,6 @@ button {
 
   .principle-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .feature-panel {
-    padding: 26px 22px;
-    border-radius: 26px;
-  }
-
-  .feature-panel-art {
-    min-height: 320px;
-  }
-
-  .offline-chip {
-    left: 4%;
-    bottom: 5%;
-    font-size: 11px;
   }
 
   .faq-card summary {

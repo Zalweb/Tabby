@@ -86,3 +86,7 @@ The live Vercel production site was redeployed and verified at the HTTP/page lev
 ## Minimal downloads and feature mascot motion
 
 2026-11-18T21:37:18+08:00 — On the scoped clone, the hero keeps the Home screenshot and drops the waving overlay and centavo chip. The download card reduces to platform actions, requirements and concise iOS sideload guidance. The public website no longer renders release notes. All six sections of `node test/web_landing_test.js` passed, including the fetched-asset link update and original live shell. Brave at 1440 × 1000 and 390 × 844 showed all three feature images animating once with distinct motion and staying static with reduced motion. Both views fit their viewport and showed both download actions. Verified with local static HTTP and inspected desktop/mobile captures.
+
+## Selected landing element removals
+
+2026-11-18T23:48:24+08:00 — The owner selected and removed the How it works panel and the Recipient confirmed hero badge. Their exclusive styles and navigation links were removed. The feature cards, payment confirmation explanation and download actions remain available. The existing Node landing suite passed all six sections. Brave at 1440 and 390 pixels confirmed both removals, zero stale panel links on the landing and legal pages, zero page exceptions and no horizontal overflow. The landing and docs mirrors match byte for byte. Vercel production verification follows.
