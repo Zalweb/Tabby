@@ -24,3 +24,7 @@ Every code/config/docs change ships with an updated task record: what changed, w
 Implemented means code exists; verified means required acceptance passed in recorded environments; complete also requires integration/review and current documentation. If device/backend tools are unavailable, leave those checks unverified and name the needed next step. A passing unit/mock suite cannot close a live authorization or Android-device finding.
 
 No secrets or private user data in Git or evidence. Use sanitized fixtures. Deployment evidence must identify environment and applied migration versions; publishing requires exact candidate artifact evidence and existing authorization.
+
+## Live website deployment preference
+
+2026-11-18T19:58:27+08:00 — Explicit owner instruction: always deploy completed website and landing-page changes to the live production site. After relevant tests and browser verification pass, publish through the existing Vercel production path as part of delivery without asking for the same approval again; a local build, preview URL or unmerged branch is not delivery. Record the production URL, deployment commit and any unverified checks. Backend deployment, app release and signing gates are unchanged.

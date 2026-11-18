@@ -42,15 +42,16 @@ Widget warmHost(
   bool dark = false,
   double scale = 1,
   TabbyNotifier Function()? ledger,
+  TabbyUser owner = warmOwner,
 }) => ProviderScope(
   overrides: [
     currentUserProvider.overrideWith(
-      (_) => CurrentUserNotifier(initialUser: warmOwner, autoLoad: false),
+      (_) => CurrentUserNotifier(initialUser: owner, autoLoad: false),
     ),
     tabbyProvider.overrideWith((_) => (ledger ?? warmLedger)()),
     userSettingsProvider.overrideWith(
       (_) => UserSettingsNotifier(
-        userId: warmOwner.id,
+        userId: owner.id,
         notificationsChanged: () async => false,
       ),
     ),

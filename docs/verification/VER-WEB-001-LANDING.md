@@ -1,0 +1,76 @@
+# WEB-001 — Landing page refresh and release sync verification
+
+```json verification-metadata
+{
+  "id": "VER-WEB-001-LANDING",
+  "task_ids": [
+    "WEB-001"
+  ],
+  "timestamp": "2026-11-18T19:43:59+08:00",
+  "tested_commit": "a7394bdfb5bdae53c8a24bec6f1d8addd32abae9",
+  "dirty_tree": true,
+  "environment": "Windows 11; Node.js v26.13.0; headless Brave (Chromium 157) against a local Python static server; live Vercel HTTP probe",
+  "commands": [
+    "node test/web_landing_test.js",
+    "flutter test --no-pub test/features/marketing_capture_test.dart (TABBY_CAPTURE_MARKETING=true with Inter font env)",
+    "headless Brave CDP navigation at 1440x1000 and 390x844",
+    "node scripts/check-project-memory.cjs --write",
+    "node scripts/check-project-memory.cjs --base a7394bdfb5bdae53c8a24bec6f1d8addd32abae9"
+  ],
+  "checks": [
+    {
+      "category": "regression",
+      "outcome": "passed"
+    },
+    {
+      "category": "browser-layout",
+      "outcome": "passed"
+    },
+    {
+      "category": "visual-consistency",
+      "outcome": "passed"
+    },
+    {
+      "category": "release-sync",
+      "outcome": "passed"
+    },
+    {
+      "category": "deployment",
+      "outcome": "unverified"
+    },
+    {
+      "category": "integration-review",
+      "outcome": "unverified"
+    }
+  ]
+}
+```
+
+## Expected and actual results
+
+Expected: the public landing page should adopt the Tarsi-derived warm structure while describing only current Tabby behavior, use the current mascot artwork and real current app screens, keep the release-aware download engine working for both Android and iOS, keep legal pages usable, and remain mirror-identical between `landing/` and `docs/`.
+
+Actual:
+
+- `node test/web_landing_test.js` passed every section: current page structure/content/assets, warm design tokens and responsive rules, release-engine and interaction setup, strict `landing/`↔`docs/` page and asset mirrors, release-data simulation, and the live Vercel shell HTTP 200 check.
+- The browser loaded the page with no console or network log errors. At 1440×1000 the document had no horizontal overflow (`scrollWidth` 1425 inside a 1440 viewport with the 15px scrollbar), 23/23 images completed, all 27 reveal elements became visible after scrolling, and the header stayed sticky. At 390×844 there was no horizontal overflow (`390`/`390`), 23/23 images completed, and all 27 reveals became visible.
+- The live GitHub `releases/latest` response returned HTTP 200 and the page displayed `v1.0.4+24`, released `November 18, 2026`, APK `70.2 MB`, IPA `30.2 MB`, and both versioned APK/IPA download URLs. The live status text updated to `Latest build: v1.0.4+24 (Live)`.
+- Mobile navigation opened via the toggle (`aria-expanded=true`, visible panel), closed on Escape, and returned to `aria-expanded=false`. FAQ cards and the release-note `<details>` expanded natively. The release-notes body contained escaped release-note headings, paragraphs and lists and no injected `<script>`.
+- Legal pages retained their dark legal hero and readable card layout at desktop and mobile widths without overflow; branding uses `assets/tabby-launcher.png`, and desktop legal navigation fits one row.
+- Desktop navigation fits one row from 1021px through 1600px; the 960px breakpoint switches to the mobile menu, and 901–960px no longer wraps nav labels.
+- Visual captures at desktop and mobile show the hero phone plus floating mascot, three mascot feature cards, six-screen marquee, stats/principles, offline panel, FAQ grid, dark release card, community card, and dark footer as intended.
+
+Screenshots are local, ignored artifacts under `build_artifacts/landing-verify/` (full-page and section captures such as `desktop-full.png`, `mobile-full.png`, `final-desktop-release.png`, `final-mobile-release-top.png`, `final-mobile-changelog-open.png`, and legal-page captures). The marketing capture fixture produced `build_artifacts/marketing/{login,home,detail,profile}-{light,dark}.png` from synthetic Maria Santos data; the profile capture was not published because it contained a “Not available yet” placeholder.
+
+Issues found and corrected during verification: the hero glow pseudo-element extended 160px beyond the hero and forced a 551px mobile layout; it is now constrained to the hero width. The desktop header wrapped “FAQ” because of the brand tagline and unconstrained buttons; the header tagline was removed, buttons are nowrap, and the mobile breakpoint is 960px. Lazy marquee screenshots could remain undecoded while offscreen; the six marquee frames now load eagerly.
+
+## Evidence
+
+- Test command output: all six landing verification sections passed.
+- Browser session: Chromium 157 headless (Brave), local static server at `127.0.0.1:4173`; live release API `https://api.github.com/repos/Zalweb/Tabby/releases/latest` returned 200; Google Fonts loaded 200; no console or log errors.
+- Captures: `build_artifacts/landing-verify/` (desktop/mobile full-page and section screenshots; `final-desktop-hero.png`, `final-desktop-release.png`, `final-desktop-community.png`, `final-desktop-footer.png`, `final-mobile-*`, `final-desktop-privacy.png`, `final-mobile-privacy.png`).
+- Marketing fixture: `test/features/marketing_capture_test.dart` with `TABBY_CAPTURE_MARKETING=true`; synthetic fixtures only.
+
+## Limits and next action
+
+The live Vercel site was not redeployed and still serves the previous landing page; the HTTP shell test only confirms the old title and download CTA until deployment. This task does not deploy, publish, tag, or change release assets. Browser coverage is local headless Chromium only: Safari, Firefox, real mobile devices, and a formal accessibility audit are unverified. Independent integration review is unverified. The marketing captures require the gated fixture and a local Inter font; normal CI does not run them. The next action is to deploy the updated `landing/` and `docs/` mirror with existing authorization, then recheck the live page, release metadata, mobile navigation, and both download buttons.

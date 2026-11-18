@@ -4,175 +4,221 @@ const assert = require('assert');
 
 console.log('--- Starting Tabby Web Landing Page Verification Suite ---');
 
-// 1. Verify docs/index.html
-const htmlPath = path.join(__dirname, '..', 'docs', 'index.html');
+const root = path.join(__dirname, '..');
+const landingDir = path.join(root, 'landing');
+const docsDir = path.join(root, 'docs');
+
+// 1. Verify docs/index.html structure and product-accurate content
+const htmlPath = path.join(docsDir, 'index.html');
 assert(fs.existsSync(htmlPath), 'docs/index.html must exist');
 const html = fs.readFileSync(htmlPath, 'utf8');
 
 assert(html.includes('Tabby — Keep tabs. Settle up.'), 'Title must match Tabby tagline');
-assert(html.includes('data-role="apk-download-btn"'), 'Must have apk download button data-role');
-assert(html.includes('data-role="version-tag"'), 'Must have version tag element');
-assert(html.includes('data-role="apk-size"'), 'Must have apk size element');
-assert(html.includes('data-role="release-date"'), 'Must have release date element');
-assert(html.includes('app.js'), 'Must load app.js');
-assert(html.includes('styles.css'), 'Must load styles.css');
-assert(html.includes('assets/tabby-icon.jpg'), 'Must link to mascot icon');
-assert(html.includes('preview-home.png'), 'Must have Homepage mockup image');
-assert(html.includes('preview-banner.png'), 'Must have Banner Page mockup image');
-assert(html.includes('Homepage') && html.includes('Banner Page') && html.includes('Tab Page'), 'Must display 3 mockup labels');
-assert(html.includes('hero-text-col'), 'Must include hero-text-col column');
-assert(!html.includes('>GitHub<') && !html.includes('>GitHub Repo<'), 'Must not have user-facing GitHub links');
+assert(html.includes('One running tab per friendship'), 'Hero must describe the one-tab-per-friendship model');
+assert(html.includes('GCash, Maya, or QR Ph'), 'Hero must mention supported settlement rails');
+assert(html.includes('No money held by Tabby'), 'Hero must state that Tabby never holds funds');
+assert(html.includes('id="features"') && html.includes('id="screens"') && html.includes('id="why-tabby"'), 'Must have features, screens, and why-tabby sections');
+assert(html.includes('id="how-it-works"') && html.includes('id="download"') && html.includes('id="faq"'), 'Must have how-it-works, download, and FAQ sections');
 
-// Verify zero emojis across HTML
+assert(html.includes('data-role="apk-download-btn"'), 'Must have APK download buttons');
+assert(html.includes('data-role="ipa-download-btn"'), 'Must have IPA download buttons');
+assert(html.includes('data-role="version-tag"'), 'Must have version tag elements');
+assert(html.includes('data-role="release-date"'), 'Must have release date elements');
+assert(html.includes('data-role="apk-size"'), 'Must have APK size elements');
+assert(html.includes('data-role="ipa-size"'), 'Must have IPA size elements');
+assert(html.includes('data-role="apk-filename"'), 'Must have APK filename element');
+assert(html.includes('data-role="live-status"'), 'Must have live release status elements');
+assert(html.includes('data-role="changelog-body"'), 'Must have a changelog body target');
+assert(html.includes('data-nav-toggle'), 'Must have a mobile navigation toggle');
+assert(html.includes('app.js') && html.includes('styles.css'), 'Must load app.js and styles.css');
+
+assert(html.includes('assets/tabby-launcher.png'), 'Must use the current launcher icon');
+assert(html.includes('assets/mascot-welcome.png') && html.includes('assets/mascot-notebook.png'), 'Must use the welcome and notebook mascot artwork');
+assert(html.includes('assets/mascot-thinking.png') && html.includes('assets/mascot-celebrating.png') && html.includes('assets/mascot-reminder.png'), 'Must use situation mascot artwork');
+assert(html.includes('assets/screens/home-light.png') && html.includes('assets/screens/home-dark.png'), 'Must show current light and dark home screenshots');
+assert(html.includes('assets/screens/login-light.png') && html.includes('assets/screens/detail-light.png'), 'Must show welcome and tab detail screenshots');
+assert(!html.includes('preview-home.png') && !html.includes('preview-banner.png'), 'Must not reference outdated app screenshots');
+assert(!html.includes('tabby-icon.jpg'), 'Must not reference the legacy icon asset');
+
+assert(html.includes('One tab per friendship'), 'Feature cards must describe one tab per friendship');
+assert(html.includes('Custom amounts'), 'Feature cards must describe custom split amounts');
+assert(html.includes('Centavo-exact'), 'Feature cards must describe centavo-exact math');
+assert(html.includes('Recipient confirmed') && html.includes('recipient confirms'), 'Must describe recipient-confirmed payments');
+assert(html.includes('Append-only history'), 'Must describe append-only ledger history');
+assert(html.includes('Offline-durable'), 'Must describe durable offline behavior');
+assert(html.includes('Encrypted at rest'), 'Must describe encrypted payment fields');
+assert(html.includes('Group tabs'), 'Must describe group tabs');
+assert(html.includes('Works at the table — even with no signal.'), 'Must include the offline feature panel');
+assert(html.includes('Good to know before you split.'), 'Must include the FAQ section');
+assert(html.includes('Privacy Policy') && html.includes('Terms of Service'), 'Must link the legal pages');
+
+const forbiddenGitHubLabels = ['>GitHub<', '>GitHub Repo<'];
+for (const label of forbiddenGitHubLabels) {
+  assert(!html.includes(label), `Must not have a user-facing ${label} link label`);
+}
+
 const emojiRegex = /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]/g;
 const htmlEmojiMatches = html.match(emojiRegex) || [];
 assert.strictEqual(htmlEmojiMatches.length, 0, `HTML must not contain emojis. Found: ${htmlEmojiMatches.join(' ')}`);
 
-// Verify minimalist vector SVG icons exist
-assert(html.includes('<svg class="pill-icon"'), 'Must have minimalist SVG vector icons in feature pills');
-assert(html.includes('<div class="state-icon-badge" aria-label="Settled and Sleeping">') &&
-       html.includes('<div class="state-icon-badge" aria-label="Curious and Alert">') &&
-       html.includes('<div class="state-icon-badge" aria-label="Settled Celebration">'),
-       'Must have minimalist SVG state icon badges in mascot cards');
-assert(html.includes('<rect x="2" y="5" width="20" height="14" rx="2">') || html.includes('rect x="2" y="5"'), 'Must have minimalist CreditCard SVG for Philippine Payment Rails');
-assert(html.includes('<rect x="4" y="2" width="16" height="20" rx="2">') || html.includes('rect x="4" y="2"'), 'Must have minimalist Calculator SVG for Zero Floating-Point Drift');
-assert(html.includes('d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"'), 'Must have minimalist Receipt SVG for Proof of Payment');
+assert((html.match(/<details class="faq-card/g) || []).length >= 6, 'Must include at least six FAQ cards');
+assert(html.includes('<details class="changelog">'), 'Changelog must work without JavaScript');
+assert(html.includes('name="viewport"') && html.includes('meta name="description"'), 'Must include responsive viewport and meta description');
 
-// Verify accurate feature content in index.html
-assert(html.includes('One Tab = One Relationship'), 'Must describe One Tab = One Relationship ledger concept');
-assert(html.includes('Zero Floating-Point Drift'), 'Must describe centavo-accurate integer arithmetic');
-assert(html.includes('Philippine Payment Rails'), 'Must mention Philippine payment rails');
-assert(html.includes('GCash, Maya, QR Ph') || html.includes('GCash, Maya & QR Ph'), 'Must mention GCash, Maya, and QR Ph');
-assert(html.includes('Offline-First Resilience'), 'Must feature offline-first sync');
-assert(html.includes('Tabby ID & Bank-Grade RLS'), 'Must feature Tabby ID and Row Level Security');
-assert(html.includes('Sleeping & Content ("Bayad na!")'), 'Must feature mascot sleeping zero-balance state');
-assert(html.includes('Defusing "Hiya" with Companion Warmth') || html.includes('Defusing Awkwardness with Warmth'), 'Must feature mascot warmth');
-assert(html.includes('Frequently Asked Questions'), 'Must feature FAQ section');
-assert(html.includes('Barkada & Group Splitting'), 'Must feature Barkada and Group splitting');
-assert(html.includes('Proof-of-Payment Receipts'), 'Must feature Proof-of-payment receipts');
+console.log('✓ docs/index.html structure, content, and asset references verified');
 
-// Verify scroll pop animation markup
-assert(html.includes('pop-on-scroll'), 'Must include pop-on-scroll animation classes');
-assert(html.includes('pop-delay-1') && html.includes('pop-delay-2'), 'Must include staggered pop delays');
-
-console.log('✓ docs/index.html content, minimalist SVG icons & feature specs verified');
-
-// 2. Verify docs/styles.css
-const cssPath = path.join(__dirname, '..', 'docs', 'styles.css');
+// 2. Verify docs/styles.css design system
+const cssPath = path.join(docsDir, 'styles.css');
 assert(fs.existsSync(cssPath), 'docs/styles.css must exist');
 const css = fs.readFileSync(cssPath, 'utf8');
-assert(css.includes('--tabby-charcoal: #1F1F1F'), 'Must have Tabby charcoal color token');
-assert(css.includes('--tabby-amber: #FFB74D'), 'Must have Tabby amber color token');
-assert(css.includes('.hero-title'), 'Must have hero title styling');
-assert(css.includes('.btn-amber'), 'Must have amber button styling');
-assert(css.includes('.hero-container') && css.includes('grid-template-columns: 1fr 1.08fr'), 'Must have 2-column hero container grid');
-assert(css.includes('.hero-text-col'), 'Must have hero text column styling');
 
-// Verify mobile header responsiveness rules and fluid typography
-assert(css.includes('.nav-tagline') && css.includes('display: none'), 'Must hide .nav-tagline on mobile headers to prevent overflow');
-assert(css.includes('clamp('), 'Must use clamp fluid typography for responsive text');
-assert(css.includes('.navbar-inner') && (css.includes('height: 64px') || css.includes('height: 60px')), 'Must adjust navbar height on compact viewports');
-assert(css.includes('.pill-icon'), 'Must style minimalist pill icons');
-assert(css.includes('.state-icon-badge'), 'Must style minimalist state icon badge container');
-assert(css.includes('@media (max-width: 860px)') && css.includes('.nav-links'), 'Must collapse desktop nav-links at 860px breakpoint');
+assert(css.includes('--canvas: #fffaf2'), 'Must use the warm cream canvas token');
+assert(css.includes('--ink: #292321'), 'Must use the warm charcoal ink token');
+assert(css.includes('--amber: #ffb342'), 'Must use the brand amber token');
+assert(css.includes('--page-width: 1080px'), 'Must use the 1080px page width');
+assert(css.includes('--radius-card: 28px'), 'Must use 28px card corners');
+assert(css.includes('.hero-title') && css.includes('.title-pill'), 'Must style the hero headline and inline pill');
+assert(css.includes('.store-badge-dark') && css.includes('.store-badge-outline'), 'Must style the download badges');
+assert(css.includes('.feature-grid') && css.includes('.principle-grid'), 'Must style feature and principle grids');
+assert(css.includes('.marquee-track') && css.includes('@keyframes marquee-scroll'), 'Must style the screenshot marquee');
+assert(css.includes('.faq-card'), 'Must style FAQ cards');
+assert(css.includes('.download-card') && css.includes('.release-panel'), 'Must style the release download card');
+assert(css.includes('.community-card') && css.includes('.pay-chip'), 'Must style the community card');
+assert(css.includes('.site-footer') && css.includes('.footer-grid'), 'Must style the dark footer');
+assert(css.includes('.has-reveal .reveal') && css.includes('.reveal.is-visible'), 'Must implement scroll reveal states');
+assert(css.includes('prefers-reduced-motion: reduce'), 'Must respect reduced motion');
+assert(css.includes('@media (max-width: 960px)') && css.includes('.site-header.is-open .site-nav'), 'Must implement the mobile navigation panel');
+assert(css.includes('--tabby-amber') && css.includes('--tabby-charcoal'), 'Must retain legal page compatibility tokens');
+assert(css.includes('.btn-primary') && css.includes('.navbar-inner') && css.includes('.footer-link'), 'Must style shared legal page header, buttons, and footer');
+const privacyHtml = fs.readFileSync(path.join(docsDir, 'privacy.html'), 'utf8');
+assert(privacyHtml.includes('.legal-hero') && privacyHtml.includes('.legal-body'), 'Privacy page must retain its inline legal layout styles');
 
-// Verify scroll-triggered pop animation styles
-assert(css.includes('.pop-on-scroll'), 'Must have .pop-on-scroll base styling');
-assert(css.includes('.pop-on-scroll.is-visible'), 'Must have .pop-on-scroll.is-visible styling');
-assert(css.includes('.pop-on-scroll:not(.is-visible)'), 'Must have reset styling when scrolled out of view');
-assert(css.includes('cubic-bezier(0.34, 1.35, 0.64, 1)'), 'Must use spring-pop cubic-bezier curve');
-assert(css.includes('.pop-delay-1') && css.includes('.pop-delay-4'), 'Must have stagger delay classes');
+console.log('✓ docs/styles.css tokens, layout, marquee, reveal, and legal compatibility verified');
 
-// Verify responsive stick-together 3-mockup styling and floating animation
-assert(css.includes('--mockup-overlap'), 'Must use --mockup-overlap variable for sticking mockups together');
-assert(css.includes('--mockup-side-w') && css.includes('--mockup-center-w'), 'Must use geometry variables for scalable mockups');
-assert(css.includes('.mockup-phone-left') && css.includes('.mockup-phone-right'), 'Must style left and right tilted mockups');
-assert(css.includes('phone-float') && css.includes('.mockup-phone-center.is-floating'), 'Must have floating center phone animation');
-
-console.log('✓ docs/styles.css tokens, mobile header responsiveness, fluid typography, pop animations & mockup styling verified');
-
-// 3. Verify docs/app.js
-const jsPath = path.join(__dirname, '..', 'docs', 'app.js');
+// 3. Verify docs/app.js release engine and interaction setup
+const jsPath = path.join(docsDir, 'app.js');
 assert(fs.existsSync(jsPath), 'docs/app.js must exist');
 const js = fs.readFileSync(jsPath, 'utf8');
-assert(js.includes('api.github.com/repos/') && js.includes('Zalweb') && js.includes('Tabby'), 'Must fetch from GitHub Releases API');
-assert(js.includes('apk-download-btn'), 'Must select apk-download-btn');
-assert(js.includes('releases/latest/download/Tabby.apk'), 'Must have canonical fallback URL');
-assert(js.includes('applyReleaseData'), 'Must have release data application logic');
-assert(js.includes('setupScrollPopAnimations'), 'Must initialize scroll-pop animation observer');
-assert(js.includes("classList.remove('is-visible')"), 'Must re-trigger scroll pop animations when scrolled back into view');
-assert(js.includes('setupMockupInteractivity'), 'Must initialize mockup phone tap / focus interaction');
-assert(js.includes('setupFaqAccordion'), 'Must initialize FAQ accordion toggle');
 
-console.log('✓ docs/app.js release engine, pop observer & interactivity verified');
+assert(js.includes('api.github.com/repos/') && js.includes('Zalweb') && js.includes('Tabby'), 'Must fetch releases from the GitHub API');
+assert(js.includes('apk-download-btn') && js.includes('ipa-download-btn'), 'Must update both download button groups');
+assert(js.includes('releases/latest/download/Tabby.apk'), 'Must keep the canonical APK fallback');
+assert(js.includes('releases/latest/download/Tabby.ipa'), 'Must keep the canonical IPA fallback');
+assert(js.includes('applyReleaseData'), 'Must apply fetched release data');
+assert(js.includes('ipa-size'), 'Must update IPA size labels');
+assert(js.includes('escapeHtml') && js.includes('simpleMarkdown'), 'Must escape release notes before rendering');
+assert(js.includes('setupMobileNav'), 'Must initialize the mobile navigation toggle');
+assert(js.includes('setupRevealAnimations'), 'Must initialize scroll reveal');
+assert(js.includes('setupHeaderState'), 'Must initialize the sticky header state');
+assert(!js.includes('setupMockupInteractivity'), 'Must not keep the retired mockup interaction');
+assert(!js.includes('setupFaqAccordion'), 'Must not keep the retired FAQ accordion script');
 
-// 4. Verify mirrored landing/ directory
-const landingHtml = fs.readFileSync(path.join(__dirname, '..', 'landing', 'index.html'), 'utf8');
-const landingCss = fs.readFileSync(path.join(__dirname, '..', 'landing', 'styles.css'), 'utf8');
-const landingJs = fs.readFileSync(path.join(__dirname, '..', 'landing', 'app.js'), 'utf8');
+console.log('✓ docs/app.js release engine, mobile navigation, and reveal setup verified');
+
+// 4. Verify mirrored landing/ directory and shared assets
+const landingHtml = fs.readFileSync(path.join(landingDir, 'index.html'), 'utf8');
+const landingCss = fs.readFileSync(path.join(landingDir, 'styles.css'), 'utf8');
+const landingJs = fs.readFileSync(path.join(landingDir, 'app.js'), 'utf8');
 
 assert.strictEqual(html, landingHtml, 'landing/index.html must strictly mirror docs/index.html');
 assert.strictEqual(css, landingCss, 'landing/styles.css must strictly mirror docs/styles.css');
 assert.strictEqual(js, landingJs, 'landing/app.js must strictly mirror docs/app.js');
-console.log('✓ landing/ directory mirrors docs/ perfectly (100% synchronized)');
+
+for (const legal of ['privacy.html', 'terms.html']) {
+  assert.strictEqual(
+    fs.readFileSync(path.join(landingDir, legal), 'utf8'),
+    fs.readFileSync(path.join(docsDir, legal), 'utf8'),
+    `landing/${legal} must strictly mirror docs/${legal}`,
+  );
+}
+
+const sharedAssets = [
+  'assets/tabby-launcher.png',
+  'assets/mascot-welcome.png',
+  'assets/mascot-notebook.png',
+  'assets/mascot-thinking.png',
+  'assets/mascot-waiting.png',
+  'assets/mascot-helpful.png',
+  'assets/mascot-reminder.png',
+  'assets/mascot-celebrating.png',
+  'assets/screens/home-light.png',
+  'assets/screens/home-dark.png',
+  'assets/screens/login-light.png',
+  'assets/screens/login-dark.png',
+  'assets/screens/detail-light.png',
+  'assets/screens/detail-dark.png',
+];
+for (const asset of sharedAssets) {
+  const landingAsset = path.join(landingDir, asset);
+  const docsAsset = path.join(docsDir, asset);
+  assert(fs.existsSync(landingAsset), `landing/${asset} must exist`);
+  assert(fs.existsSync(docsAsset), `docs/${asset} must exist`);
+  assert(fs.readFileSync(landingAsset).equals(fs.readFileSync(docsAsset)), `docs/${asset} must mirror landing/${asset}`);
+}
+
+console.log('✓ landing/ and docs/ mirror pages and shared assets');
 
 // 5. Simulate release update logic
 function simulateUpdate(release) {
   let apkAsset = null;
+  let ipaAsset = null;
   if (Array.isArray(release.assets)) {
     apkAsset = release.assets.find(a => a.name && a.name.endsWith('.apk') && a.name.includes('-')) ||
                release.assets.find(a => a.name && a.name.endsWith('.apk'));
+    ipaAsset = release.assets.find(a => a.name && a.name.endsWith('.ipa'));
   }
   const apkUrl = apkAsset ? apkAsset.browser_download_url : 'https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.apk';
-  const sizeMb = apkAsset ? (apkAsset.size / (1024 * 1024)).toFixed(1) + ' MB' : '70.8 MB';
+  const ipaUrl = ipaAsset ? ipaAsset.browser_download_url : 'https://github.com/Zalweb/Tabby/releases/latest/download/Tabby.ipa';
   return {
     tagName: release.tag_name,
     apkUrl,
-    sizeMb,
+    ipaUrl,
+    sizeMb: apkAsset ? (apkAsset.size / (1024 * 1024)).toFixed(1) + ' MB' : '70.2 MB',
+    ipaSizeMb: ipaAsset ? (ipaAsset.size / (1024 * 1024)).toFixed(1) + ' MB' : '30.2 MB',
     filename: apkAsset ? apkAsset.name : 'Tabby.apk'
   };
 }
 
-// Test with current v1.0.0 release
-const v1 = simulateUpdate({
-  tag_name: 'v1.0.0',
+const current = simulateUpdate({
+  tag_name: 'v1.0.4+24',
   assets: [
-    { name: 'Tabby-v1.0.0.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.0/Tabby-v1.0.0.apk', size: 70776401 },
-    { name: 'Tabby.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.0/Tabby.apk', size: 70961025 }
+    { name: 'Tabby-v1.0.4.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4/Tabby-v1.0.4.apk', size: 73609244 },
+    { name: 'Tabby.ipa', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4/Tabby.ipa', size: 31633412 }
   ]
 });
-assert.strictEqual(v1.tagName, 'v1.0.0');
-assert.strictEqual(v1.apkUrl, 'https://github.com/Zalweb/Tabby/releases/download/v1.0.0/Tabby-v1.0.0.apk');
-assert.strictEqual(v1.filename, 'Tabby-v1.0.0.apk');
-assert.strictEqual(v1.sizeMb, '67.5 MB');
+assert.strictEqual(current.tagName, 'v1.0.4+24');
+assert.strictEqual(current.apkUrl, 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4/Tabby-v1.0.4.apk');
+assert.strictEqual(current.ipaUrl, 'https://github.com/Zalweb/Tabby/releases/download/v1.0.4/Tabby.ipa');
+assert.strictEqual(current.filename, 'Tabby-v1.0.4.apk');
+assert.strictEqual(current.sizeMb, '70.2 MB');
+assert.strictEqual(current.ipaSizeMb, '30.2 MB');
 
-// Test with future new release v1.0.1
-const v2 = simulateUpdate({
-  tag_name: 'v1.0.1',
+const next = simulateUpdate({
+  tag_name: 'v1.0.5+25',
   assets: [
-    { name: 'Tabby-v1.0.1.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.1/Tabby-v1.0.1.apk', size: 75000000 },
-    { name: 'Tabby.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.1/Tabby.apk', size: 75000000 }
+    { name: 'Tabby-v1.0.5.apk', browser_download_url: 'https://github.com/Zalweb/Tabby/releases/download/v1.0.5/Tabby-v1.0.5.apk', size: 75000000 }
   ]
 });
-assert.strictEqual(v2.tagName, 'v1.0.1');
-assert.strictEqual(v2.apkUrl, 'https://github.com/Zalweb/Tabby/releases/download/v1.0.1/Tabby-v1.0.1.apk');
-assert.strictEqual(v2.filename, 'Tabby-v1.0.1.apk');
-assert.strictEqual(v2.sizeMb, '71.5 MB');
+assert.strictEqual(next.tagName, 'v1.0.5+25');
+assert.strictEqual(next.filename, 'Tabby-v1.0.5.apk');
+assert.strictEqual(next.sizeMb, '71.5 MB');
+assert.strictEqual(next.ipaSizeMb, '30.2 MB');
 
 console.log('✓ Release sync simulation verified');
 
-// 6. Verify live Vercel deployment
+// 6. Verify live Vercel deployment (page shell assertions only)
 const https = require('https');
 https.get('https://tabby-web-fawn.vercel.app', (res) => {
   assert.strictEqual(res.statusCode, 200, 'Live Vercel URL must return 200 OK');
   let data = '';
   res.on('data', chunk => data += chunk);
   res.on('end', () => {
-    assert(data.includes('Tabby — Keep tabs. Settle up.'), 'Live site must contain title');
-    assert(data.includes('Download Tabby APK') || data.includes('Download APK'), 'Live site must contain Download APK CTA');
-    console.log('✓ Live Vercel deployment verification SUCCESSFUL! Status 200 OK.');
+    assert(data.includes('Tabby — Keep tabs. Settle up.'), 'Live site must contain the Tabby title');
+    assert(data.includes('Download APK') || data.includes('Download Tabby APK'), 'Live site must contain a download CTA');
+    console.log('✓ Live Vercel deployment reachable with the Tabby title and download CTA.');
     console.log('ALL WEB TESTS PASSED SUCCESSFULLY (100%)');
   });
 }).on('error', (err) => {
   console.error('Live URL error:', err);
+  process.exitCode = 1;
 });
