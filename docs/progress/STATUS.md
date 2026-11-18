@@ -9,7 +9,7 @@ Generated from task metadata by `node scripts/check-project-memory.cjs --write`.
 | M0 | 1 / 1 | 1 / 1 | 1 / 1 |
 | M1 | 68 / 69 | 1 / 69 | 1 / 69 |
 | M2 | 4 / 4 | 0 / 4 | 0 / 4 |
-| M3 | 8 / 14 | 0 / 14 | 0 / 14 |
+| M3 | 9 / 15 | 0 / 15 | 0 / 15 |
 
 Implementation coverage counts source work; complete additionally requires every acceptance, review and integration gate. Local fixtures never establish live backend or real-device acceptance.
 
@@ -130,6 +130,7 @@ M3 candidate/device/deployment verification remains a release gate even before a
 | [QR-005](tasks/QR-005.md) � Preferred method and removal state are wrong | M1 | P2 | implemented | Codex root | SEC-002; read task handoff |
 | [QR-006](tasks/QR-006.md) � QR validation, same-phone use and profile visibility are incomplete | M1 | P2 | implemented | Codex root | SEC-002; read task handoff |
 | [REL-001](tasks/REL-001.md) � Validate signed candidate and record release handoff | M3 | P1 | in_progress | Codex root | QA-001, AND-005; read task handoff |
+| [REL-003](tasks/REL-003.md) � Refresh landing fallback for v1.0.4+24 and verify live downloads | M3 | P3 | implemented | Qoder desktop (Codex continuation) | REL-001; read task handoff |
 | [SEC-001](tasks/SEC-001.md) � Cold-launch lock bypass and PIN navigator failure | M1 | P1 | implemented | Codex root | INT-001; read task handoff |
 | [SEC-002](tasks/SEC-002.md) � Pair balance helper lacks caller authorization | M1 | P1 | implemented | Codex root | INT-001; read task handoff |
 | [SEC-003](tasks/SEC-003.md) � PIN verification has no throttling | M1 | P2 | implemented | Codex root | INT-001; read task handoff |

@@ -110,3 +110,5 @@ Run `node scripts/check-project-memory.cjs --write` after task metadata changes,
 - [Create Tab and custom amounts — user summary](plans/expense-entry-update-summary.md), [Android22 source](verification/QA-032-v22-source-manifest.json).
 
 - [iOS sideload and Android parity](project/IOS_SIDELOAD.md), [unsigned IPA evidence](verification/VER-QA-034-IOS-PARITY.md).
+
+- [Landing release fallback refresh (REL-003)](progress/tasks/REL-003.md) and [live download verification](verification/VER-REL-003-LANDING.md).
