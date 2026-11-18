@@ -5,16 +5,27 @@ on:
     inputs:
       build_number:
         type: number
-        default: 23
+        default: 0
+      source_mode:
+        type: string
+        default: current
     secrets:
       TABBY_IOS_BUILD_CONFIG:
         required: true
   workflow_dispatch:
     inputs:
       build_number:
-        description: Unsigned iOS build number
+        description: Build number override for a private iOS build; 0 uses pubspec.yaml
         type: number
-        default: 23
+        default: 0
+        required: false
+      source_mode:
+        description: Generate a manifest for this exact checkout or verify a frozen historical source
+        type: choice
+        options:
+          - current
+          - frozen
+        default: current
         required: true
 
 permissions:
@@ -27,7 +38,8 @@ jobs:
     runs-on: macos-15-intel
     timeout-minutes: 40
     env:
-      TABBY_BUILD_NUMBER: ${{ inputs.build_number || 23 }}
+      TABBY_BUILD_NUMBER: ${{ inputs.build_number || 0 }}
+      TABBY_SOURCE_MODE: ${{ inputs.source_mode || 'current' }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -35,9 +47,31 @@ jobs:
           flutter-version: '3.47.8'
           channel: stable
           cache: true
-      - name: Verify source and configure CocoaPods
+      - name: Verify exact source and resolve the shared app version
+        shell: bash
         run: |
-          python3 scripts/ios-prepare.py --verify-source
+          set -euo pipefail
+          mkdir -p output
+          if [[ "$TABBY_SOURCE_MODE" == "current" ]]; then
+            source_manifest="$RUNNER_TEMP/ios-build-source-manifest.json"
+            python3 scripts/ios-prepare.py --verify-current-source \
+              --expected-commit "$GITHUB_SHA" --source-output "$source_manifest"
+            cp "$source_manifest" output/ios-build-source-manifest.json
+            resolved_version="$(python3 scripts/ios-prepare.py \
+              --resolve-build-number "$TABBY_BUILD_NUMBER" --require-pubspec-version)"
+          elif [[ "$TABBY_SOURCE_MODE" == "frozen" ]]; then
+            python3 scripts/ios-prepare.py --verify-source
+            source_manifest="$GITHUB_WORKSPACE/ios/build-source-manifest.json"
+            cp "$source_manifest" output/ios-build-source-manifest.json
+            resolved_version="$(python3 scripts/ios-prepare.py \
+              --resolve-build-number "$TABBY_BUILD_NUMBER")"
+          else
+            echo "Unsupported iOS source mode." >&2
+            exit 1
+          fi
+          echo "IOS_SOURCE_MANIFEST=$source_manifest" >> "$GITHUB_ENV"
+          echo "TABBY_VERSION_NAME=${resolved_version%%+*}" >> "$GITHUB_ENV"
+          echo "TABBY_BUILD_NUMBER=${resolved_version##*+}" >> "$GITHUB_ENV"
           flutter config --no-enable-swift-package-manager
           flutter doctor -v
           xcodebuild -version
@@ -60,38 +94,41 @@ jobs:
             git diff --exit-code -- Podfile.lock
           fi
       - name: Record resolved CocoaPods lock
-        run: |
-          mkdir -p output
-          cp ios/Podfile.lock output/Podfile.lock
+        run: cp ios/Podfile.lock output/Podfile.lock
       - name: Reuse matching native smoke evidence
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 scripts/ios-native-evidence.py
+        run: python3 scripts/ios-native-evidence.py --source-manifest "$IOS_SOURCE_MANIFEST"
       - name: Boot owned iOS simulator
         if: env.IOS_NATIVE_SMOKE_REUSED != 'true'
         run: python3 scripts/ios-simulator.py
       - name: Check actual iOS channels, Keychain, encryption and images
         if: env.IOS_NATIVE_SMOKE_REUSED != 'true'
         run: flutter test --no-pub integration_test/ios_native_smoke_test.dart -d "$IOS_SIMULATOR_UDID" --reporter expanded
+      - name: Record current simulator evidence
+        if: env.IOS_NATIVE_SMOKE_REUSED != 'true'
+        run: python3 scripts/ios-native-evidence.py --record-current --source-manifest "$IOS_SOURCE_MANIFEST"
       - name: Stop owned simulator
         if: always() && env.IOS_SIMULATOR_UDID != ''
         run: xcrun simctl shutdown "$IOS_SIMULATOR_UDID"
       - name: Build unsigned archive
         run: |
           flutter build ipa --no-codesign --release \
+            --build-name="$TABBY_VERSION_NAME" \
             --build-number="$TABBY_BUILD_NUMBER" \
             --dart-define-from-file="$RUNNER_TEMP/tabby-ios-client.json"
       - name: Inspect and package IPA
         run: |
           python3 scripts/ios-package.py \
             --archive build/ios/archive/Runner.xcarchive \
-            --output "output/Tabby-1.0.4+$TABBY_BUILD_NUMBER-unsigned.ipa" \
+            --output output/Tabby.ipa \
             --build-number "$TABBY_BUILD_NUMBER" \
-            --client-config "$RUNNER_TEMP/tabby-ios-client.json"
-      - name: Upload unsigned IPA and evidence
+            --client-config "$RUNNER_TEMP/tabby-ios-client.json" \
+            --source-manifest "$IOS_SOURCE_MANIFEST"
+      - name: Upload unsigned IPA and source evidence
         uses: actions/upload-artifact@v4
         with:
           name: Tabby-ios-sideload-${{ github.run_number }}
           path: output/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90

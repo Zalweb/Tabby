@@ -6,6 +6,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {verifyArtifact,verifyCertificate,parsePackage,elfAlignment,nativeLibraries}=require('./verify-android-artifact.cjs');
 const {checkGate,categories}=require('./check-release-gate.cjs');
+const {parseReleaseTag,planRelease,validateBuildRun,validatePairedCandidates,verifyTagTarget}=require('./mobile-release.cjs');
 const CERT='a'.repeat(64),COMMIT='b'.repeat(40);
 const SIGNED=`Signer #1 certificate DN: CN=Synthetic Release\nSigner #1 certificate SHA-256 digest: ${CERT}\n`;
 const PACKAGE="package: name='com.zalweb.tabby' versionCode='5' versionName='1.0.4' platformBuildVersionName='16'\n";
@@ -124,18 +125,81 @@ test('candidate gate requires authorization and rejects evidence outside reposit
  fs.writeFileSync(path.join(root,'docs/releases',COMMIT+'.json'),JSON.stringify(candidate));
  assert.throws(()=>checkGate(root,manifest),/escapes repository/);
 });
-test('only gated manual publication can write a GitHub release',()=>{
+test('paired publisher waits for release evidence, uploads both assets as a draft, then publishes',()=>{
  const directory=path.join(__dirname,'../.github/workflows');
  const workflows=fs.readdirSync(directory).filter(n=>n.endsWith('.yml')).map(n=>[n,fs.readFileSync(path.join(directory,n),'utf8')]);
  const publishers=workflows.filter(([,text])=>text.includes('softprops/action-gh-release'));
  assert.deepEqual(publishers.map(([name])=>name),['publish-latest-build.yml']);
  const publisher=publishers[0][1];
- assert(!publisher.includes('workflow_run:'));assert(publisher.includes('workflow_call:'));
+ assert(publisher.includes('workflow_run:'));assert(publisher.includes('workflow_call:'));
+ assert(publisher.includes('schedule:'));assert(publisher.includes('docs/releases/**'));
  assert(publisher.indexOf('check-release-gate.cjs')<publisher.indexOf('softprops/action-gh-release'));
  assert(publisher.indexOf('verify-android-artifact.cjs')<publisher.indexOf('softprops/action-gh-release'));
+ assert(publisher.indexOf('verify-ios-artifact.py')<publisher.indexOf('softprops/action-gh-release'));
  assert(publisher.includes("github.ref == 'refs/heads/main'"));assert(publisher.includes('environment: android-release'));
+ assert(publisher.includes('draft: true'));assert(publisher.includes('make_latest: false'));
+ assert(publisher.includes('files: |\n            candidate/Tabby.apk\n            ios-candidate/Tabby.ipa'));
+ assert(publisher.includes("draft: false, prerelease: false, make_latest: 'true'"));
+ assert(publisher.includes('Tabby.apk')&&publisher.includes('Tabby.ipa'));
  const manual=workflows.find(([name])=>name==='publish-release-apk.yml')[1];
  assert(manual.includes('workflow_dispatch:'));assert(manual.includes('candidate_commit:'));
  const gradle=fs.readFileSync(path.join(__dirname,'../android/app/build.gradle.kts'),'utf8');
  assert(!gradle.includes('getByName("debug")'));assert(gradle.includes('Release signing is required'));
+});
+
+test('candidate provenance accepts only successful same-repository main build runs',()=>{
+ const run={id:123,run_number:24,status:'completed',conclusion:'success',path:'.github/workflows/build-mobile.yml',
+  head_branch:'main',head_repository:{full_name:'Zalweb/Tabby'},head_sha:COMMIT,event:'push'};
+ assert.deepEqual(validateBuildRun(run,'Zalweb/Tabby'),{run_id:'123',run_number:24,commit:COMMIT,ios_artifact:'Tabby-ios-sideload-24'});
+ for(const patch of [{conclusion:'failure'},{head_branch:'feature/test'},{head_repository:{full_name:'attacker/Tabby'}},
+  {event:'pull_request'},{path:'.github/workflows/untrusted.yml'}]) {
+   assert.throws(()=>validateBuildRun({...run,...patch},'Zalweb/Tabby'));
+ }
+ assert.equal(parseReleaseTag('v1.0.4+25').version_code,25);
+ assert.equal(parseReleaseTag('v1.0.4+0'),null);
+});
+
+function pairedCandidate(versionCode=25){return {commit:COMMIT,version_name:'1.0.4',version_code:versionCode,
+ apk_sha256:'c'.repeat(64),ipa_sha256:'d'.repeat(64),tag:`v1.0.4+${versionCode}`};}
+test('paired artifacts must match source, package, shared version, architecture and unsigned status',()=>{
+ const android={commit:COMMIT,apk_sha256:'c'.repeat(64),certificate_sha256:CERT,application_id:'com.zalweb.tabby',
+  version_name:'1.0.4',version_code:25,debuggable:false,zip_16kb_aligned:true,native_libraries:[{name:'lib/arm64-v8a/libapp.so'}]};
+ const ios={source_commit:COMMIT,ipa_sha256:'d'.repeat(64),package_identifier:'com.zalweb.tabby',bundle_id:'com.zalweb.tabby',
+  version_name:'1.0.4',build_number:'25',version_code:25,architectures:['arm64'],unsigned:true,ipa:'Tabby.ipa',simulator_native_smoke:{outcome:'passed'}};
+ assert.deepEqual(validatePairedCandidates(android,ios),pairedCandidate());
+ for(const patch of [{source_commit:'e'.repeat(40)},{build_number:'24'},{architectures:['x86_64']},{unsigned:false},
+  {ipa:'other.ipa'},{simulator_native_smoke:{outcome:'unverified'}}]) {
+  assert.throws(()=>validatePairedCandidates(android,{...ios,...patch}));
+ }
+ assert.throws(()=>validatePairedCandidates({...android,version_code:24},ios),/exact same source|version/);
+});
+
+test('release planning will not create partial, duplicate or stale public releases',()=>{
+ const candidate=pairedCandidate();
+ const previous={id:24,tag_name:'v1.0.4+24',draft:false,prerelease:false};
+ assert.equal(planRelease(candidate,[previous],previous).action,'create');
+ const draft={id:25,tag_name:candidate.tag,draft:true,prerelease:false,target_commitish:COMMIT,assets:[]};
+ assert.equal(planRelease(candidate,[previous,draft],previous).action,'resume-draft');
+ const complete={...draft,draft:false,assets:[
+  {name:'Tabby.apk',state:'uploaded',digest:`sha256:${candidate.apk_sha256}`},
+  {name:'Tabby.ipa',state:'uploaded',digest:`sha256:${candidate.ipa_sha256}`},
+ ]};
+ assert.equal(planRelease(candidate,[previous,complete],complete).action,'noop');
+ assert.equal(planRelease(candidate,[previous,{...complete,tag_name:'v1.0.4+26'}],{id:26,tag_name:'v1.0.4+26'}).action,'skip-stale');
+ assert.throws(()=>planRelease(candidate,[previous,{...draft,target_commitish:'f'.repeat(40)}],previous),/different source commit/);
+ assert.throws(()=>planRelease(candidate,[previous,{...complete,assets:[]}],previous),/different or unverifiable/);
+});
+
+test('release tag can only reuse a Git tag that already targets the exact candidate commit',()=>{
+ const root=fixture();
+ fs.writeFileSync(path.join(root,'tracked.txt'),'candidate source\n');
+ const git=(...args)=>require('node:child_process').execFileSync('git',args,{cwd:root,stdio:'ignore'});
+ git('init','-q');git('config','user.name','Synthetic Test');git('config','user.email','synthetic@example.invalid');
+ git('add','tracked.txt');git('commit','-qm','candidate');
+ const commit=require('node:child_process').execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+ const tag='v1.0.4+25';
+ assert.equal(verifyTagTarget(root,tag,commit),null);
+ git('tag',tag);
+ assert.equal(verifyTagTarget(root,tag,commit),commit);
+ assert.throws(()=>verifyTagTarget(root,tag,'f'.repeat(40)),/different commit/);
 });

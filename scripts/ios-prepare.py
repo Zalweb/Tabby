@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import plistlib
 import re
+import subprocess
 from urllib.parse import urlparse
 
 
@@ -50,9 +51,58 @@ def patch_plist(plist, client_id):
     return plist
 
 
+def pubspec_version(root):
+    text = (root / "pubspec.yaml").read_text()
+    match = re.search(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([1-9][0-9]{0,8})\s*$", text, re.M)
+    if not match:
+        raise ValueError("pubspec.yaml must define a semantic version and positive build number")
+    return match.group(1), int(match.group(2))
+
+
+def resolve_build_number(root, requested, require_pubspec=False):
+    version_name, shared_number = pubspec_version(root)
+    if requested == 0:
+        return version_name, shared_number
+    if requested < 1 or requested > 999999999:
+        raise ValueError("Build number must be a positive bounded integer")
+    if require_pubspec and requested != shared_number:
+        raise ValueError("Production iOS build number must match pubspec.yaml")
+    return version_name, requested
+
+
+def generate_current_manifest(root, expected_commit=None):
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip().lower()
+    if not re.fullmatch(r"[a-f0-9]{40}", commit) or (expected_commit and commit != expected_commit.lower()):
+        raise ValueError("Current iOS source must match the exact checked-out GitHub commit")
+    dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"], cwd=root, text=True)
+    if dirty.strip():
+        raise ValueError("Current iOS source checkout must be clean before generating its manifest")
+
+    entries = subprocess.check_output(["git", "ls-files", "-z"], cwd=root)
+    files = {}
+    for raw_name in entries.split(b"\0"):
+        if not raw_name:
+            continue
+        name = raw_name.decode("utf-8")
+        if name == "ios/build-source-manifest.json":
+            continue
+        target = (root / name).resolve()
+        if not target.is_relative_to(root) or not target.is_file():
+            raise ValueError("Tracked iOS source input is missing or escapes the checkout: " + name)
+        files[name] = hashlib.sha256(target.read_bytes()).hexdigest()
+    if not files:
+        raise ValueError("No tracked source files were found for the iOS manifest")
+    return {"schema": 1, "source_commit": commit, "android_baseline": commit, "files": files}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--verify-source", action="store_true")
+    parser.add_argument("--verify-current-source", action="store_true")
+    parser.add_argument("--source-output")
+    parser.add_argument("--expected-commit")
+    parser.add_argument("--resolve-build-number", type=int)
+    parser.add_argument("--require-pubspec-version", action="store_true")
     parser.add_argument("--client-output")
     args = parser.parse_args()
     root = Path.cwd().resolve()
@@ -63,6 +113,21 @@ def main():
             if not target.is_relative_to(root) or hashlib.sha256(target.read_bytes()).hexdigest() != expected:
                 raise ValueError("Candidate source does not match its frozen manifest: " + name)
         print("Frozen source hashes verified:", len(manifest["files"]))
+        return
+    if args.verify_current_source:
+        if not args.source_output:
+            parser.error("--verify-current-source requires --source-output")
+        output = Path(args.source_output).resolve()
+        if output.is_relative_to(root):
+            raise ValueError("Generated iOS source manifest must stay outside the checkout")
+        current = generate_current_manifest(root, args.expected_commit)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(current, indent=2) + "\n")
+        print("Current tracked source manifest generated:", len(current["files"]), "files at", current["source_commit"])
+        return
+    if args.resolve_build_number is not None:
+        version_name, build_number = resolve_build_number(root, args.resolve_build_number, args.require_pubspec_version)
+        print(f"{version_name}+{build_number}")
         return
     if not args.client_output:
         parser.error("--client-output or --verify-source is required")

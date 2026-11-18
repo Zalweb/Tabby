@@ -9,7 +9,7 @@ Generated from task metadata by `node scripts/check-project-memory.cjs --write`.
 | M0 | 1 / 1 | 1 / 1 | 1 / 1 |
 | M1 | 68 / 69 | 1 / 69 | 1 / 69 |
 | M2 | 4 / 4 | 0 / 4 | 0 / 4 |
-| M3 | 10 / 16 | 1 / 16 | 1 / 16 |
+| M3 | 11 / 17 | 1 / 17 | 1 / 17 |
 
 Implementation coverage counts source work; complete additionally requires every acceptance, review and integration gate. Local fixtures never establish live backend or real-device acceptance.
 
@@ -137,6 +137,7 @@ M3 candidate/device/deployment verification remains a release gate even before a
 | [SEC-004](tasks/SEC-004.md) � Old account loads can commit after session change | M1 | P1 | implemented | Codex root | INT-001; read task handoff |
 | [SEC-005](tasks/SEC-005.md) � Privacy, export and deletion journeys are absent | M1 | P2 | implemented | Codex root | INT-001; read task handoff |
 | [WEB-001](tasks/WEB-001.md) � Refresh the public landing page for the current app | M3 | P2 | implemented | Qoder landing refresh | none; read task handoff |
+| [WEB-002](tasks/WEB-002.md) � Simplify Tabby landing page and automate mobile downloads | M3 | P2 | implemented | Codex root / Luna worker | none; read task handoff |
 
 ## Open release gates
 

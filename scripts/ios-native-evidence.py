@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+import argparse
 from urllib.request import Request, urlopen
 
 REPO = "Zalweb/Tabby"
@@ -25,6 +26,27 @@ def get(url):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source-manifest", default="ios/build-source-manifest.json")
+    parser.add_argument("--record-current", action="store_true")
+    args = parser.parse_args()
+    if args.record_current:
+        source = json.loads(Path(args.source_manifest).read_text())
+        commit = os.environ.get("GITHUB_SHA", "").lower()
+        run_id = os.environ.get("GITHUB_RUN_ID", "")
+        if len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit) or source.get("source_commit") != commit:
+            raise ValueError("Native simulator evidence must match the exact current source commit")
+        if not run_id.isdigit() or int(run_id) < 1:
+            raise ValueError("Native simulator evidence requires its GitHub run ID")
+        inputs = native_inputs(source["files"])
+        output = {"mode": "actual simulator checks", "run_id": int(run_id),
+                  "source_commit": commit, "cases": 3,
+                  "matching_input_hashes": len(inputs), "outcome": "passed",
+                  "scope": "QR native registration/invalid bytes; Keychain/encrypted SQLite persistence; mascot image decode/reduced motion"}
+        Path("output").mkdir(exist_ok=True)
+        Path("output/native-smoke-evidence.json").write_text(json.dumps(output, indent=2) + "\n")
+        print(json.dumps(output, indent=2))
+        return
     evidence_path = Path("ios/native-smoke-evidence.json")
     if not evidence_path.exists():
         print("No prior native evidence selected; run actual simulator checks")
@@ -48,7 +70,7 @@ def main():
     blob = get(f"https://api.github.com/repos/{REPO}/contents/ios/build-source-manifest.json?ref={commit}")
     import base64
     previous = json.loads(base64.b64decode(blob["content"]))
-    current = json.loads(Path("ios/build-source-manifest.json").read_text())
+    current = json.loads(Path(args.source_manifest).read_text())
     inputs = native_inputs(current["files"])
     if inputs != native_inputs(previous["files"]):
         print("Native app inputs changed; run fresh actual simulator checks")

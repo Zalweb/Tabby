@@ -1,12 +1,12 @@
-name: Publish Release APK
+name: Recover Paired Mobile Release
 on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Successful mobile build run containing the verified candidate'
+        description: 'Successful same-repository main mobile build run containing both verified candidates'
         required: true
       candidate_commit:
-        description: 'Exact 40-character candidate commit with reviewed release evidence'
+        description: 'Exact 40-character source commit with reviewed release evidence'
         required: true
 permissions:
   actions: read

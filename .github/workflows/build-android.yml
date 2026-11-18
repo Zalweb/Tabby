@@ -108,4 +108,4 @@ jobs:
             output/Tabby.apk
             output/candidate-manifest.json
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90

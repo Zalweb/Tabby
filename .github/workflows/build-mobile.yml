@@ -26,6 +26,8 @@ jobs:
   build-ios:
     name: Build iOS IPA
     uses: ./.github/workflows/build-ios.yml
+    with:
+      source_mode: ${{ github.ref == 'refs/heads/main' && 'current' || 'frozen' }}
     secrets: inherit
     permissions:
       contents: read

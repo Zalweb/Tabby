@@ -18,7 +18,8 @@ def digest(path):
 
 def inspect_app(app, build_number, config, source, run=subprocess.run):
     info = plistlib.loads((app / "Info.plist").read_bytes())
-    if (info.get("CFBundleIdentifier"), str(info.get("CFBundleVersion")), info.get("CFBundleShortVersionString")) != ("com.zalweb.tabby", str(build_number), "1.0.4"):
+    version_name, _ = prepare_version()
+    if (info.get("CFBundleIdentifier"), str(info.get("CFBundleVersion")), info.get("CFBundleShortVersionString")) != ("com.zalweb.tabby", str(build_number), version_name):
         raise ValueError("Unexpected bundle identity/version")
     if info.get("CFBundleExecutable") != "Runner" or info.get("FlutterDeepLinkingEnabled") is not False:
         raise ValueError("Unexpected executable or OAuth callback owner")
@@ -46,7 +47,15 @@ def inspect_app(app, build_number, config, source, run=subprocess.run):
             raise ValueError("Unexpected private/signing material in unsigned payload")
         if target.is_symlink() and not target.resolve().is_relative_to(app.resolve()):
             raise ValueError("Payload symlink escapes the application")
-    return {"bundle_id": info["CFBundleIdentifier"], "version": info["CFBundleShortVersionString"], "build_number": str(build_number), "architectures": architectures, "unsigned": True, "branding_assets_verified": checked, "flutter_callback_handler_disabled": True}
+    return {"package_identifier": info["CFBundleIdentifier"], "bundle_id": info["CFBundleIdentifier"], "version_name": info["CFBundleShortVersionString"], "build_number": str(build_number), "architectures": architectures, "unsigned": True, "branding_assets_verified": checked, "flutter_callback_handler_disabled": True}
+
+
+def prepare_version():
+    from importlib.util import module_from_spec, spec_from_file_location
+    spec = spec_from_file_location("tabby_ios_prepare", Path(__file__).with_name("ios-prepare.py"))
+    prepare = module_from_spec(spec)
+    spec.loader.exec_module(prepare)
+    return prepare.pubspec_version(Path.cwd().resolve())
 
 
 def package_app(app, output):
@@ -79,18 +88,25 @@ def main():
     parser.add_argument("--output", required=True)
     parser.add_argument("--build-number", required=True)
     parser.add_argument("--client-config", required=True)
+    parser.add_argument("--source-manifest", default="ios/build-source-manifest.json")
     args = parser.parse_args()
     if not re.fullmatch(r"[1-9][0-9]{0,8}", args.build_number):
         raise ValueError("Build number must be a positive bounded integer")
-    source = json.loads(Path("ios/build-source-manifest.json").read_text())
+    source = json.loads(Path(args.source_manifest).read_text())
+    version_name, _ = prepare_version()
     app = Path(args.archive) / "Products/Applications/Runner.app"
     output = Path(args.output)
     config = json.loads(Path(args.client_config).read_text())
     report = inspect_app(app, args.build_number, config, source)
     package_app(app, output)
     native_evidence = output.parent / "native-smoke-evidence.json"
-    report.update({"ipa": output.name, "ipa_sha256": digest(output), "source_commit": os.environ.get("GITHUB_SHA"), "android_baseline": source["android_baseline"], "public_client_hashes": {k: hashlib.sha256(v.encode()).hexdigest() for k, v in config.items()}, "source_file_count": len(source["files"]), "simulator_native_smoke": json.loads(native_evidence.read_text()) if native_evidence.exists() else "Required preceding workflow step; see CI logs", "physical_iphone_verified": False})
-    output.with_suffix(".json").write_text(json.dumps(report, indent=2) + "\n")
+    source_commit = os.environ.get("GITHUB_SHA")
+    if not source_commit or not re.fullmatch(r"[a-fA-F0-9]{40}", source_commit):
+        raise ValueError("The IPA report must identify the exact GitHub source commit")
+    if source.get("source_commit", source_commit).lower() != source_commit.lower():
+        raise ValueError("The iOS source manifest belongs to a different commit")
+    report.update({"ipa": output.name, "ipa_sha256": digest(output), "source_commit": source_commit.lower(), "android_baseline": source["android_baseline"], "version_name": version_name, "version_code": int(args.build_number), "public_client_hashes": {k: hashlib.sha256(v.encode()).hexdigest() for k, v in config.items()}, "source_file_count": len(source["files"]), "simulator_native_smoke": json.loads(native_evidence.read_text()) if native_evidence.exists() else "Required preceding workflow step; see CI logs", "physical_iphone_verified": False})
+    output.with_suffix(output.suffix + ".json").write_text(json.dumps(report, indent=2) + "\n")
     (output.parent / "README.txt").write_text("Tabby unsigned iOS sideload build\n\nSign/install this IPA with AltStore or Sideloadly using your own Apple account. It is not directly installable or a TestFlight/App Store release. Keep the same signing identity/bundle ID for upgrades. Changing bundle ID may require browser Google sign-in fallback.\n\nCore screens, debt/sync behavior and mascots share the recorded Android source. iOS adds QR export to Files/native share. Remote background push and damaged-storage recovery remain Android-only. Local iOS notifications, Face ID and wallet/Google journeys still need testing on your iPhone.\n")
     print(json.dumps(report, indent=2))
 
