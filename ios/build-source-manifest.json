@@ -550,7 +550,7 @@
     "ios/Runner/Runner-Bridging-Header.h": "efe657d8b27f7f8595a0d416bffb33fe7d93bd2869d81f7353b556c439d7a1a7",
     "ios/Runner/SceneDelegate.swift": "edce811c671ca0a6ccb14753e14e16deb0d89a0adf4f1b685e362d87d8f4c366",
     "ios/RunnerTests/RunnerTests.swift": "c0e04141287eb7f9c9f3d31cf5be8cb626a9ea71351206c9121578e8b8f480c3",
-    "ios/client-config-hashes.json": "74a2be5153226f90dd37f9b277988a829e9a4ea42badd80d963ac48ec4759e43",
+    "ios/client-config-hashes.json": "28b280d1986a6b48b3f798afed496c40fb267829245bef43ff7b038f57fd0cfd",
     "ios/native-smoke-evidence.json": "6369886a5b8c09186c04ddd081ba1414606bb2330d6798f7afa64be7cc5f2aa0",
     "landing/.gitignore": "319c3304702d205b9fba52d0f12ce3d388bacdade80ad223c550935fadaa20a6",
     "landing/app.js": "461c9a21f11b721bacfcbe075809b3a9426bc3054f1f13800abcae7ae224ea82",
@@ -962,6 +962,11 @@
     "web/index.html": "582e2e4f6c948ad90574a9b1b4e8a4d4501a51108dcce30e16eed02df64ccc14",
     "web/manifest.json": "1d3912fae3772c97cbc9d8d0b6d6d90911a990d355e861ed391b22454bc5f725"
   },
-  "updated_at": "2026-11-17T22:15:29.057Z",
-  "artifact_build_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff"
+  "updated_at": "2026-11-18T09:14:46.596Z",
+  "artifact_build_commit": "f589540b332eacf1a7647a01d0bd72e6e0d62cff",
+  "production_rebind": {
+    "at": "2026-11-18T09:14:46.597Z",
+    "scope": "Public client configuration pinned to managed production Supabase for v1.0.4+24; Google client identifiers unchanged.",
+    "supabase_origin": "https://ziaqrkagsvozhotremsx.supabase.co"
+  }
 }
