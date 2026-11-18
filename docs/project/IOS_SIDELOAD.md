@@ -26,3 +26,5 @@ The resolved CocoaPods lockfile `ios/Podfile.lock` is committed, and the workflo
 Keep the same signer/bundle ID when upgrading so iOS can retain sandbox and Keychain access. A sideloader may change the bundle ID; native Google client registration can then differ. The existing browser OAuth fallback and callback scheme remain. Actual Google/wallet/notification/Face ID journeys should be tested on the target iPhone after signing.
 
 `TABBY_IOS_BUILD_CONFIG` holds exactly four public client identifiers (Supabase URL/anon-or-publishable key, iOS Google client, Web Google client). It must match the reviewed Android/backend hashes and is written only to the runner's temporary directory, never an artifact or `.env` asset. Server/service-role credentials are rejected. No paid Apple signing or new backend deployment is implied.
+
+2026-11-18T00:49:07.625Z - Final inspected [unsigned IPA artifact](https://github.com/Zalweb/Tabby/actions/runs/44188415197/artifacts/14377496912), version1.0.4+23, iOS15+, SHA256 cadb1bc6522f681263b50894c073d1b98ccf08704d2ff686d818acaed24196fe. Sign with AltStore/Sideloadly; physical iPhone installation remains unverified.

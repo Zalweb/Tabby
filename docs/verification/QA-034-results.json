@@ -1,6 +1,6 @@
 {
   "task": "QA-034",
-  "timestamp": "2026-11-17T22:50:00Z",
+  "timestamp": "2026-11-18T00:43:14.684460+00:00",
   "candidate_scope": "Exact accepted Android22 shared source/assets plus iOS QR/config/build overlay; no Android source behavior changed",
   "android_baseline": {
     "version": "1.0.4+22",
@@ -29,7 +29,9 @@
     "pushed_at": "2026-11-17T19:51:54.778Z",
     "all_sessions_included": true,
     "main_unchanged": true,
-    "reviewed_client_only_configuration": true
+    "reviewed_client_only_configuration": true,
+    "latest_evidence_commit": "a0de462d79c2f140c28d7e61256de6121e056002",
+    "uploaded_all_sessions_at_snapshot": true
   },
   "ios_native_simulator": "3/3 named cases from run44167297902 reused only after exact input-hash match (231 hashes) at unchanged native app inputs in run44172480877; after the committed lock added native inputs, run44188415197 executed all 3 named cases fresh in an actual simulator and passed",
   "ipa": {
@@ -216,5 +218,42 @@
       }
     ]
   },
-  "ios_minimum": "15.0"
+  "ios_minimum": "15.0",
+  "final_artifact": {
+    "observed_at": "2026-11-18T00:43:14.684460+00:00",
+    "run_id": 44188415197,
+    "run_url": "https://github.com/Zalweb/Tabby/actions/runs/44188415197",
+    "source_commit": "70ab9f393f359b1e99a439b5a8c509a1da761871",
+    "ipa_sha256": "cadb1bc6522f681263b50894c073d1b98ccf08704d2ff686d818acaed24196fe",
+    "bytes": 31633694,
+    "artifact_url": "https://github.com/Zalweb/Tabby/actions/runs/44188415197/artifacts/14377496912",
+    "bundle_id": "com.zalweb.tabby",
+    "version": "1.0.4+23",
+    "minimum_ios": "15.0",
+    "arm64_macho": true,
+    "zip_crc": "passed",
+    "branding_assets_verified": 24,
+    "committed_pod_lock_matches": true,
+    "pod_lock_sha256": "813b9eb09557fa3ac34e696064303b5e1be3c5af06a6d2f52f5854720108c03f",
+    "actual_same_run_simulator_cases": 3,
+    "native_mac_unsigned_check": true,
+    "physical_iphone_verified": false
+  },
+  "final_delivery": {
+    "filename": "Tabby-1.0.4+23-unsigned.ipa",
+    "local_relative_path": "build_artifacts/ios/ci-44188415197/Tabby-1.0.4+23-unsigned.ipa",
+    "unsigned": true,
+    "minimum_ios": "15.0",
+    "signing": "User signs with AltStore/Sideloadly",
+    "physical_iphone_verified": false
+  },
+  "followup_scope": "Later QA035 receipt-format repairs are a separate Android23 candidate beyond this Android22-based IPA; no silent adoption claimed",
+  "final_handoff_checks": {
+    "at": "2026-11-18T00:49:07.625Z",
+    "python_fixtures": 9,
+    "focused_flutter": 17,
+    "memory_plain": "passed",
+    "memory_base": "passed",
+    "initial_test_invocation": "wrong test path; corrected and complete focused suite passed"
+  }
 }
