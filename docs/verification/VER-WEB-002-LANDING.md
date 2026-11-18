@@ -62,3 +62,5 @@ The platform artifact checks used fixtures locally. Android CI signing and exact
 ## Owner-directed visual rollback
 
 2026-11-18T23:36:18+08:00 — The owner requested the prior design. The rollback targets the previously verified WEB-001 sources at 56e828c0af1346ab047912e8422e91b26bb4366e. Scope covers the HTML, CSS, JavaScript and associated web assertions. Production verification will compare the served page with that revision.
+
+2026-11-18T23:37:29+08:00 — Vercel production served the restored layout from main rollback commit dab0c28f8d475da210f7527bf05d4de5a9c39571. HTTP 200 home, stylesheet, JavaScript, Privacy and Terms responses matched the restored WEB-001 files byte for byte. Both GitHub latest asset aliases returned HTTP 302. Project memory and change coverage passed in the isolated worktree. The release workflows and first-publication prerequisites remain as recorded above. [Production landing](https://tabby-web-fawn.vercel.app/).
