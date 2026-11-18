@@ -6,13 +6,15 @@
   "task_ids": ["REL-003"],
   "tested_commit": "8e5a139780bedd8ebdad4203726fec8edfe9e007",
   "dirty_tree": true,
-  "timestamp": "2026-11-18T18:20:00+08:00",
-  "environment": "Windows 10.0.26300; Playwright 1.56.1 headless Chromium (chrome-headless-shell 1254) at desktop viewport; Node 26; live Vercel site https://tabby-web-fawn.vercel.app and GitHub Releases API",
+  "timestamp": "2026-11-18T18:46:00+08:00",
+  "environment": "Windows 10.0.26300; Playwright 1.56.1 headless Chromium (chrome-headless-shell 1254) at desktop viewport; Node 26; Python 3 ios-prepare/ios-build-tests; live Vercel site https://tabby-web-fawn.vercel.app, GitHub Releases API and GitHub Actions API",
   "checks": [
     {"category": "local-regression", "outcome": "passed"},
     {"category": "browser-ui", "outcome": "passed"},
     {"category": "release-artifact", "outcome": "passed"},
     {"category": "static-fallback-deploy", "outcome": "passed"},
+    {"category": "source-manifest", "outcome": "passed"},
+    {"category": "ci-ios", "outcome": "unverified"},
     {"category": "mobile-browser", "outcome": "unverified"},
     {"category": "full-download", "outcome": "unverified"}
   ],
@@ -20,7 +22,10 @@
     "node test/web_landing_test.js",
     "CHROME_PATH=.../chrome-headless-shell.exe node check-live.mjs https://tabby-web-fawn.vercel.app/ live-before.png",
     "curl -sS -o /dev/null -D - -H 'Accept: application/octet-stream' https://github.com/Zalweb/Tabby/releases/download/v1.0.4%2B24/Tabby-v1.0.4%2B24.apk",
-    "curl -sS -o /dev/null -D - -H 'Accept: application/octet-stream' https://github.com/Zalweb/Tabby/releases/download/v1.0.4%2B24/Tabby-v1.0.4%2B24.ipa"
+    "curl -sS -o /dev/null -D - -H 'Accept: application/octet-stream' https://github.com/Zalweb/Tabby/releases/download/v1.0.4%2B24/Tabby-v1.0.4%2B24.ipa",
+    "python scripts/ios-prepare.py --verify-source",
+    "python scripts/ios-build-tests.py",
+    "gh run view 44284627274 --log-failed (failure attribution)"
   ]
 }
 ```
@@ -47,9 +52,17 @@ Transcript JSON output from the browser run (version tags, hrefs, sizes, dates, 
 - Rendered page re-checked in headless Chromium after deployment: HTTP `200`, release engine applied, all six version pills `v1.0.4+24`, three APK links and one IPA link to the versioned GitHub assets, sizes `70.2 MB`, filename `Tabby-v1.0.4+24.apk`, dates `November 18, 2026`, live badges `Latest Build: v1.0.4+24 (Live)`, changelog populated from the release body, and no console errors. Both asset URLs returned `302` with `attachment` content-disposition filenames `Tabby-v1.0.4+24.apk` and `Tabby-v1.0.4+24.ipa`.
 - Post-deploy screenshot `live-after.png` captured next to `live-before.png` in the temporary verification directory.
 
+## Review and remediation
+
+2026-11-18T18:46:00+08:00 — User-requested review pass over both commits, the records and production. The reviewer used the same Qoder session as the authoring handoff (recorded as Qoder desktop / Codex continuation), so this is an adversarial re-verification of committed artifacts rather than a separate-agent or organizational review.
+
+- Re-confirmed scope: the diff contains only fallback values and records; `landing/` ↔ `docs/` mirrors are byte-identical; the secret-pattern scan over the diff found nothing; the latest GitHub release is still `v1.0.4+24` with APK 73,609,244 bytes (`sha256:006c2cff…`) and IPA 31,633,412 bytes (`sha256:c5558cd4…`); production still serves the updated fallback.
+- The push-triggered iOS run `44284627274` failed `Verify source and configure CocoaPods` with `Candidate source does not match its frozen manifest: docs/INDEX.md`. Audit of all 952 `ios/build-source-manifest.json` entries: 946 matched, 6 stale (`docs/INDEX.md`, `docs/app.js`, `docs/index.html`, `docs/progress/STATUS.md`, `landing/app.js`, `landing/index.html`), none missing. Refreshed exactly those six documentation/landing hashes; `python scripts/ios-prepare.py --verify-source` reports `Frozen source hashes verified: 952`, and `python scripts/ios-build-tests.py` passes 9/9, including the fixture asserting that documentation/packaging changes must not alter native reuse inputs. No app, native, asset, dependency or client-config hash changed.
+- The Android job fails at `Configure Android release signing` on this commit and on base `8e5a139`; this is a pre-existing signing-secret failure owned by the release-signing workflow, not a REL-003 change.
+
 ## Limits and next action
 
-The browser passes verify the rendered live state and the download redirect targets, not a complete byte-for-byte download through the UI. No physical mobile browser was used; the corrected static text is directly present in the served HTML, so the no-JavaScript case is covered by content inspection rather than a JS-disabled browser pass. No further action is required for this fallback update; any future release changes the shared rendering path and should repeat these checks.
+The browser passes verify the rendered live state and the download redirect targets, not a complete byte-for-byte download through the UI. No physical mobile browser was used; the corrected static text is directly present in the served HTML, so the no-JavaScript case is covered by content inspection rather than a JS-disabled browser pass. Confirmation that the refreshed manifest restores the push-triggered iOS job is pending and is appended below when available. The Android workflow's signing failure is pre-existing on `main` and outside REL-003. No further action is required for this fallback update; any future release changes the shared rendering path and should repeat these checks.
 
 ## Deployment
 
