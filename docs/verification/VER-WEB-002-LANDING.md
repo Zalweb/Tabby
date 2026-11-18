@@ -58,3 +58,7 @@ The platform artifact checks used fixtures locally. Android CI signing and exact
 2026-11-18T23:21:34+08:00 — The coordinator reproduced the hosted iOS fixture failure on Windows by supplying a noncanonical path to the same manifest check. The Luna follow-up resolves the checkout root before validating tracked path containment. The full 13-case Python suite passed after the fix. Hosted archive generation and the first complete public app release still require verification.
 
 2026-11-18T23:31:23+08:00 — Hosted run [44334906998](https://github.com/Zalweb/Tabby/actions/runs/44334906998), for `d5d1eb0b7176adcd9e2bef815a8a1ec26e4910e5`, passed the iOS source, production client configuration and regression steps after the path fix. The job entered native dependency installation. Android again stopped at missing release-signing secrets, so no paired candidate or public update was published. The project-memory and guarded reconciliation jobs passed. Both Vercel projects reported success for the fix commit.
+
+## Owner-directed visual rollback
+
+2026-11-18T23:36:18+08:00 — The owner requested the prior design. The rollback targets the previously verified WEB-001 sources at 56e828c0af1346ab047912e8422e91b26bb4366e. Scope covers the HTML, CSS, JavaScript and associated web assertions. Production verification will compare the served page with that revision.
