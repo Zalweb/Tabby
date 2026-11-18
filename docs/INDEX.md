@@ -110,3 +110,7 @@ Run `node scripts/check-project-memory.cjs --write` after task metadata changes,
 - [Create Tab and custom amounts — user summary](plans/expense-entry-update-summary.md), [Android22 source](verification/QA-032-v22-source-manifest.json).
 
 - [iOS sideload and Android parity](project/IOS_SIDELOAD.md), [unsigned IPA evidence](verification/VER-QA-034-IOS-PARITY.md).
+
+## Production client rebind and v1.0.4+24 publication 2026-11-18T17:47:00+08:00
+
+- [Production-linked Android APK and unsigned iOS sideload IPA](verification/VER-REL-002-PROD-REBIND.md) and [REL-002](progress/tasks/REL-002.md): downloadable builds recompiled against the managed Supabase origin and published as v1.0.4+24; physical-device Google sign-in, upgrade and official release gates remain unverified.
