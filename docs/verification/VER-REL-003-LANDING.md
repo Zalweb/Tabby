@@ -68,6 +68,8 @@ CI confirmation on `8ee6b97` (run `44289031790`, push to `main`): the Project me
 - Production-branch run `44274221017` started at `09:15:28Z`, passed the same step and the whole job against the branch's reviewed production hashes (`ios/client-config-hashes.json` sha256 `28b280d1…`).
 - Main's `ios/client-config-hashes.json` is unchanged since the base commit (sha256 `74a2be51…`) and REL-003 touches neither it nor the comparison logic, so any main push after the secret rotation fails here until main adopts the reviewed production binding (REL-002/QA-034 follow-up).
 
+2026-11-18T19:07:00+08:00 — The REL-003 completion commit changed manifest-tracked `docs/progress/STATUS.md`; refreshed that single manifest hash and re-ran `ios-prepare.py --verify-source` (952/952) before the next push. The new task/verification records are not manifest entries.
+
 ## Limits and next action
 
 The browser passes verify the rendered live state and the download redirect targets, not a complete byte-for-byte download through the UI. No physical mobile browser was used; the corrected static text is directly present in the served HTML, so the no-JavaScript case is covered by content inspection rather than a JS-disabled browser pass. The iOS source-verification regression is confirmed fixed; the remaining iOS job failure is the external client-config snapshot mismatch described above, not a REL-003 acceptance check. The Android signing failure is pre-existing on `main` and outside REL-003. All REL-003 required checks pass. Adopting the reviewed production client configuration on `main` remains a REL-002/QA-034 follow-up. No further action is required for this fallback update; any future release changes the shared rendering path and should repeat these checks.
