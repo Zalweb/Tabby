@@ -105,3 +105,7 @@ User-supplied thinking/waiting/helpful/reminder/celebrating originals are approv
 2026-11-17T14:37:16.091Z - Situation art and lifecycle-aware motion installed in private normal1.0.4+19. Full853/native6 and six synthetic light/dark previews pass; source, artifact and tablet startup documented in [QA-031 evidence](../verification/VER-QA-031-SITUATION-MASCOTS.md). No extra art is required for these whole-body effects.
 
 2026-11-17T19:07:11.599Z - [QA-033](../progress/tasks/QA-033.md) supersedes prior single-pose-only situation motion: five sibling sheets provide real blinks/tail/paw frames with fixed registration, quiet holds and original still fallback. Thinking/waiting retain calm paw poses; helpful/reminder gesture briefly; success gestures finish once without replay. Original neutral blink and welcome/notebook body motion remain. Private normal21 installed with full890/native6 acceptance; no new financial meaning.
+
+## Landing screen previews - 2026-11-19T09:40:06+08:00
+
+The Screens section uses visitor-controlled Home, Tab details and Dark mode options. The selected Tabby screenshot and caption appear in a stable preview with a brief crossfade. The options work with a keyboard and reduced motion switches directly. Without JavaScript, all three screenshots and captions remain readable. [WEB-003](../progress/tasks/WEB-003.md), [Feature tabs reference](https://brewedops.cloud/motionlibrary/?id=cards-feature-tabs).

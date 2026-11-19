@@ -64,6 +64,76 @@
     return true;
   }
 
+  function setupScreenshotGalleries() {
+    document.querySelectorAll('[data-screenshot-gallery]').forEach((gallery) => {
+      const tabs = Array.from(gallery.querySelectorAll('[data-screen-tab]'));
+      const panels = Array.from(gallery.querySelectorAll('[data-screen-panel]'));
+      if (!tabs.length || tabs.length !== panels.length) return;
+
+      const tabPanels = tabs.map((tab) => ({
+        tab,
+        panel: panels.find((candidate) => candidate.id === tab.getAttribute('aria-controls')),
+      }));
+      if (tabPanels.some(({ panel }) => !panel)) return;
+
+      const tabList = gallery.querySelector('[role="tablist"]');
+      if (tabList) tabList.hidden = false;
+      gallery.classList.add('is-enhanced');
+
+      let activeIndex = tabPanels.findIndex(({ tab }) => tab.getAttribute('aria-selected') === 'true');
+      if (activeIndex < 0) activeIndex = 0;
+
+      const setActive = (nextIndex) => {
+        activeIndex = nextIndex;
+        tabPanels.forEach(({ tab, panel }, index) => {
+          const selected = index === activeIndex;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+          panel.setAttribute('role', 'tabpanel');
+          panel.setAttribute('aria-labelledby', tab.id);
+          panel.setAttribute('aria-hidden', String(!selected));
+          panel.tabIndex = selected ? 0 : -1;
+          panel.classList.toggle('is-active', selected);
+        });
+      };
+
+      const activate = (nextIndex) => {
+        if (nextIndex === activeIndex) return;
+        gallery.classList.add('has-selection');
+        setActive(nextIndex);
+      };
+
+      setActive(activeIndex);
+
+      tabPanels.forEach(({ tab }, index) => {
+        tab.addEventListener('click', () => activate(index));
+        tab.addEventListener('keydown', (event) => {
+          let nextIndex;
+          switch (event.key) {
+            case 'ArrowRight':
+              nextIndex = (index + 1) % tabs.length;
+              break;
+            case 'ArrowLeft':
+              nextIndex = (index + tabs.length - 1) % tabs.length;
+              break;
+            case 'Home':
+              nextIndex = 0;
+              break;
+            case 'End':
+              nextIndex = tabs.length - 1;
+              break;
+            default:
+              return;
+          }
+
+          event.preventDefault();
+          tabs[nextIndex].focus();
+          activate(nextIndex);
+        });
+      });
+    });
+  }
+
   function showLatestDownloads() {
     versionTags.forEach((element) => {
       element.textContent = 'Latest';
@@ -177,5 +247,6 @@
     setupMobileNav();
     setupHeaderState();
     setupRevealAnimations();
+    setupScreenshotGalleries();
   });
 })();

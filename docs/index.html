@@ -213,52 +213,31 @@
         </div>
       </div>
 
-      <div class="marquee" data-marquee>
-        <div class="marquee-track">
-          <div class="marquee-set">
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/home-light.png" width="780" height="1688" alt="Tabby home screen with net balance, tabs, and reminders"></div>
+      <div class="screen-preview" data-screenshot-gallery>
+        <div class="screen-preview-copy">
+          <h3 class="screen-preview-title">Choose a screen to explore.</h3>
+          <p class="screen-preview-description">Take a closer look at the Home dashboard, a shared tab, and Tabby in dark mode.</p>
+
+          <div class="screen-preview-tabs" role="tablist" aria-label="Tabby app screens" aria-orientation="horizontal" hidden>
+            <button class="screen-preview-tab" id="screen-tab-home" type="button" role="tab" aria-selected="true" aria-controls="screen-panel-home" tabindex="0" data-screen-tab="home">Home</button>
+            <button class="screen-preview-tab" id="screen-tab-details" type="button" role="tab" aria-selected="false" aria-controls="screen-panel-details" tabindex="-1" data-screen-tab="details">Tab details</button>
+            <button class="screen-preview-tab" id="screen-tab-dark" type="button" role="tab" aria-selected="false" aria-controls="screen-panel-dark" tabindex="-1" data-screen-tab="dark">Dark mode</button>
+          </div>
+        </div>
+
+        <div class="screen-preview-stage">
+          <div class="screen-preview-viewport">
+            <figure class="screen-preview-panel" id="screen-panel-home" data-screen-panel="home">
+              <div class="phone-frame"><img src="assets/screens/home-light.png" width="780" height="1688" alt="Tabby home screen with net balance, tabs, and reminders" loading="lazy"></div>
               <figcaption>Home dashboard</figcaption>
             </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/login-light.png" width="780" height="1688" alt="Tabby welcome screen with the mascot and Continue with Google"></div>
-              <figcaption>Welcome</figcaption>
-            </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/detail-light.png" width="780" height="1688" alt="Tabby group tab detail with who owes whom and ledger history"></div>
+            <figure class="screen-preview-panel" id="screen-panel-details" data-screen-panel="details">
+              <div class="phone-frame"><img src="assets/screens/detail-light.png" width="780" height="1688" alt="Tabby group tab detail with who owes whom and ledger history" loading="lazy"></div>
               <figcaption>Group tab</figcaption>
             </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/home-dark.png" width="780" height="1688" alt="Tabby home screen in dark mode"></div>
+            <figure class="screen-preview-panel" id="screen-panel-dark" data-screen-panel="dark">
+              <div class="phone-frame"><img src="assets/screens/home-dark.png" width="780" height="1688" alt="Tabby home screen in dark mode" loading="lazy"></div>
               <figcaption>Night mode</figcaption>
-            </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/login-dark.png" width="780" height="1688" alt="Tabby welcome screen in dark mode"></div>
-              <figcaption>Welcome, dark</figcaption>
-            </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/detail-dark.png" width="780" height="1688" alt="Tabby ledger history in dark mode"></div>
-              <figcaption>Ledger history</figcaption>
-            </figure>
-          </div>
-          <div class="marquee-set" aria-hidden="true">
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/home-light.png" width="780" height="1688" alt=""></div>
-            </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/login-light.png" width="780" height="1688" alt=""></div>
-            </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/detail-light.png" width="780" height="1688" alt=""></div>
-            </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/home-dark.png" width="780" height="1688" alt=""></div>
-            </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/login-dark.png" width="780" height="1688" alt=""></div>
-            </figure>
-            <figure class="shot">
-              <div class="phone-frame"><img src="assets/screens/detail-dark.png" width="780" height="1688" alt=""></div>
             </figure>
           </div>
         </div>
