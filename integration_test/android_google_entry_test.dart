@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:tabby/core/config/app_state.dart';
 import 'package:tabby/core/config/supabase_config.dart';
@@ -13,7 +12,8 @@ import 'package:tabby/core/theme/tabby_theme.dart';
 import 'package:tabby/features/auth/application/registration_flow.dart';
 import 'package:tabby/features/auth/presentation/auth_welcome_widgets.dart';
 import 'package:tabby/features/auth/presentation/login_screen.dart';
-import 'package:tabby/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tabby/features/onboarding/application/first_launch_tour.dart';
 import 'package:tabby/core/theme/tabby_palette.dart';
 import 'package:tabby/features/home/presentation/home_dashboard_screen.dart';
 import 'package:tabby/features/tabs/presentation/my_tabs_screen.dart';
@@ -78,61 +78,51 @@ void main() {
     },
   );
   testWidgets(
-    'native introduction back next and encrypted account acknowledgment',
+    'native first-launch tour back next skip and install acknowledgment',
     (tester) async {
-      await storage.delete(key: RegistrationFlow.key(actor));
-      await RegistrationFlow.refresh(profileCheck: (_) async => true);
-      final router = GoRouter(
-        initialLocation: '/onboarding',
-        routes: [
-          GoRoute(
-            path: '/onboarding',
-            builder: (_, _) => const OnboardingScreen(),
-          ),
-          GoRoute(
-            path: '/complete-profile',
-            builder: (_, _) =>
-                const Scaffold(body: Text('Required profile setup')),
-          ),
-        ],
-      );
-      await tester.pumpWidget(
-        MaterialApp.router(
-          theme: TabbyTheme.lightTheme,
-          routerConfig: router,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(disableAnimations: true),
-            child: child!,
-          ),
-        ),
-      );
+      final prefs = await SharedPreferences.getInstance();
+      const marker = FirstLaunchTour.storageKey;
+      final previous = prefs.getBool(marker);
+      final previousLegacy = await storage.read(key: marker);
+      addTearDown(() async {
+        if (previous == null) {
+          await prefs.remove(marker);
+        } else {
+          await prefs.setBool(marker, previous);
+        }
+        if (previousLegacy == null) {
+          await storage.delete(key: marker);
+        } else {
+          await storage.write(key: marker, value: previousLegacy);
+        }
+      });
+      await prefs.remove(marker);
+      await storage.delete(key: marker);
+      AppState.isAuthenticated.value = false;
+      AppState.hasSeenOnboarding.value = false;
+      appRouter.go('/login');
+      await tester.pumpWidget(const ProviderScope(child: TabbyApp(enableUpdateCheck: false)));
       await tester.pumpAndSettle();
+      expect(find.text('One tab for every friend.'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsNothing);
       await tester.ensureVisible(find.text('Next'));
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
-      expect(find.text('One tab for every friend.'), findsOneWidget);
+      expect(find.text('Balances and receipts, together.'), findsOneWidget);
       await tester.ensureVisible(find.text('Back'));
       await tester.tap(find.text('Back'));
       await tester.pumpAndSettle();
-      expect(find.text("Hi, I'm Tabby."), findsOneWidget);
+      expect(find.text('One tab for every friend.'), findsOneWidget);
       await tester.ensureVisible(find.text('Skip'));
       await tester.tap(find.text('Skip'));
       await tester.pumpAndSettle();
-      expect(find.text('Required profile setup'), findsOneWidget);
-      expect(await storage.read(key: RegistrationFlow.key(actor)), 'true');
-      expect(AppState.profileCompletionRequired.value, isTrue);
-      RegistrationFlow.reset();
-      await RegistrationFlow.refresh(profileCheck: (_) async => true);
-      expect(AppState.introductionRequired.value, isFalse);
-      expect(
-        await storage.read(
-          key: RegistrationFlow.key('synthetic-other-account'),
-        ),
-        isNull,
-      );
-      await storage.delete(key: RegistrationFlow.key(actor));
+      expect(find.text('Continue with Google'), findsOneWidget);
+      expect(prefs.getBool(marker), isTrue);
+      expect(await storage.read(key: RegistrationFlow.key(actor)), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
-      router.dispose();
+      AppState.hasSeenOnboarding.value = false;
+      await FirstLaunchTour.restore();
+      expect(AppState.hasSeenOnboarding.value, isTrue);
       expect(tester.takeException(), isNull);
     },
   );
@@ -147,7 +137,6 @@ void main() {
       expect(AppState.registrationError.value, isNotNull);
       await RegistrationFlow.refresh(profileCheck: (_) async => false);
       expect(AppState.registrationCheckPending.value, isFalse);
-      expect(AppState.introductionRequired.value, isFalse);
     },
   );
   testWidgets(

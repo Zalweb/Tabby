@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tabby/features/onboarding/application/first_launch_tour.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tabby/main.dart';
@@ -7,21 +10,67 @@ import 'package:tabby/core/router/app_router.dart';
 
 void main() {
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
     AppState.isAuthenticated.value = false;
     AppState.hasSeenOnboarding.value = false;
     AppState.profileCompletionRequired.value = false;
   });
 
-  testWidgets('First launch opens Google welcome before any introduction', (tester) async {
-    appRouter.go('/onboarding');
+  Future<void> mount(WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: TabbyApp(enableUpdateCheck: false)));
     await tester.pumpAndSettle();
-    expect(find.text('Tabby'), findsOneWidget);
+  }
+
+  Future<void> press(WidgetTester tester, String label) async {
+    final button = find.text(label);
+    await tester.ensureVisible(button);
+    expect(button.hitTestable(), findsOneWidget);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('fresh launch shows the mascot tour before Google login', (tester) async {
+    appRouter.go('/login');
+    await mount(tester);
+    expect(find.text('One tab for every friend.'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsNothing);
+    await press(tester, 'Next');
+    expect(find.text('Balances and receipts, together.'), findsOneWidget);
+    await press(tester, 'Back');
+    expect(find.text('One tab for every friend.'), findsOneWidget);
+    await press(tester, 'Next');
+    await press(tester, 'Next');
+    expect(find.text('Settle up, stay friends.'), findsOneWidget);
+    await press(tester, 'Continue to sign in');
+    expect(appRouter.routeInformationProvider.value.uri.path, '/login');
     expect(find.text('Continue with Google'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
-    expect(find.text('Next'), findsNothing);
-    expect(appRouter.routeInformationProvider.value.uri.path, '/login');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool(FirstLaunchTour.storageKey), isTrue);
+  });
+
+  testWidgets('skipping persists locally and a later launch goes to login', (tester) async {
+    appRouter.go('/login');
+    await mount(tester);
+    await press(tester, 'Next');
+    await press(tester, 'Skip');
+    expect(find.text('Continue with Google'), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
+    AppState.hasSeenOnboarding.value = false;
+    await FirstLaunchTour.restore();
+    appRouter.go('/onboarding');
+    await mount(tester);
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(appRouter.routeInformationProvider.value.uri.path, '/login');
+  });
+
+  testWidgets('restored authenticated account bypasses the fresh launch tour', (tester) async {
+    AppState.isAuthenticated.value = true;
+    appRouter.go('/login');
+    await mount(tester);
+    expect(appRouter.routeInformationProvider.value.uri.path, '/home');
+    expect(find.text('One tab for every friend.'), findsNothing);
   });
 
   testWidgets(

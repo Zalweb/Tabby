@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 class AppState {
-  static final ValueNotifier<bool> introductionRequired = ValueNotifier(false);
   static final ValueNotifier<bool> registrationCheckPending = ValueNotifier(
     false,
   );

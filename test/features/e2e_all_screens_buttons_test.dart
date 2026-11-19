@@ -3,6 +3,7 @@ import 'package:tabby/shared/widgets/tabby_feedback.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -625,7 +626,13 @@ void main() {
         await tester.pumpWidget(const ProviderScope(child: TabbyApp()));
         await tester.pumpAndSettle();
 
-        // First launch and legacy intro deep links offer Google only.
+        // Fresh installs show the tour before the Google-only welcome.
+        expect(find.text('One tab for every friend.'), findsOneWidget);
+        expect(find.text('Continue with Google'), findsNothing);
+        SharedPreferences.setMockInitialValues({});
+        await tester.ensureVisible(find.text('Skip'));
+        await tester.tap(find.text('Skip'));
+        await tester.pumpAndSettle();
         expect(find.text('Continue with Google'), findsOneWidget);
         expect(appRouter.routeInformationProvider.value.uri.path, '/login');
 

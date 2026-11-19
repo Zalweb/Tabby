@@ -67,3 +67,7 @@ The explicit user directive and DEC-013 supersede pre-login tutorial/email-entry
 The current user directive/DEC-014 extends welcome/introduction cream, amber and charcoal across this area's screens and overlays, with matching dark mode. [Current design authority](../project/DESIGN.md) and [QA-026](../progress/tasks/QA-026.md) supersede former mint/emerald presentation only. Existing behavior, financial meaning, native QR/image colors and session/durable-save guards remain. Verification must distinguish UI fixtures from actual provider/backend/device acceptance.
 
 2026-11-17T14:30:25.234Z - QA-031 WelcomeMascot delegates to the shared animation engine. Login shows welcome, pending Google/loading/browser handoff shows waiting, callback failure helpful. Intro welcome/notebook keep clean existing art and pause/motion preferences. No OAuth/registration contract change. [Mascot plan](situation-mascot-animation.md).
+
+## First-use mascot introduction - 2026-11-19T14:16:50+08:00
+
+The owner directed that the introduction appear on fresh signed-out launches before the existing Google welcome. Its completion belongs to the installation. Restored authenticated accounts bypass it. An unfinished authenticated profile proceeds directly to required setup and retains retry on unknown server status. The cold-start animation honors reduced motion and releases real initialization errors promptly. This supersedes the introduction order in the 2026-11-17 checkpoint. [Task](../progress/tasks/QA-051.md) and [verification](../verification/VER-QA-051-FIRST-LAUNCH.md).

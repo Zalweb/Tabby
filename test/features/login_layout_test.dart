@@ -47,8 +47,8 @@ void main() {
   });
   testWidgets('introduction contains only real Tabby capabilities with minimal art', (tester) async {
     await open(tester,const OnboardingScreen(),const Size(390,844));
-    expect(find.text("Hi, I'm Tabby."),findsOneWidget);
-    for(final title in ['One tab for every friend.','Settle up, stay friends.']) {
+    expect(find.text('One tab for every friend.'),findsOneWidget);
+    for(final title in ['Balances and receipts, together.','Settle up, stay friends.']) {
       await tester.ensureVisible(find.text('Next'));
       await tester.tap(find.text('Next'));
       await tester.pumpAndSettle();
@@ -57,7 +57,7 @@ void main() {
       expect(find.byType(Icon),findsNothing);
     }
     expect(find.textContaining('your friend confirms'),findsOneWidget);
-    expect(find.text('Set up my profile'),findsOneWidget);
+    expect(find.text('Continue to sign in'),findsOneWidget);
     expect(tester.takeException(),isNull);
   });
 }

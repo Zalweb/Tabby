@@ -22,18 +22,14 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: TabbyApp(enableUpdateCheck: false)));
     await tester.pumpAndSettle();
   }
-  testWidgets('first Google registration routes home requests to intro then profile after skip', (tester) async {
+  testWidgets('first Google session reaches required profile setup directly', (tester) async {
+    AppState.hasSeenOnboarding.value = false;
     AppState.profileCompletionRequired.value = true;
-    AppState.introductionRequired.value = true;
     appRouter.go('/home');
     await mount(tester);
-    expect(appRouter.routeInformationProvider.value.uri.path, '/onboarding');
-    await tester.ensureVisible(find.text('Skip'));
-    await tester.tap(find.text('Skip'));
-    await tester.pumpAndSettle();
     expect(appRouter.routeInformationProvider.value.uri.path, '/complete-profile');
     expect(find.text('Full name'), findsOneWidget);
-    expect(await const FlutterSecureStorage().read(key: RegistrationFlow.key('synthetic-registration')), 'true');
+    expect(await const FlutterSecureStorage().read(key: RegistrationFlow.key('synthetic-registration')), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
   testWidgets('incomplete returning registration goes to profile while completed users skip intro', (tester) async {

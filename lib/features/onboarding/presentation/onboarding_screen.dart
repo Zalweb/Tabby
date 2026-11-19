@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../core/config/supabase_config.dart';
-import '../../auth/application/registration_flow.dart';
+import '../../../core/config/app_state.dart';
+import '../../../core/theme/motion_preferences.dart';
 import '../../auth/presentation/auth_welcome_widgets.dart';
+import '../application/first_launch_tour.dart';
 
-/// Post-Google introduction for an unfinished Tabby registration.
+/// Signed-out first-launch tour shown before Google sign-in on fresh installs.
+/// Acknowledgment is a local install marker; it needs no account or network.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
   @override
@@ -16,37 +17,57 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _step = 0;
   bool _saving = false;
   String? _error;
+  final ScrollController _scroll = ScrollController();
   static const _slides = [
     (
-      title: "Hi, I'm Tabby.",
-      body: 'A little companion for the expenses you share. Let’s make keeping tabs feel simple.',
+      title: 'One tab for every friend.',
+      body:
+          'Hi, I’m Tabby — your friendly tab keeper. Add a shared meal or any cost you split, and I’ll keep a clear record of who paid and who owes what.',
       art: 'assets/branding/tabby-welcome-v3.png',
     ),
     (
-      title: 'One tab for every friend.',
-      body: 'Add a shared meal, a ride, or borrowed cash. Keep a clear record of who owes what, together.',
+      title: 'Balances and receipts, together.',
+      body:
+          'Each tab keeps a running balance. Attach receipts to expenses so everyone on that tab can see the same record.',
       art: 'assets/branding/tabby-notebook-v3.png',
     ),
     (
       title: 'Settle up, stay friends.',
-      body: 'Pay with your usual wallet, bank, or cash. Record it in Tabby; your friend confirms when it arrives.',
+      body:
+          'Pay with your usual wallet, bank, or cash. Record it in Tabby; your friend confirms when it arrives.',
       art: 'assets/branding/tabby-welcome-v3.png',
     ),
   ];
-  Future<void> _finish() async {
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _goToStep(int step) {
+    setState(() => _step = step);
+    // Each step starts reading from the top, even after scrolling a long
+    // large-text step to reach the actions.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) _scroll.jumpTo(0);
+    });
+  }
+
+  Future<void> _acknowledge() async {
     if (_saving) return;
-    final stamp = SupabaseConfig.captureSession();
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
-      final saved = await RegistrationFlow.finishIntroduction();
-      if (!mounted || !SupabaseConfig.isCurrentSession(stamp)) return;
-      if (!saved) throw StateError('No current account');
-      context.go('/complete-profile');
+      await FirstLaunchTour.acknowledge();
+      if (!mounted) return;
+      // The router reacts to the seen marker and keeps recovery/auth
+      // precedence; a session that arrived mid-save owns its destination.
+      // No redundant manual navigation is needed.
     } catch (_) {
-      if (mounted && SupabaseConfig.isCurrentSession(stamp)) {
+      if (mounted) {
         setState(
           () => _error = 'Your progress could not be saved. Please try again.',
         );
@@ -56,19 +77,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  /// Clears the intro for this launch only when the marker cannot be saved.
+  /// The router reacts to the in-memory flag and keeps recovery/auth
+  /// precedence, so sign-in is never blocked by an optional marker.
+  void _continueForNow() {
+    AppState.hasSeenOnboarding.value = true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final slide = _slides[_step];
     return PopScope<Object?>(
       canPop: _step == 0 && !_saving,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !_saving && _step > 0) setState(() => _step--);
+        if (!didPop && !_saving && _step > 0) _goToStep(_step - 1);
       },
       child: Scaffold(
         backgroundColor: WelcomeColors.canvas(context),
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) => SingleChildScrollView(
+              controller: _scroll,
               padding: const EdgeInsets.all(28),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
@@ -101,7 +130,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                             const SizedBox(width: 24),
                             TextButton(
-                              onPressed: _saving ? null : _finish,
+                              style: TextButton.styleFrom(
+                                minimumSize: const Size(48, 48),
+                              ),
+                              onPressed: _saving ? null : _acknowledge,
                               child: Text(
                                 'Skip',
                                 style: TextStyle(
@@ -112,28 +144,45 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ],
                         ),
                         const SizedBox(height: 28),
-                        WelcomeMascot(
-                          asset: slide.art,
-                          size: constraints.maxHeight < 600 ? 190 : 290,
-                        ),
-                        const SizedBox(height: 28),
-                        Text(
-                          slide.title,
-                          style: TextStyle(
-                            color: WelcomeColors.ink(context),
-                            fontSize: 30,
-                            height: 1.15,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.8,
+                        AnimatedSwitcher(
+                          duration: TabbyMotion.duration(
+                            context,
+                            const Duration(milliseconds: 200),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          slide.body,
-                          style: TextStyle(
-                            color: WelcomeColors.muted(context),
-                            fontSize: 16,
-                            height: 1.6,
+                          child: Column(
+                            key: ValueKey<int>(_step),
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Center(
+                                child: WelcomeMascot(
+                                  asset: slide.art,
+                                  size: constraints.maxHeight < 600
+                                      ? 190
+                                      : 290,
+                                ),
+                              ),
+                              const SizedBox(height: 28),
+                              Text(
+                                slide.title,
+                                style: TextStyle(
+                                  color: WelcomeColors.ink(context),
+                                  fontSize: 30,
+                                  height: 1.15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                slide.body,
+                                style: TextStyle(
+                                  color: WelcomeColors.muted(context),
+                                  fontSize: 16,
+                                  height: 1.6,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         if (_error != null) ...[
@@ -147,14 +196,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               ),
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  minimumSize: const Size(48, 48),
+                                ),
+                                onPressed: _saving ? null : _acknowledge,
+                                child: const Text('Retry'),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextButton(
+                                  style: TextButton.styleFrom(
+                                    minimumSize: const Size(48, 48),
+                                  ),
+                                  onPressed: _saving ? null : _continueForNow,
+                                  child: const Text(
+                                    'Continue to sign in for now',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                         const SizedBox(height: 40),
                         Row(
                           children: [
                             TextButton(
+                              style: TextButton.styleFrom(
+                                minimumSize: const Size(48, 48),
+                              ),
                               onPressed: _step == 0 || _saving
                                   ? null
-                                  : () => setState(() => _step--),
+                                  : () => _goToStep(_step - 1),
                               child: const Text('Back'),
                             ),
                             const SizedBox(width: 20),
@@ -175,14 +252,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 onPressed: _saving
                                     ? null
                                     : _step < 2
-                                    ? () => setState(() => _step++)
-                                    : _finish,
+                                    ? () => _goToStep(_step + 1)
+                                    : _acknowledge,
                                 child: Text(
                                   _saving
                                       ? 'Saving…'
                                       : _step < 2
                                       ? 'Next'
-                                      : 'Set up my profile',
+                                      : 'Continue to sign in',
                                   textAlign: TextAlign.center,
                                 ),
                               ),

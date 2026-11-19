@@ -5,7 +5,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
     show AuthChangeEvent, AuthState, Session;
@@ -15,6 +14,7 @@ import '../../../core/config/supabase_config.dart';
 
 import '../../../shared/widgets/tabby_button.dart';
 import 'auth_welcome_widgets.dart';
+import '../../onboarding/application/first_launch_tour.dart';
 import '../application/registration_flow.dart';
 import '../../tabs/application/tabby_providers.dart';
 import '../../tabs/data/supabase_tabby_repository.dart';
@@ -170,12 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         SupabaseConfig.isCurrentSession(session);
     if (!current()) return;
     AppState.hasSeenOnboarding.value = true;
-    try {
-      await const FlutterSecureStorage().write(
-        key: 'tabby_has_seen_onboarding',
-        value: 'true',
-      );
-    } catch (_) {}
+    await FirstLaunchTour.persistSeenBestEffort();
     if (!current()) return;
     await ref.read(currentUserProvider.notifier).loadFromSupabase();
     if (!current()) return;
@@ -190,11 +185,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     AppState.isAuthenticated.value = true;
     if (!mounted) return;
     context.go(
-      AppState.introductionRequired.value
-          ? '/onboarding'
-          : AppState.profileCompletionRequired.value
-          ? '/complete-profile'
-          : '/home',
+      AppState.profileCompletionRequired.value ? '/complete-profile' : '/home',
     );
   }
 

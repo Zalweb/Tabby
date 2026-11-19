@@ -11,7 +11,6 @@ import 'core/theme/tabby_palette.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'core/config/app_state.dart';
 import 'core/config/supabase_config.dart';
@@ -27,6 +26,7 @@ import 'features/tabs/data/ledger_cache_storage.dart';
 import 'features/app_update/domain/app_update_models.dart';
 import 'features/app_update/presentation/app_update_prompt.dart';
 import 'features/tabs/application/tabby_providers.dart';
+import 'features/onboarding/application/first_launch_tour.dart';
 
 Future<void> _refreshProfileCompletionState() => RegistrationFlow.refresh();
 
@@ -35,6 +35,7 @@ Future<void> main() async {
   runApp(
     const StartupGate(
       initialize: _initializeApp,
+      animateOpening: true,
       child: ProviderScope(child: TabbyApp(enableUpdateCheck: true)),
     ),
   );
@@ -61,13 +62,11 @@ Future<List<String>> _initializeApp() async {
     );
   }
 
-  // Restore onboarding-seen flag persisted from a previous session.
-  const onboardingStorage = FlutterSecureStorage();
+  // Restore the onboarding-seen marker from the sandbox preference (with a
+  // one-time legacy secure read on non-iOS platforms). Optional: a failure
+  // never blocks startup or sign-in.
   try {
-    final seenOnboarding = await onboardingStorage
-        .read(key: 'tabby_has_seen_onboarding')
-        .timeout(const Duration(seconds: 10));
-    if (seenOnboarding == 'true') AppState.hasSeenOnboarding.value = true;
+    await FirstLaunchTour.restore().timeout(const Duration(seconds: 10));
   } catch (_) {
     notices.add('Saved preferences couldn’t be restored. You can continue.');
   }
@@ -95,14 +94,9 @@ Future<List<String>> _initializeApp() async {
         AppState.registrationCheckPending.value = true;
         AppState.isAuthenticated.value = true;
         AppState.hasSeenOnboarding.value = true;
-        try {
-          await onboardingStorage.write(
-            key: 'tabby_has_seen_onboarding',
-            value: 'true',
-          );
-        } catch (_) {
-          notices.add('Your onboarding preference couldn’t be saved.');
-        }
+        // Best-effort sandbox marker; shares the in-flight write with tour
+        // completion so an auth event racing the tour never overlaps saves.
+        unawaited(FirstLaunchTour.persistSeenBestEffort());
         try {
           await _refreshProfileCompletionState().timeout(
             const Duration(seconds: 10),
@@ -126,9 +120,7 @@ Future<List<String>> _initializeApp() async {
             final check = _refreshProfileCompletionState();
             AppState.isAuthenticated.value = true;
             AppState.hasSeenOnboarding.value = true;
-            onboardingStorage
-                .write(key: 'tabby_has_seen_onboarding', value: 'true')
-                .catchError((Object _) {});
+            unawaited(FirstLaunchTour.persistSeenBestEffort());
             check.catchError((Object _) {});
           } else {
             AppState.isAuthenticated.value = false;

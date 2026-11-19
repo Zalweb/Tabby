@@ -108,7 +108,6 @@ final GoRouter appRouter = GoRouter(
     AppState.isAuthenticated,
     AppState.hasSeenOnboarding,
     AppState.registrationCheckPending,
-    AppState.introductionRequired,
     AppState.profileCompletionRequired,
     AuthRecoveryState.instance,
     SupabaseConfig.sessionRevision,
@@ -130,13 +129,16 @@ final GoRouter appRouter = GoRouter(
     }
 
     if (!auth) {
+      // Fresh installs see the first-launch tour before Google sign-in.
+      // Recovery routes above keep precedence; seen installs go straight to
+      // the existing Google-only welcome.
+      if (!AppState.hasSeenOnboarding.value) {
+        return path == '/onboarding' ? null : '/onboarding';
+      }
       return path == '/login' ? null : '/login';
     } else {
       if (AppState.registrationCheckPending.value) {
         return path == '/account-check' ? null : '/account-check';
-      }
-      if (AppState.introductionRequired.value) {
-        return path == '/onboarding' ? null : '/onboarding';
       }
       if (AppState.profileCompletionRequired.value) {
         if (path == '/complete-profile') return null;
