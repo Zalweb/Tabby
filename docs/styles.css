@@ -1899,8 +1899,9 @@ button {
     margin-top: 36px;
   }
 
-  /* Legal header */
-  .navbar .nav-links {
+  /* Legal header: hide the whole nav so the empty wrapper does not keep a
+     flex gap beside the persistent download action on narrow screens. */
+  .navbar nav {
     display: none;
   }
 }
@@ -2061,6 +2062,13 @@ button {
 @media (max-width: 380px) {
   .hero-actions .store-badge-text span {
     white-space: normal;
+  }
+
+  /* QA-052: the 8deg rotation widens the hero phone's bounding box past the
+     viewport on 320-380px screens; size the frame so the rotated edge fits
+     without clipping. Wider layouts keep the existing rules. */
+  .hero-phone {
+    width: min(80%, 280px);
   }
 }
 
