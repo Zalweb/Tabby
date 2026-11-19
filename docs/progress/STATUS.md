@@ -9,7 +9,7 @@ Generated from task metadata by `node scripts/check-project-memory.cjs --write`.
 | M0 | 1 / 1 | 1 / 1 | 1 / 1 |
 | M1 | 68 / 69 | 1 / 69 | 1 / 69 |
 | M2 | 4 / 4 | 0 / 4 | 0 / 4 |
-| M3 | 14 / 20 | 2 / 20 | 2 / 20 |
+| M3 | 14 / 20 | 3 / 20 | 2 / 20 |
 
 Implementation coverage counts source work; complete additionally requires every acceptance, review and integration gate. Local fixtures never establish live backend or real-device acceptance.
 
@@ -140,7 +140,7 @@ M3 candidate/device/deployment verification remains a release gate even before a
 | [WEB-002](tasks/WEB-002.md) � Simplify Tabby landing page and automate mobile downloads | M3 | P2 | implemented | Codex root / Luna worker | none; read task handoff |
 | [WEB-003](tasks/WEB-003.md) � Let visitors switch landing page screenshots | M3 | P2 | implemented | Codex root / delegated Worker | WEB-001; read task handoff |
 | [WEB-004](tasks/WEB-004.md) � Scroll-responsive landing feature marquee | M3 | P2 | complete | Codex root / Luna worker | none; see verification |
-| [WEB-005](tasks/WEB-005.md) � Restore the A look inside screenshots carousel | M3 | P2 | implemented | Codex root / delegated worker | WEB-004; read task handoff |
+| [WEB-005](tasks/WEB-005.md) � Restore the A look inside screenshots carousel | M3 | P2 | verified | Codex root / delegated worker | WEB-004; read task handoff |
 
 ## Open release gates
 

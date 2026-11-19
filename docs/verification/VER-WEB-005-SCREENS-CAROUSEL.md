@@ -6,14 +6,16 @@
   "task_ids": [
     "WEB-005"
   ],
-  "timestamp": "2026-11-19T10:09:07+08:00",
-  "tested_commit": "f23e9cf324cd6c33778e968b68bc834a9f447eab",
-  "dirty_tree": true,
-  "environment": "Windows Node and headless Brave at 1440 by 1000 and 390 by 844",
+  "timestamp": "2026-11-19T10:11:28+08:00",
+  "tested_commit": "eb38f11c1065327a726c5fe8856667b193ce7b9d",
+  "dirty_tree": false,
+  "environment": "Windows Node and headless Brave at 1440 by 1000 and 390 by 844 and live Vercel production",
   "commands": [
     "node test/web_landing_test.js",
     "Brave DevTools viewport, movement and reduced-motion checks",
-    "git diff --check"
+    "git diff --check",
+    "GitHub Vercel statuses and SHA-256 comparison of live HTML, CSS, JavaScript and all six screenshot assets",
+    "Brave DevTools checks on the live desktop and mobile page"
   ],
   "checks": [
     {
@@ -22,7 +24,7 @@
     },
     {
       "category": "production-web",
-      "outcome": "unverified"
+      "outcome": "passed"
     }
   ]
 }
@@ -38,4 +40,4 @@ The restored screenshot carousel reuses the prior production assets and markup. 
 
 ## Limits and next action
 
-Publish to Vercel production and retest the deployed carousel. Browser coverage is Chromium-based.
+Both Vercel deployments succeeded at `eb38f11c1065327a726c5fe8856667b193ce7b9d`. Public HTML, CSS, JavaScript and all six screenshots matched the reviewed files. The live desktop and phone checks passed with and without reduced motion. Browser coverage is Chromium-based. [Production Screens](https://tabby-web-fawn.vercel.app/#screens).
