@@ -6,13 +6,16 @@
   "task_ids": [
     "WEB-003"
   ],
-  "timestamp": "2026-11-19T09:47:14+08:00",
-  "tested_commit": "3985eb94f644bb4fbe968ca206928f9b84728282",
-  "dirty_tree": true,
-  "environment": "Windows Node and headless Brave at 1440 by 1000 and 390 by 844",
+  "timestamp": "2026-11-19T09:50:01+08:00",
+  "tested_commit": "6451cfa83edbf1865f7594cc6f757a528551e9a2",
+  "dirty_tree": false,
+  "environment": "Windows Node and headless Brave at 1440 by 1000 and 390 by 844 and Vercel production",
   "commands": [
     "node test/web_landing_test.js",
-    "Independent Brave DevTools check against local HTTP"
+    "Independent Brave DevTools check against local HTTP",
+    "Vercel deployment status via GitHub commit status",
+    "SHA-256 comparison of production HTML, CSS, JavaScript and three screenshots",
+    "Independent Brave DevTools check against the production site"
   ],
   "checks": [
     {
@@ -21,7 +24,7 @@
     },
     {
       "category": "production-web",
-      "outcome": "unverified"
+      "outcome": "passed"
     }
   ]
 }
@@ -37,4 +40,4 @@ The edited files retain the existing download aliases, navigation and assets. Th
 
 ## Limits and next action
 
-Publish the isolated web commit and verify the live Vercel assets and interactions. Non-Chromium browser acceptance is pending.
+Vercel tabby-web and tabby-app deployment checks succeeded for `6451cfa83edbf1865f7594cc6f757a528551e9a2`. The public HTML, CSS, JavaScript and all three screenshot assets matched the reviewed bytes. Brave repeated the normal and reduced-motion interactions at both viewport sizes. Non-Chromium browser acceptance is pending. [Live Screens](https://tabby-web-fawn.vercel.app/#screens).
