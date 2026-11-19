@@ -118,25 +118,38 @@ assert.strictEqual(htmlEmojiMatches.length, 0, `HTML must not contain emojis. Fo
 assert((html.match(/<details class="faq-card/g) || []).length >= 6, 'Must include at least six FAQ cards');
 assert(html.includes('name="viewport"') && html.includes('meta name="description"'), 'Must include responsive viewport and meta description');
 
-const screensGallery = html.slice(html.indexOf('data-screenshot-gallery'), html.indexOf('<!-- Why Tabby -->'));
-assert(screensGallery.includes('role="tablist"') && screensGallery.includes('aria-label="Tabby app screens"'), 'Screenshot controls must expose a named tab list');
-assert((screensGallery.match(/data-screen-tab=/g) || []).length === 3, 'Screenshot preview must have exactly three controls');
-assert((screensGallery.match(/data-screen-panel=/g) || []).length === 3, 'No-script fallback must render all three screenshot figures');
-for (const label of ['Home', 'Tab details', 'Dark mode']) {
-  assert(screensGallery.includes(`>${label}</button>`), `Screenshot tabs must include ${label}`);
+const screensStart = html.indexOf('<!-- Screens -->');
+const screensEnd = html.indexOf('<!-- Why Tabby -->', screensStart);
+const screensSection = html.slice(screensStart, screensEnd);
+const marqueeStart = screensSection.indexOf('<div class="marquee" data-marquee>');
+assert(marqueeStart >= 0, 'Screens section must contain the original screenshot marquee');
+const screenshotMarquee = screensSection.slice(marqueeStart);
+const firstSetStart = screenshotMarquee.indexOf('<div class="marquee-set">');
+const cloneSetStart = screenshotMarquee.indexOf('<div class="marquee-set" aria-hidden="true">');
+assert(firstSetStart >= 0 && cloneSetStart > firstSetStart, 'Screenshot marquee must include a readable set and an accessible clone');
+const firstScreenshotSet = screenshotMarquee.slice(firstSetStart, cloneSetStart);
+const clonedScreenshotSet = screenshotMarquee.slice(cloneSetStart);
+const expectedScreenshots = [
+  ['home-light.png', 'Tabby home screen with net balance, tabs, and reminders', 'Home dashboard'],
+  ['login-light.png', 'Tabby welcome screen with the mascot and Continue with Google', 'Welcome'],
+  ['detail-light.png', 'Tabby group tab detail with who owes whom and ledger history', 'Group tab'],
+  ['home-dark.png', 'Tabby home screen in dark mode', 'Night mode'],
+  ['login-dark.png', 'Tabby welcome screen in dark mode', 'Welcome, dark'],
+  ['detail-dark.png', 'Tabby ledger history in dark mode', 'Ledger history'],
+];
+const primaryImages = [...firstScreenshotSet.matchAll(/<img src="assets\/screens\/([^"]+)"/g)].map((match) => match[1]);
+assert.deepStrictEqual(primaryImages, expectedScreenshots.map(([file]) => file), 'Readable screenshot carousel must keep all six original images in order');
+const primaryCaptions = [...firstScreenshotSet.matchAll(/<figcaption>(.*?)<\/figcaption>/g)].map((match) => match[1]);
+assert.deepStrictEqual(primaryCaptions, expectedScreenshots.map(([, , caption]) => caption), 'Readable screenshot carousel must keep all six original captions in order');
+for (const [file, alt, caption] of expectedScreenshots) {
+  assert(firstScreenshotSet.includes(`src="assets/screens/${file}"`) && firstScreenshotSet.includes(`alt="${alt}"`), `Screenshot ${file} must keep its descriptive alt text`);
+  assert(firstScreenshotSet.includes(`<figcaption>${caption}</figcaption>`), `Screenshot ${file} must keep the ${caption} caption`);
 }
-for (const [key, source, caption] of [
-  ['home', 'home-light.png', 'Home dashboard'],
-  ['details', 'detail-light.png', 'Group tab'],
-  ['dark', 'home-dark.png', 'Night mode'],
-]) {
-  assert(screensGallery.includes(`aria-controls="screen-panel-${key}"`), `Tab ${key} must identify its panel`);
-  assert(screensGallery.includes(`id="screen-panel-${key}" data-screen-panel="${key}"`), `Panel ${key} must exist with its matching key`);
-  assert(screensGallery.includes(`assets/screens/${source}`), `Panel ${key} must show its assigned screenshot`);
-  assert(screensGallery.includes(`<figcaption>${caption}</figcaption>`), `Panel ${key} must retain its accurate caption`);
-}
-assert(screensGallery.includes('class="screen-preview-tabs"') && screensGallery.includes('aria-selected="true"'), 'The Home tab must be selected in the fallback markup');
-assert(!screensGallery.includes('data-marquee') && !screensGallery.includes('login-light.png'), 'Screens preview must replace the old marquee with the three requested views');
+const clonedImages = [...clonedScreenshotSet.matchAll(/<img src="assets\/screens\/([^"]+)" width="780" height="1688" alt=""/g)].map((match) => match[1]);
+assert(clonedScreenshotSet.startsWith('<div class="marquee-set" aria-hidden="true">'), 'Duplicate screenshot figures must be hidden from assistive technology');
+assert.deepStrictEqual(clonedImages, expectedScreenshots.map(([file]) => file), 'The decorative marquee clone must repeat all six screenshots in order with empty alt text');
+assert.strictEqual((screenshotMarquee.match(/<figure class="shot">/g) || []).length, 12, 'Screenshot marquee must render six original and six cloned figures');
+assert(!clonedScreenshotSet.includes('<figcaption>'), 'Decorative cloned screenshots must not repeat captions');
 
 console.log('✓ docs/index.html structure, content, and asset references verified');
 
@@ -154,10 +167,8 @@ assert(css.includes('.hero-title') && css.includes('.title-pill'), 'Must style t
 assert(!css.includes('.hero-mascot') && !css.includes('.hero-chip-bottom'), 'Must retire styles for removed hero decorations');
 assert(css.includes('.store-badge-dark') && css.includes('.store-badge-outline'), 'Must style the download badges');
 assert(css.includes('.feature-grid') && css.includes('.principle-grid'), 'Must style feature and principle grids');
-assert(css.includes('.screen-preview.is-enhanced') && css.includes('.screen-preview-viewport'), 'Must style the responsive screenshot preview');
-assert(css.includes('.screen-preview.is-enhanced.has-selection .screen-preview-panel') && css.includes('transition: opacity 360ms ease'), 'Screenshot crossfade must start only after a visitor selection');
-assert(css.includes('.screen-preview-tab:focus-visible'), 'Screenshot tabs must have a visible keyboard focus style');
-assert(css.includes('screen-preview.is-enhanced.has-selection .screen-preview-panel,') && css.includes('transition: none !important;'), 'Screenshot switching must be instant under reduced motion');
+assert(css.includes('.marquee-track') && css.includes('@keyframes marquee-scroll'), 'Must style the original screenshot marquee');
+assert(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.marquee \{[\s\S]*?overflow-x: auto;[\s\S]*?\.marquee-track \{\s*animation: none;[\s\S]*?\.marquee-set\[aria-hidden='true'\] \{\s*display: none;/.test(css), 'Reduced motion must make the screenshot marquee static and hide the decorative set');
 assert(css.includes('.feature-marquee-row--cream') && css.includes('.feature-marquee-row--amber') && css.includes('.feature-marquee-row--soft'), 'Must style the three warm feature-title bands');
 assert(css.includes('.feature-marquee.is-enhanced .feature-marquee-track'), 'Must style animated feature marquee rows');
 assert(css.includes('.feature-marquee [data-marquee-clone]') && css.includes('prefers-reduced-motion: reduce'), 'Reduced motion must restore a static feature-title layout');
@@ -178,7 +189,7 @@ assert(css.includes('.btn-primary') && css.includes('.navbar-inner') && css.incl
 const privacyHtml = fs.readFileSync(path.join(docsDir, 'privacy.html'), 'utf8');
 assert(privacyHtml.includes('.legal-hero') && privacyHtml.includes('.legal-body'), 'Privacy page must retain its inline legal layout styles');
 
-console.log('✓ docs/styles.css tokens, responsive preview, reduced motion, reveal, and legal compatibility verified');
+console.log('✓ docs/styles.css tokens, screenshot marquee, reduced motion, reveal, and legal compatibility verified');
 
 // 3. Verify docs/app.js release engine and interaction setup
 const jsPath = path.join(docsDir, 'app.js');
@@ -198,8 +209,7 @@ assert(!js.includes('changelog') && !js.includes('innerHTML'), 'Release notes mu
 assert(js.includes('setupMobileNav'), 'Must initialize the mobile navigation toggle');
 assert(js.includes('setupRevealAnimations'), 'Must initialize scroll reveal');
 assert(js.includes('setupHeaderState'), 'Must initialize the sticky header state');
-assert(js.includes('setupScreenshotGalleries'), 'Must initialize interactive screenshot previews');
-assert(js.includes("case 'ArrowRight'") && js.includes("case 'ArrowLeft'") && js.includes("case 'Home'") && js.includes("case 'End'"), 'Screenshot tabs must support Arrow keys, Home, and End');
+assert(!js.includes('setupScreenshotGalleries'), 'Screenshot marquee must not initialize the removed tabbed gallery');
 assert(js.includes('setupFeatureMarquee') && js.includes('ScrollTrigger.create'), 'Must initialize the feature marquee with ScrollTrigger');
 assert(js.includes('Math.abs(self.getVelocity())') && js.includes('1800'), 'Scroll velocity must be absolute and clamped');
 assert(js.includes('requestAnimationFrame(animate)') && js.includes('cancelAnimationFrame(motionFrame)'), 'Feature marquee must share one frame loop that stops offscreen');
@@ -306,124 +316,6 @@ async function runReleaseUpdater({ release, fetchError, cachedRelease }) {
   return { elements, storageReads, storageWrites, apkHref, ipaHref };
 }
 
-async function verifyScreenshotGalleryRuntime() {
-  const vm = require('vm');
-  const makeClassList = () => {
-    const values = new Set();
-    return {
-      add(value) { values.add(value); },
-      contains(value) { return values.has(value); },
-      toggle(value, force) {
-        const shouldAdd = force === undefined ? !values.has(value) : force;
-        if (shouldAdd) values.add(value);
-        else values.delete(value);
-        return shouldAdd;
-      },
-    };
-  };
-  const makeElement = ({ id = '', attributes = {} } = {}) => {
-    const listeners = {};
-    const element = {
-      id,
-      attributes: { ...attributes },
-      classList: makeClassList(),
-      tabIndex: 0,
-      hidden: false,
-      addEventListener(type, listener) { listeners[type] = listener; },
-      setAttribute(name, value) { this.attributes[name] = String(value); },
-      getAttribute(name) { return this.attributes[name] || null; },
-      focus() { focused = this; },
-      dispatch(type, event = {}) {
-        if (listeners[type]) listeners[type]({ preventDefault() { this.defaultPrevented = true; }, ...event });
-        return event;
-      },
-    };
-    return element;
-  };
-
-  let focused = null;
-  let onReady;
-  const tabs = [
-    makeElement({ id: 'screen-tab-home', attributes: { 'aria-controls': 'screen-panel-home', 'aria-selected': 'true' } }),
-    makeElement({ id: 'screen-tab-details', attributes: { 'aria-controls': 'screen-panel-details', 'aria-selected': 'false' } }),
-    makeElement({ id: 'screen-tab-dark', attributes: { 'aria-controls': 'screen-panel-dark', 'aria-selected': 'false' } }),
-  ];
-  const panels = [
-    makeElement({ id: 'screen-panel-home' }),
-    makeElement({ id: 'screen-panel-details' }),
-    makeElement({ id: 'screen-panel-dark' }),
-  ];
-  const tabList = makeElement();
-  tabList.hidden = true;
-  const gallery = makeElement();
-  gallery.querySelectorAll = selector => selector === '[data-screen-tab]' ? tabs : panels;
-  gallery.querySelector = selector => selector === '[role="tablist"]' ? tabList : null;
-
-  const document = {
-    querySelectorAll(selector) {
-      if (selector === '[data-screenshot-gallery]') return [gallery];
-      return [];
-    },
-    querySelector() { return null; },
-    getElementById() { return null; },
-    addEventListener(type, handler) { if (type === 'DOMContentLoaded') onReady = handler; },
-    documentElement: { classList: { add() {} } },
-  };
-  const context = {
-    document,
-    window: { scrollY: 0, addEventListener() {} },
-    fetch: async () => ({ ok: true, json: async () => ({ assets: [] }) }),
-    console: { warn() {} },
-    Date,
-    Promise,
-    requestAnimationFrame(callback) { callback(); },
-  };
-
-  vm.runInNewContext(js, context, { filename: 'docs/app.js' });
-  assert.strictEqual(typeof onReady, 'function', 'Screenshot gallery must initialize on DOMContentLoaded');
-  onReady();
-  await new Promise(resolve => setImmediate(resolve));
-
-  assert(gallery.classList.contains('is-enhanced'), 'Valid gallery must switch to its interactive layout');
-  assert.strictEqual(tabList.hidden, false, 'Tab controls must appear after JavaScript enhancement');
-  assert.strictEqual(tabs[0].getAttribute('aria-selected'), 'true', 'Home must be selected on first render');
-  assert.strictEqual(tabs[0].tabIndex, 0, 'Selected tab must be the only tab in the tab order');
-  assert.strictEqual(tabs[1].tabIndex, -1);
-  assert.strictEqual(panels[0].getAttribute('role'), 'tabpanel');
-  assert.strictEqual(panels[0].getAttribute('aria-labelledby'), tabs[0].id, 'Active panel must be named by its tab');
-  assert.strictEqual(panels[0].getAttribute('aria-hidden'), 'false');
-  assert.strictEqual(panels[1].getAttribute('aria-hidden'), 'true');
-  assert(!gallery.classList.contains('has-selection'), 'Initial render must not trigger a crossfade');
-
-  tabs[1].dispatch('click');
-  assert.strictEqual(tabs[1].getAttribute('aria-selected'), 'true', 'Click must select Tab details');
-  assert.strictEqual(tabs[1].tabIndex, 0);
-  assert.strictEqual(panels[1].getAttribute('aria-hidden'), 'false');
-  assert(panels[1].classList.contains('is-active'));
-  assert(gallery.classList.contains('has-selection'), 'A visitor selection must enable the crossfade');
-
-  const fireKey = (tab, key) => {
-    let prevented = false;
-    tab.dispatch('keydown', { key, preventDefault() { prevented = true; } });
-    return prevented;
-  };
-  assert(fireKey(tabs[1], 'ArrowRight'), 'ArrowRight must be handled by the tab list');
-  assert.strictEqual(focused, tabs[2], 'ArrowRight must focus the next tab');
-  assert.strictEqual(tabs[2].getAttribute('aria-selected'), 'true');
-  fireKey(tabs[2], 'ArrowRight');
-  assert.strictEqual(focused, tabs[0], 'ArrowRight must wrap to the first tab');
-  fireKey(tabs[0], 'ArrowLeft');
-  assert.strictEqual(focused, tabs[2], 'ArrowLeft must wrap to the last tab');
-  fireKey(tabs[2], 'Home');
-  assert.strictEqual(focused, tabs[0], 'Home must focus the first tab');
-  fireKey(tabs[0], 'End');
-  assert.strictEqual(focused, tabs[2], 'End must focus the last tab');
-  assert.strictEqual(tabs.filter(tab => tab.tabIndex === 0).length, 1, 'Exactly one tab must remain in the tab order');
-  assert.strictEqual(panels.filter(panel => panel.getAttribute('aria-hidden') === 'false').length, 1, 'Exactly one panel must be exposed as active');
-
-  console.log('✓ Screenshot tabs initialize with one active panel and support click, arrow, Home, and End navigation');
-}
-
 async function verifyReleaseRuntime() {
   const newRelease = {
     tag_name: 'v2.0.0+40',
@@ -493,7 +385,7 @@ async function verifyReleaseRuntime() {
   console.log('✓ Latest stable APK/IPA metadata updates without changing links; stale-cache API failure stays neutral and does not insert release notes');
 }
 
-verifyScreenshotGalleryRuntime().then(verifyReleaseRuntime).then(() => {
+verifyReleaseRuntime().then(() => {
   // 6. Verify live Vercel deployment (page shell assertions only)
   const https = require('https');
   https.get('https://tabby-web-fawn.vercel.app', (res) => {

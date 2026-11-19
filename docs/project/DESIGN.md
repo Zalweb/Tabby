@@ -109,3 +109,7 @@ User-supplied thinking/waiting/helpful/reminder/celebrating originals are approv
 ## Landing screen previews - 2026-11-19T09:40:06+08:00
 
 The Screens section uses visitor-controlled Home, Tab details and Dark mode options. The selected Tabby screenshot and caption appear in a stable preview with a brief crossfade. The options work with a keyboard and reduced motion switches directly. Without JavaScript, all three screenshots and captions remain readable. [WEB-003](../progress/tasks/WEB-003.md), [Feature tabs reference](https://brewedops.cloud/motionlibrary/?id=cards-feature-tabs).
+
+## Screens carousel restoration - 2026-11-19T10:03:39+08:00
+
+The owner restored the six-screen carousel in A look inside. The Home, welcome and tab-detail screenshots appear in light and dark. Reduced-motion visitors can scroll the single static row. This supersedes the WEB-003 tabs for that section. [WEB-005](../progress/tasks/WEB-005.md).
