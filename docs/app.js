@@ -242,11 +242,240 @@
     });
   }
 
+  function setupFeatureMarquee() {
+    const marquee = document.querySelector('[data-feature-marquee]');
+    const motionPreference = window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)')
+      : null;
+    const gsap = window.gsap;
+    const ScrollTrigger = window.ScrollTrigger;
+
+    if (!marquee || !motionPreference || !gsap || !ScrollTrigger) return;
+
+    const rows = Array.from(marquee.querySelectorAll('[data-marquee-row]'));
+    if (rows.length !== 3) return;
+
+    const rowStates = rows.map((row) => {
+      const track = row.querySelector('[data-marquee-track]');
+      const set = track && track.querySelector('[data-marquee-set]');
+      return {
+        row,
+        track,
+        set,
+        direction: row.dataset.direction === 'right' ? 1 : -1,
+        baseSpeed: Number.parseFloat(row.dataset.speed) || 22,
+        phase: 0,
+        period: 0,
+      };
+    });
+    if (rowStates.some((state) => !state.track || !state.set)) return;
+
+    let cleanup = null;
+
+    function restoreStaticRows() {
+      if (cleanup) {
+        cleanup();
+        cleanup = null;
+      }
+    }
+
+    function enableMotion() {
+      if (motionPreference.matches || cleanup) return;
+
+      let trigger = null;
+      let visibilityObserver = null;
+      let useIntersectionObserver = typeof window.IntersectionObserver === 'function';
+      let motionFrame = 0;
+      let previousTime = null;
+      let visible = false;
+      let latestScrollVelocity = 0;
+      let smoothedScrollBoost = 0;
+      let resizeFrame = 0;
+      let disposed = false;
+
+      const placeRow = (state) => {
+        const x = state.direction > 0
+          ? -state.period + state.phase
+          : -state.phase;
+        gsap.set(state.track, { x, force3D: true });
+      };
+
+      const rebuild = () => {
+        if (disposed) return;
+
+        rowStates.forEach((state) => {
+          const previousFraction = state.period > 0 ? state.phase / state.period : 0;
+          state.track.querySelectorAll('[data-marquee-clone]').forEach((clone) => clone.remove());
+
+          const period = state.set.getBoundingClientRect().width;
+          const viewportWidth = state.row.clientWidth;
+          if (!Number.isFinite(period) || period <= 0 || viewportWidth <= 0) return;
+
+          state.period = period;
+          state.phase = ((previousFraction % 1) + 1) % 1 * period;
+
+          // Keep at least one full cycle beyond the viewport so wrapping stays covered
+          // even when the visible row is wider than the original two-title set.
+          const copies = Math.max(2, Math.ceil((viewportWidth + period * 2) / period));
+          for (let index = 1; index < copies; index += 1) {
+            const clone = state.set.cloneNode(true);
+            clone.dataset.marqueeClone = 'true';
+            clone.setAttribute('aria-hidden', 'true');
+            state.track.appendChild(clone);
+          }
+
+          placeRow(state);
+        });
+      };
+
+      const animate = (time) => {
+        const elapsed = (time - (previousTime ?? time)) / 1000;
+        previousTime = time;
+        latestScrollVelocity *= Math.exp(-elapsed / 0.54);
+        const requestedBoost = Math.min(latestScrollVelocity, 1800) * 0.065;
+        smoothedScrollBoost += (requestedBoost - smoothedScrollBoost)
+          * (1 - Math.exp(-elapsed / 0.22));
+
+        const travelTime = Math.min(elapsed, 0.05);
+        rowStates.forEach((state) => {
+          if (state.period <= 0) return;
+          const distance = (state.baseSpeed + smoothedScrollBoost) * travelTime;
+          state.phase = (state.phase + distance) % state.period;
+          placeRow(state);
+        });
+        motionFrame = window.requestAnimationFrame(animate);
+      };
+
+      const startMotion = () => {
+        if (!motionFrame && visible) {
+          motionFrame = window.requestAnimationFrame(animate);
+        }
+      };
+
+      const stopMotion = () => {
+        if (motionFrame) {
+          window.cancelAnimationFrame(motionFrame);
+          motionFrame = 0;
+          previousTime = null;
+        }
+        latestScrollVelocity = 0;
+        smoothedScrollBoost = 0;
+      };
+
+      const scheduleRebuild = () => {
+        if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+        resizeFrame = window.requestAnimationFrame(() => {
+          resizeFrame = 0;
+          rebuild();
+        });
+      };
+
+      const dispose = () => {
+        if (disposed) return;
+        disposed = true;
+        stopMotion();
+        if (visibilityObserver) visibilityObserver.disconnect();
+        if (trigger) trigger.kill();
+        if (resizeFrame) window.cancelAnimationFrame(resizeFrame);
+        window.removeEventListener('resize', scheduleRebuild);
+        if (document.fonts && document.fonts.removeEventListener) {
+          document.fonts.removeEventListener('loadingdone', scheduleRebuild);
+        }
+        rowStates.forEach((state) => {
+          state.track.querySelectorAll('[data-marquee-clone]').forEach((clone) => clone.remove());
+          state.track.style.removeProperty('transform');
+        });
+        marquee.classList.remove('is-enhanced');
+      };
+
+      try {
+        gsap.registerPlugin(ScrollTrigger);
+        marquee.classList.add('is-enhanced');
+        rebuild();
+
+        trigger = ScrollTrigger.create({
+          trigger: marquee,
+          start: 'top bottom',
+          end: 'bottom top',
+          onToggle: (self) => {
+            if (!useIntersectionObserver) {
+              visible = self.isActive;
+              if (visible) {
+                startMotion();
+              } else {
+                stopMotion();
+              }
+            }
+          },
+          onUpdate: (self) => {
+            latestScrollVelocity = Math.min(Math.abs(self.getVelocity()), 1800);
+          },
+        });
+
+        if (useIntersectionObserver) {
+          try {
+            visibilityObserver = new window.IntersectionObserver((entries) => {
+              if (disposed) return;
+              const isVisible = entries.some((entry) => entry.target === marquee && entry.isIntersecting);
+              if (isVisible) ScrollTrigger.update();
+              visible = isVisible;
+              if (visible) {
+                startMotion();
+              } else {
+                stopMotion();
+              }
+            }, { threshold: 0 });
+            visibilityObserver.observe(marquee);
+          } catch (_error) {
+            if (visibilityObserver) visibilityObserver.disconnect();
+            visibilityObserver = null;
+            useIntersectionObserver = false;
+          }
+        }
+
+        if (!useIntersectionObserver) {
+          visible = trigger.isActive;
+          startMotion();
+        }
+
+        window.addEventListener('resize', scheduleRebuild, { passive: true });
+        if (document.fonts && document.fonts.addEventListener) {
+          document.fonts.addEventListener('loadingdone', scheduleRebuild);
+        }
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(scheduleRebuild, () => {});
+        }
+
+        return dispose;
+      } catch (_error) {
+        dispose();
+        return () => {};
+      }
+    }
+
+    const applyMotionPreference = () => {
+      if (motionPreference.matches) {
+        restoreStaticRows();
+      } else if (!cleanup) {
+        cleanup = enableMotion();
+      }
+    };
+
+    if (motionPreference.addEventListener) {
+      motionPreference.addEventListener('change', applyMotionPreference);
+    } else if (motionPreference.addListener) {
+      motionPreference.addListener(applyMotionPreference);
+    }
+
+    applyMotionPreference();
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     fetchLatestRelease();
     setupMobileNav();
     setupHeaderState();
     setupRevealAnimations();
     setupScreenshotGalleries();
+    setupFeatureMarquee();
   });
 })();

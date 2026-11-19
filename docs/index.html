@@ -32,6 +32,10 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="preload" as="image" href="assets/screens/home-light.png" fetchpriority="high">
 
+  <!-- Pinned GSAP/npm CDN dependencies; app.js initializes after DOMContentLoaded. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js" integrity="sha384-XmJ9SoHtVOHoQUcKvFAzVXwdkKo1Ie3bhmSoIAkcdsHGaIrVJIkmozyq0FJeb/Ly" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js" integrity="sha384-wl5TeDVvOWt30Pbf8aSo2ZrzsOjddu3avOBvHe+p+OhJt9gP6w9YXmDkN5DK2/dF" crossorigin="anonymous"></script>
+
   <script>document.documentElement.classList.add('js-ready');</script>
 </head>
 <body>
@@ -197,6 +201,38 @@
               <li>Receipts</li>
             </ul>
           </article>
+        </div>
+
+        <div class="feature-marquee" data-feature-marquee>
+          <div class="feature-marquee-rows" aria-hidden="true">
+            <div class="feature-marquee-row feature-marquee-row--cream" data-marquee-row data-direction="left" data-speed="24">
+              <div class="feature-marquee-track" data-marquee-track>
+                <div class="feature-marquee-set" data-marquee-set>
+                  <span class="feature-marquee-item">Append-only history</span>
+                  <span class="feature-marquee-separator"></span>
+                  <span class="feature-marquee-item">Recipient-confirmed payments</span>
+                </div>
+              </div>
+            </div>
+            <div class="feature-marquee-row feature-marquee-row--amber" data-marquee-row data-direction="right" data-speed="20">
+              <div class="feature-marquee-track" data-marquee-track>
+                <div class="feature-marquee-set" data-marquee-set>
+                  <span class="feature-marquee-item">Private payment details</span>
+                  <span class="feature-marquee-separator"></span>
+                  <span class="feature-marquee-item">Encrypted at rest</span>
+                </div>
+              </div>
+            </div>
+            <div class="feature-marquee-row feature-marquee-row--soft" data-marquee-row data-direction="left" data-speed="26">
+              <div class="feature-marquee-track" data-marquee-track>
+                <div class="feature-marquee-set" data-marquee-set>
+                  <span class="feature-marquee-item">Offline-durable</span>
+                  <span class="feature-marquee-separator"></span>
+                  <span class="feature-marquee-item">Gentle reminders</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

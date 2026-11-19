@@ -20,6 +20,35 @@ assert(html.includes('No money held by Tabby'), 'Hero must state that Tabby neve
 assert(html.includes('id="features"') && html.includes('id="screens"') && html.includes('id="why-tabby"'), 'Must have features, screens, and why-tabby sections');
 assert(!html.includes('id="how-it-works"') && html.includes('id="download"') && html.includes('id="faq"'), 'Must omit how-it-works and keep download and FAQ sections');
 
+const featureSectionStart = html.indexOf('<section class="section" id="features">');
+const featureSectionEnd = html.indexOf('<!-- Screens -->', featureSectionStart);
+const featureSection = html.slice(featureSectionStart, featureSectionEnd);
+const featureMarqueeStart = featureSection.indexOf('data-feature-marquee');
+assert(featureMarqueeStart > featureSection.indexOf('class="feature-grid"'), 'Feature marquee must follow the three feature cards');
+assert(featureMarqueeStart >= 0 && featureSectionEnd > featureMarqueeStart, 'Feature marquee must sit before the screenshot gallery');
+assert.strictEqual((featureSection.match(/data-marquee-row/g) || []).length, 3, 'Feature marquee must have exactly three rows');
+assert.strictEqual((featureSection.match(/data-marquee-set/g) || []).length, 3, 'Static fallback must start with one readable set per row');
+const marqueeLabels = [
+  'Append-only history',
+  'Recipient-confirmed payments',
+  'Private payment details',
+  'Encrypted at rest',
+  'Offline-durable',
+  'Gentle reminders',
+];
+for (const title of marqueeLabels) {
+  assert(featureSection.includes(`>${title}</span>`), `Static feature marquee must include the existing “${title}” title`);
+}
+const featureMarqueeDirections = [...featureSection.matchAll(/data-marquee-row data-direction="(left|right)"/g)].map((match) => match[1]);
+assert.deepStrictEqual(featureMarqueeDirections, ['left', 'right', 'left'], 'Outer feature marquee rows must travel left and the middle row right');
+assert(featureSection.includes('<div class="feature-marquee-rows" aria-hidden="true">'), 'Duplicate marquee labels must be hidden from assistive technology');
+assert(!featureSection.includes('data-marquee-toggle'), 'Feature marquee must start automatically with no motion control');
+
+const gsapCoreScript = '<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js" integrity="sha384-XmJ9SoHtVOHoQUcKvFAzVXwdkKo1Ie3bhmSoIAkcdsHGaIrVJIkmozyq0FJeb/Ly" crossorigin="anonymous"></script>';
+const scrollTriggerScript = '<script defer src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js" integrity="sha384-wl5TeDVvOWt30Pbf8aSo2ZrzsOjddu3avOBvHe+p+OhJt9gP6w9YXmDkN5DK2/dF" crossorigin="anonymous"></script>';
+assert(html.includes(gsapCoreScript) && html.includes(scrollTriggerScript), 'Must load pinned GSAP npm CDN scripts with SHA-384 SRI and anonymous CORS');
+assert(html.indexOf(gsapCoreScript) < html.indexOf(scrollTriggerScript), 'GSAP core must load before ScrollTrigger');
+
 assert(html.includes('data-role="apk-download-btn"'), 'Must have APK download buttons');
 assert(html.includes('data-role="ipa-download-btn"'), 'Must have IPA download buttons');
 assert(html.includes('data-role="version-tag"'), 'Must have version tag elements');
@@ -129,7 +158,9 @@ assert(css.includes('.screen-preview.is-enhanced') && css.includes('.screen-prev
 assert(css.includes('.screen-preview.is-enhanced.has-selection .screen-preview-panel') && css.includes('transition: opacity 360ms ease'), 'Screenshot crossfade must start only after a visitor selection');
 assert(css.includes('.screen-preview-tab:focus-visible'), 'Screenshot tabs must have a visible keyboard focus style');
 assert(css.includes('screen-preview.is-enhanced.has-selection .screen-preview-panel,') && css.includes('transition: none !important;'), 'Screenshot switching must be instant under reduced motion');
-assert(!css.includes('.marquee') && !css.includes('marquee-scroll'), 'Must remove autoplay marquee styles');
+assert(css.includes('.feature-marquee-row--cream') && css.includes('.feature-marquee-row--amber') && css.includes('.feature-marquee-row--soft'), 'Must style the three warm feature-title bands');
+assert(css.includes('.feature-marquee.is-enhanced .feature-marquee-track'), 'Must style animated feature marquee rows');
+assert(css.includes('.feature-marquee [data-marquee-clone]') && css.includes('prefers-reduced-motion: reduce'), 'Reduced motion must restore a static feature-title layout');
 assert(css.includes('.faq-card'), 'Must style FAQ cards');
 assert(css.includes('.download-card') && !css.includes('.release-panel'), 'Must style the simplified download card without release details');
 assert(css.includes('.feature-mascot-thinking') && css.includes('@keyframes feature-thinking-settle'), 'Thinking mascot must animate on feature-card entrance');
@@ -169,6 +200,10 @@ assert(js.includes('setupRevealAnimations'), 'Must initialize scroll reveal');
 assert(js.includes('setupHeaderState'), 'Must initialize the sticky header state');
 assert(js.includes('setupScreenshotGalleries'), 'Must initialize interactive screenshot previews');
 assert(js.includes("case 'ArrowRight'") && js.includes("case 'ArrowLeft'") && js.includes("case 'Home'") && js.includes("case 'End'"), 'Screenshot tabs must support Arrow keys, Home, and End');
+assert(js.includes('setupFeatureMarquee') && js.includes('ScrollTrigger.create'), 'Must initialize the feature marquee with ScrollTrigger');
+assert(js.includes('Math.abs(self.getVelocity())') && js.includes('1800'), 'Scroll velocity must be absolute and clamped');
+assert(js.includes('requestAnimationFrame(animate)') && js.includes('cancelAnimationFrame(motionFrame)'), 'Feature marquee must share one frame loop that stops offscreen');
+assert(js.includes("matchMedia('(prefers-reduced-motion: reduce)')"), 'Feature marquee must respect the live reduced-motion preference');
 assert(!js.includes('setupMockupInteractivity'), 'Must not keep the retired mockup interaction');
 assert(!js.includes('setupFaqAccordion'), 'Must not keep the retired FAQ accordion script');
 
