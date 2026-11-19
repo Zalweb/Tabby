@@ -18,16 +18,13 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold>
     with TickerProviderStateMixin {
-  static const _compactDuration = Duration(milliseconds: 260);
+  static const _slideDuration = Duration(milliseconds: 260);
   static const _selectDuration = Duration(milliseconds: 240);
-  static const _scrollThreshold = 20.0;
-  static const _baseSlot = 52.0;
-  static const _dockPadding = 6.0;
-  static const _selectionInset = 4.0;
-  static const _minimumSlot = 48.0;
+  static const _scrollThreshold = 12.0;
   static const _dockHeight = 56.0;
   static const _iconSize = 24.0;
   static const _labelGap = 4.0;
+  static const _selectionInset = 4.0;
   static const _maxLabelWidth = 104.0;
   static const Curve _dockCurve = Cubic(0.22, 1, 0.36, 1);
   static const _items = [
@@ -36,23 +33,23 @@ class _MainScaffoldState extends State<MainScaffold>
     ('Profile', Icons.person_outline_rounded, Icons.person_rounded),
   ];
 
-  late final AnimationController _compactController;
+  late final AnimationController _slideController;
   late final List<AnimationController> _selectControllers;
 
-  bool _compact = false;
-  int _selectedIndex = 0;
+  bool _dockHidden = false;
+  bool _branchHasPushedRoute = false;
   bool _reduceMotion = false;
-  bool _userScrolling = false;
+  ScrollDirection _userScrollDirection = ScrollDirection.idle;
   double _downAccum = 0;
-  double _upAccum = 0;
+  int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _compactController = AnimationController(
+    _slideController = AnimationController(
       vsync: this,
-      duration: _compactDuration,
-      value: 1, // 1 = expanded, 0 = compact.
+      duration: _slideDuration,
+      value: 0, // 0 = visible, 1 = below the viewport.
     );
     _selectControllers = List.generate(
       _items.length,
@@ -63,8 +60,19 @@ class _MainScaffoldState extends State<MainScaffold>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reduced = TabbyMotion.disabled(context);
+    if (reduced && !_reduceMotion) {
+      _slideController.value = _dockHidden ? 1 : 0;
+      _syncSelection(animate: false);
+    }
+    _reduceMotion = reduced;
+  }
+
+  @override
   void dispose() {
-    _compactController.dispose();
+    _slideController.dispose();
     for (final controller in _selectControllers) {
       controller.dispose();
     }
@@ -75,13 +83,12 @@ class _MainScaffoldState extends State<MainScaffold>
   void didUpdateWidget(covariant MainScaffold oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.navigationShell.currentIndex != _selectedIndex) {
-      // Branch changes restore the expanded dock and animate the new label.
       _selectedIndex = widget.navigationShell.currentIndex;
-      _userScrolling = false;
+      _branchHasPushedRoute = _activeBranchCanPop;
+      _userScrollDirection = ScrollDirection.idle;
       _downAccum = 0;
-      _upAccum = 0;
+      _setDockHidden(false);
       _syncSelection(animate: true);
-      _setCompact(false);
     }
   }
 
@@ -96,7 +103,7 @@ class _MainScaffoldState extends State<MainScaffold>
     }
     controller.animateTo(
       target,
-      duration: controller.duration ?? _compactDuration,
+      duration: controller.duration ?? _slideDuration,
       curve: _dockCurve,
     );
   }
@@ -108,10 +115,24 @@ class _MainScaffoldState extends State<MainScaffold>
     }
   }
 
-  void _setCompact(bool value) {
-    if (_compact == value) return;
-    setState(() => _compact = value);
-    _apply(_compactController, value ? 0 : 1, animate: true);
+  void _setDockHidden(bool value) {
+    if (_dockHidden == value) return;
+    setState(() => _dockHidden = value);
+    _apply(_slideController, value ? 1 : 0, animate: true);
+  }
+
+  bool get _activeBranchCanPop {
+    final branch = widget.navigationShell.route.branches[_selectedIndex];
+    return branch.navigatorKey.currentState?.canPop() ?? false;
+  }
+
+  // Modal sheets in a branch Navigator must sit above its page controls.
+  bool _onBranchNavigation(NavigationNotification notification) {
+    final hasPushedRoute = _activeBranchCanPop;
+    if (_branchHasPushedRoute != hasPushedRoute) {
+      setState(() => _branchHasPushedRoute = hasPushedRoute);
+    }
+    return false;
   }
 
   void _onNavTap(int index) {
@@ -121,10 +142,10 @@ class _MainScaffoldState extends State<MainScaffold>
     );
   }
 
-  /// Listens only to user-driven, depth-zero vertical scrolling. Direction,
-  /// depth and axis are checked before any state is mutated. Programmatic
-  /// jumps, nested scrolls and overscroll are ignored. Direction changes, idle
-  /// events and the top of the page reset the accumulator to prevent jitter.
+  /// Tracks depth-zero vertical user scrolls from the active route only.
+  /// Programmatic changes, nested scrollables and overscroll do not affect the
+  /// dock. Downward movement accumulates to 12 logical pixels; any real upward
+  /// movement restores it immediately.
   bool _handleScroll(ScrollNotification notification) {
     if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
       return false;
@@ -135,36 +156,43 @@ class _MainScaffoldState extends State<MainScaffold>
             ModalRoute.isCurrentOf(origin) == false)) {
       return false;
     }
+
     if (notification is UserScrollNotification) {
-      _userScrolling = notification.direction != ScrollDirection.idle;
-      _downAccum = 0;
-      _upAccum = 0;
+      if (notification.direction == ScrollDirection.forward &&
+          _userScrollDirection != ScrollDirection.forward) {
+        _downAccum = 0;
+      }
+      _userScrollDirection = notification.direction;
       return false;
     }
-    if (!_userScrolling || notification is! ScrollUpdateNotification) {
+    if (notification is ScrollEndNotification) {
+      _userScrollDirection = ScrollDirection.idle;
       return false;
     }
+    if (notification is! ScrollUpdateNotification ||
+        _userScrollDirection == ScrollDirection.idle) {
+      return false;
+    }
+
     final metrics = notification.metrics;
-    if (metrics.pixels < 0 || metrics.pixels > metrics.maxScrollExtent) {
+    if (metrics.pixels < metrics.minScrollExtent ||
+        metrics.pixels > metrics.maxScrollExtent) {
+      _downAccum = 0;
       return false;
     }
     final delta = notification.scrollDelta ?? 0;
     if (delta.abs() < 0.01) return false;
-    if (delta > 0) {
-      _upAccum = 0;
+
+    if (delta > 0 && _userScrollDirection == ScrollDirection.reverse) {
       _downAccum += delta;
+      if (_downAccum >= _scrollThreshold && !_dockHidden) {
+        _setDockHidden(true);
+      }
+    } else if (delta < 0 && _userScrollDirection == ScrollDirection.forward) {
+      _downAccum = 0;
+      if (_dockHidden) _setDockHidden(false);
     } else {
       _downAccum = 0;
-      _upAccum += -delta;
-    }
-    if (metrics.pixels <= 8) {
-      if (_compact) _setCompact(false);
-      return false;
-    }
-    if (_downAccum >= _scrollThreshold) {
-      if (!_compact) _setCompact(true);
-    } else if (_upAccum >= _scrollThreshold) {
-      if (_compact) _setCompact(false);
     }
     return false;
   }
@@ -172,107 +200,103 @@ class _MainScaffoldState extends State<MainScaffold>
   @override
   Widget build(BuildContext context) {
     final palette = TabbyPalette.of(context);
-    _reduceMotion = TabbyMotion.disabled(context);
     final path = GoRouterState.of(context).uri.path;
     final showAdd = path == '/home' || path == '/tabs';
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final slideDistance = _dockHeight + (bottomInset > 12 ? bottomInset : 12);
 
     return Scaffold(
       backgroundColor: palette.canvas,
-      body: NotificationListener<ScrollNotification>(
-        onNotification: _handleScroll,
-        child: widget.navigationShell,
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+      body: ClipRect(
+        child: Stack(
+          key: const ValueKey('tabby-navigation-body'),
           children: [
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final available = constraints.maxWidth.isFinite
-                      ? constraints.maxWidth
-                      : 0.0;
-                  return AnimatedBuilder(
-                    animation: Listenable.merge([
-                      _compactController,
-                      ..._selectControllers,
-                    ]),
-                    builder: (context, _) => _buildDock(palette, available),
-                  );
-                },
+            Positioned.fill(
+              child: NotificationListener<NavigationNotification>(
+                onNotification: _onBranchNavigation,
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _handleScroll,
+                  child: widget.navigationShell,
+                ),
               ),
             ),
-            if (showAdd) ...[
-              const SizedBox(width: 8),
-              FloatingActionButton(
-                key: const ValueKey('navigation-create-tab'),
-                tooltip: 'Add tab',
-                shape: const CircleBorder(),
-                onPressed: () => AddExpenseModal.show(context),
-                child: const Icon(Icons.add_rounded, size: 30),
+            if (!keyboardOpen && !_branchHasPushedRoute)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: SafeArea(
+                  top: false,
+                  minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: Row(
+                    children: [
+                      Expanded(child: _slidingDock(palette, slideDistance)),
+                      if (showAdd) ...[
+                        const SizedBox(width: 8),
+                        FloatingActionButton(
+                          key: const ValueKey('navigation-create-tab'),
+                          tooltip: 'Add tab',
+                          shape: const CircleBorder(),
+                          onPressed: () => AddExpenseModal.show(context),
+                          child: const Icon(Icons.add_rounded, size: 30),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
-            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDock(TabbyPalette palette, double available) {
-    final expanded = _compactController.value.clamp(0.0, 1.0).toDouble();
-    final compactWidth = available
-        .clamp(0.0, _baseSlot + 2 * _dockPadding)
-        .toDouble();
-    final width = compactWidth + (available - compactWidth) * expanded;
-    final showCompactButton =
-        _compact || width < _items.length * _minimumSlot + 2 * _dockPadding;
-
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      heightFactor: 1,
-      child: SizedBox(
-        width: width,
-        height: _dockHeight,
-        child: Material(
-          key: const ValueKey('tabby-navigation-dock'),
-          color: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_dockHeight / 2),
-            side: BorderSide(color: palette.border),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: _dockPadding),
-            child: showCompactButton
-                ? Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: _compactNavItem(palette, _selectedIndex),
-                  )
-                : Row(
-                    key: const ValueKey('tabby-navigation-bar'),
-                    children: [
-                      for (var i = 0; i < _items.length; i++)
-                        Expanded(
-                          child: LayoutBuilder(
-                            builder: (context, constraints) =>
-                                _navItem(palette, i, constraints.maxWidth),
-                          ),
-                        ),
-                    ],
-                  ),
+  Widget _slidingDock(TabbyPalette palette, double slideDistance) =>
+      ExcludeFocus(
+        excluding: _dockHidden,
+        child: ExcludeSemantics(
+          excluding: _dockHidden,
+          child: IgnorePointer(
+            ignoring: _dockHidden,
+            child: AnimatedBuilder(
+              animation: Listenable.merge([
+                _slideController,
+                ..._selectControllers,
+              ]),
+              builder: (context, _) => Transform.translate(
+                offset: Offset(0, slideDistance * _slideController.value),
+                child: _buildDock(palette),
+              ),
+            ),
           ),
         ),
+      );
+
+  Widget _buildDock(TabbyPalette palette) => Material(
+    key: const ValueKey('tabby-navigation-dock'),
+    color: Colors.transparent,
+    child: SizedBox(
+      height: _dockHeight,
+      child: Row(
+        key: const ValueKey('tabby-navigation-bar'),
+        children: [
+          for (var i = 0; i < _items.length; i++)
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) =>
+                    _navItem(palette, i, constraints.maxWidth),
+              ),
+            ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 
   Widget _navItem(TabbyPalette palette, int index, double width) {
     final item = _items[index];
     final selected = index == _selectedIndex;
     final selection = _selectControllers[index].value;
-    final hidden = width < _minimumSlot;
     final labelMaxWidth = (width - _iconSize - _labelGap - 2 * _selectionInset)
         .clamp(0.0, _maxLabelWidth)
         .toDouble();
@@ -301,92 +325,55 @@ class _MainScaffoldState extends State<MainScaffold>
       ),
     );
 
-    return ExcludeFocus(
-      excluding: hidden,
-      child: IgnorePointer(
-        ignoring: hidden,
-        child: ExcludeSemantics(
-          excluding: hidden,
-          child: Semantics(
-            button: true,
-            selected: selected,
-            label: item.$1,
-            child: Tooltip(
-              message: item.$1,
-              excludeFromSemantics: true,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  key: _tabKey(item.$1),
-                  borderRadius: BorderRadius.circular(24),
-                  onTap: () => _onNavTap(index),
-                  child: SizedBox(
-                    width: width,
-                    height: _dockHeight,
-                    child: Center(
-                      child: Ink(
-                        decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: item.$1,
+      child: Tooltip(
+        message: item.$1,
+        excludeFromSemantics: true,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            key: _tabKey(item.$1),
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => _onNavTap(index),
+            child: SizedBox(
+              width: width,
+              height: _dockHeight,
+              child: Center(
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: Color.lerp(
+                      Colors.transparent,
+                      palette.soft,
+                      selection,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: _selectionInset,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          selected ? item.$3 : item.$2,
+                          size: _iconSize,
                           color: Color.lerp(
-                            Colors.transparent,
-                            palette.soft,
+                            palette.secondaryText,
+                            palette.link,
                             selection,
                           ),
-                          borderRadius: BorderRadius.circular(24),
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: _selectionInset,
-                            vertical: 4,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                selected ? item.$3 : item.$2,
-                                size: _iconSize,
-                                color: Color.lerp(
-                                  palette.secondaryText,
-                                  palette.link,
-                                  selection,
-                                ),
-                              ),
-                              if (selected) label,
-                            ],
-                          ),
-                        ),
-                      ),
+                        if (selected) label,
+                      ],
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _compactNavItem(TabbyPalette palette, int index) {
-    final item = _items[index];
-    return Semantics(
-      button: true,
-      selected: true,
-      label: item.$1,
-      hint: 'Expand navigation',
-      child: Tooltip(
-        message: 'Show tabs',
-        excludeFromSemantics: true,
-        child: Material(
-          color: palette.soft,
-          shape: const CircleBorder(),
-          child: InkWell(
-            key: _tabKey(item.$1),
-            customBorder: const CircleBorder(),
-            onTap: () => _setCompact(false),
-            child: SizedBox(
-              width: _baseSlot,
-              height: _baseSlot,
-              child: Icon(item.$3, size: _iconSize, color: palette.link),
             ),
           ),
         ),

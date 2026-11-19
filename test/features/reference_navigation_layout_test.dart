@@ -1,12 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tabby/core/theme/tabby_theme.dart';
-import 'package:tabby/features/home/presentation/home_dashboard_screen.dart';
 import 'package:tabby/features/navigation/presentation/main_scaffold.dart';
-import 'package:tabby/features/profile/presentation/profile_screen.dart';
 import 'package:tabby/features/tabs/application/tabby_providers.dart';
 import 'package:tabby/features/tabs/presentation/my_tabs_screen.dart';
 
@@ -21,9 +22,14 @@ ValueKey<String> _tabKey(String name) =>
 ValueKey<String> _labelKey(String name) =>
     ValueKey('navigation-label-${name.toLowerCase().replaceAll(' ', '-')}');
 
-// These pages keep shell geometry independent of the page layouts on main.
-Widget _scrollablePage() =>
-    Scaffold(body: ListView(children: const [SizedBox(height: 1200)]));
+// The old page layouts on this review base have different scroll extents.
+const _fixtureHome = ValueKey('dock-fixture-home');
+const _fixtureTabs = ValueKey('dock-fixture-tabs');
+
+Widget _scrollablePage({Key? key}) => Scaffold(
+  key: key,
+  body: ListView(children: const [SizedBox(height: 1200)]),
+);
 
 GoRouter _router({String initial = '/home', bool isolatePages = true}) =>
     GoRouter(
@@ -36,9 +42,7 @@ GoRouter _router({String initial = '/home', bool isolatePages = true}) =>
               routes: [
                 GoRoute(
                   path: '/home',
-                  builder: (_, _) => isolatePages
-                      ? _scrollablePage()
-                      : const HomeDashboardScreen(),
+                  builder: (_, _) => _scrollablePage(key: _fixtureHome),
                 ),
               ],
             ),
@@ -46,8 +50,9 @@ GoRouter _router({String initial = '/home', bool isolatePages = true}) =>
               routes: [
                 GoRoute(
                   path: '/tabs',
-                  builder: (_, _) =>
-                      isolatePages ? _scrollablePage() : const MyTabsScreen(),
+                  builder: (_, _) => isolatePages
+                      ? _scrollablePage(key: _fixtureTabs)
+                      : const MyTabsScreen(),
                   routes: [
                     GoRoute(
                       path: ':tabId',
@@ -63,11 +68,7 @@ GoRouter _router({String initial = '/home', bool isolatePages = true}) =>
             ),
             StatefulShellBranch(
               routes: [
-                GoRoute(
-                  path: '/profile',
-                  builder: (_, _) =>
-                      isolatePages ? _scrollablePage() : const ProfileScreen(),
-                ),
+                GoRoute(path: '/profile', builder: (_, _) => _scrollablePage()),
               ],
             ),
           ],
@@ -133,6 +134,39 @@ void _expectBalancedTargets(WidgetTester tester) {
   expect(firstGap, closeTo(secondGap, 0.1));
 }
 
+void _dispatchScrollUpdate(
+  WidgetTester tester,
+  Finder source, {
+  ScrollDirection? direction,
+  required double delta,
+  double pixels = 100,
+  int depth = 0,
+  AxisDirection axisDirection = AxisDirection.down,
+}) {
+  final context = tester.element(source);
+  final metrics = FixedScrollMetrics(
+    minScrollExtent: 0,
+    maxScrollExtent: 500,
+    pixels: pixels,
+    viewportDimension: 400,
+    axisDirection: axisDirection,
+    devicePixelRatio: tester.view.devicePixelRatio,
+  );
+  if (direction != null) {
+    UserScrollNotification(
+      metrics: metrics,
+      context: context,
+      direction: direction,
+    ).dispatch(context);
+  }
+  ScrollUpdateNotification(
+    metrics: metrics,
+    context: context,
+    scrollDelta: delta,
+    depth: depth,
+  ).dispatch(context);
+}
+
 void main() {
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
 
@@ -160,11 +194,29 @@ void main() {
 
           final dockFinder = find.byKey(_dockKey);
           final addFinder = find.byKey(const ValueKey('navigation-create-tab'));
+          final bodyFinder = find.byKey(
+            const ValueKey('tabby-navigation-body'),
+          );
+          final body = tester.getRect(bodyFinder);
+          final scrollableFinder = find
+              .descendant(
+                of: find.byKey(_fixtureHome),
+                matching: find.byType(Scrollable),
+              )
+              .first;
+          final scrollable = tester.getRect(scrollableFinder);
           final dock = tester.getRect(dockFinder);
-          expect(tester.widget<Material>(dockFinder).color, Colors.transparent);
+          final dockMaterial = tester.widget<Material>(dockFinder);
+          expect(body, Offset.zero & size);
+          expect(scrollable.top, closeTo(body.top, 0.1));
+          expect(scrollable.height, closeTo(body.height, 0.1));
+          expect(dockMaterial.color, Colors.transparent);
+          expect(dockMaterial.shape, isNull);
+          expect(dockMaterial.elevation, 0);
           final add = tester.getRect(addFinder);
           expect(addFinder, findsOneWidget);
           expect(find.byType(FloatingActionButton), findsOneWidget);
+          expect(find.byType(BottomNavigationBar), findsNothing);
           expect(find.byTooltip('Add tab'), findsOneWidget);
           expect(dock.left, closeTo(16, 0.1));
           expect(add.right, closeTo(size.width - 16, 0.1));
@@ -258,26 +310,15 @@ void main() {
       for (final width in homeItemWidths) {
         expect(width, greaterThanOrEqualTo(48));
       }
-
-      final dock = find.byKey(_dockKey);
-      final expandedDockWidth = tester.getRect(dock).width;
-      await tester.dragFrom(const Offset(200, 260), const Offset(0, -160));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 70));
-      final midDockWidth = tester.getRect(dock).width;
-      expect(midDockWidth, greaterThan(64));
-      expect(midDockWidth, lessThan(expandedDockWidth));
-      await tester.pumpAndSettle();
-      expect(tester.getRect(dock).width, closeTo(64, 0.1));
       expect(tester.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'scroll collapse keeps only the left-aligned current icon; tap and upward swipe expand',
+    'dock slides out at 12 downward pixels and restores on the first upward delta',
     (tester) async {
-      const size = Size(320, 420);
-      const safeInsets = EdgeInsets.fromLTRB(24, 0, 32, 0);
+      const size = Size(400, 420);
+      const safeInsets = EdgeInsets.fromLTRB(24, 0, 32, 20);
       await _setSurface(tester, size);
       final router = _router(initial: '/tabs');
       addTearDown(router.dispose);
@@ -290,113 +331,284 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final dockFinder = find.byKey(_dockKey);
-      final addFinder = find.byKey(const ValueKey('navigation-create-tab'));
-      final expandedDock = tester.getRect(dockFinder);
-      final expandedWidth = expandedDock.width;
-      final addRight = tester.getRect(addFinder).right;
-      expect(expandedDock.left, closeTo(safeInsets.left, 0.1));
-      expect(addRight, closeTo(size.width - safeInsets.right, 0.1));
-      expect(
-        tester.getRect(addFinder).left - expandedDock.right,
-        closeTo(8, 0.1),
+      final dock = find.byKey(_dockKey);
+      final add = find.byKey(const ValueKey('navigation-create-tab'));
+      final source = find.byKey(_fixtureTabs);
+      final expandedRect = tester.getRect(dock);
+      final expandedWidth = expandedRect.width;
+      final addRect = tester.getRect(add);
+
+      _dispatchScrollUpdate(
+        tester,
+        source,
+        direction: ScrollDirection.reverse,
+        delta: 6,
       );
-      expect(expandedWidth, greaterThan(180));
-      expect(find.byKey(_searchKey), findsNothing);
+      _dispatchScrollUpdate(
+        tester,
+        source,
+        direction: ScrollDirection.reverse,
+        delta: 5,
+      );
+      await tester.pump();
+      expect(tester.getRect(dock).top, closeTo(expandedRect.top, 0.1));
+      expect(dock.hitTestable(), findsOneWidget);
+
+      _dispatchScrollUpdate(
+        tester,
+        source,
+        direction: ScrollDirection.reverse,
+        delta: 1,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 70));
+      final slidingRect = tester.getRect(dock);
+      expect(slidingRect.top, greaterThan(expandedRect.top));
+      expect(slidingRect.top, lessThan(size.height));
+      expect(slidingRect.width, closeTo(expandedWidth, 0.1));
+      expect(tester.getRect(add), addRect);
+      expect(add.hitTestable(), findsOneWidget);
+      expect(dock.hitTestable(), findsNothing);
       expect(
-        find.descendant(
-          of: dockFinder,
-          matching: find.byIcon(Icons.search_rounded),
-        ),
+        find.descendant(of: dock, matching: find.byType(Icon)),
+        findsNWidgets(3),
+      );
+      expect(
+        find.descendant(of: dock, matching: find.byIcon(Icons.search_rounded)),
         findsNothing,
       );
-
-      await tester.dragFrom(const Offset(160, 260), const Offset(0, -160));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 12));
-      final collapsingDock = tester.getRect(dockFinder);
-      final collapsingActive = tester.getRect(find.byKey(_tabKey('My Tabs')));
-      expect(collapsingDock.width, greaterThan(64));
-      expect(collapsingDock.width, lessThan(expandedWidth));
-      expect(collapsingDock.left, closeTo(expandedDock.left, 0.1));
+      expect(find.byTooltip('Show tabs'), findsNothing);
       expect(
-        collapsingActive.center.dx,
-        closeTo(collapsingDock.left + 32, 0.1),
+        find
+            .ancestor(of: dock, matching: find.byType(ExcludeSemantics))
+            .evaluate()
+            .map((element) => (element.widget as ExcludeSemantics).excluding)
+            .any((excluded) => excluded),
+        isTrue,
       );
-      expect(tester.getRect(addFinder).right, closeTo(addRight, 0.1));
       expect(
-        find.descendant(of: dockFinder, matching: find.byType(Icon)),
-        findsOneWidget,
+        find
+            .ancestor(of: dock, matching: find.byType(IgnorePointer))
+            .evaluate()
+            .map((element) => (element.widget as IgnorePointer).ignoring)
+            .any((ignored) => ignored),
+        isTrue,
+      );
+      expect(
+        find
+            .ancestor(of: dock, matching: find.byType(ExcludeFocus))
+            .evaluate()
+            .map((element) => (element.widget as ExcludeFocus).excluding)
+            .any((excluded) => excluded),
+        isTrue,
+      );
+
+      await tester.pumpAndSettle();
+      final hiddenRect = tester.getRect(dock);
+      expect(hiddenRect.top, greaterThanOrEqualTo(size.height));
+      expect(hiddenRect.width, closeTo(expandedWidth, 0.1));
+      expect(tester.getRect(add), addRect);
+      expect(add.hitTestable(), findsOneWidget);
+      for (final label in ['Home', 'My Tabs', 'Profile']) {
+        expect(find.byKey(_tabKey(label)).hitTestable(), findsNothing);
+      }
+
+      _dispatchScrollUpdate(
+        tester,
+        source,
+        direction: ScrollDirection.forward,
+        delta: -0.5,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 70));
+      final restoringRect = tester.getRect(dock);
+      expect(restoringRect.top, lessThan(hiddenRect.top));
+      expect(restoringRect.width, closeTo(expandedWidth, 0.1));
+      expect(
+        find
+            .ancestor(of: dock, matching: find.byType(ExcludeSemantics))
+            .evaluate()
+            .map((element) => (element.widget as ExcludeSemantics).excluding)
+            .any((excluded) => excluded),
+        isFalse,
+      );
+      expect(
+        find
+            .ancestor(of: dock, matching: find.byType(ExcludeFocus))
+            .evaluate()
+            .map((element) => (element.widget as ExcludeFocus).excluding)
+            .any((excluded) => excluded),
+        isFalse,
       );
       await tester.pumpAndSettle();
-      final compactDock = tester.getRect(dockFinder);
-      expect(tester.widget<Material>(dockFinder).color, Colors.transparent);
-      final active = find.byKey(_tabKey('My Tabs'));
-      final activeRect = tester.getRect(active);
-      expect(compactDock.width, lessThan(expandedWidth - 40));
-      expect(compactDock.left, closeTo(expandedDock.left, 0.1));
-      expect(activeRect.center.dx, closeTo(compactDock.left + 32, 0.1));
-      expect(active.hitTestable(), findsOneWidget);
-      expect(activeRect.width, greaterThanOrEqualTo(48));
-      expect(activeRect.height, greaterThanOrEqualTo(48));
-      expect(find.byKey(_tabKey('Home')).hitTestable(), findsNothing);
-      expect(find.byKey(_tabKey('Profile')).hitTestable(), findsNothing);
-      expect(_dockLabel('My Tabs'), findsNothing);
-      expect(
-        find.descendant(
-          of: dockFinder,
-          matching: find.byIcon(Icons.search_rounded),
-        ),
-        findsNothing,
-      );
-      expect(find.byKey(_searchKey), findsNothing);
-      expect(
-        find.descendant(of: dockFinder, matching: find.byType(Icon)),
-        findsOneWidget,
-      );
-      expect(find.byIcon(Icons.receipt_long_rounded), findsOneWidget);
-      expect(find.byTooltip('Show tabs'), findsOneWidget);
-      expect(addFinder.hitTestable(), findsOneWidget);
-      expect(tester.getRect(addFinder).right, closeTo(addRight, 0.1));
-      expect(
-        tester.getRect(addFinder).center.dy,
-        closeTo(compactDock.center.dy, 0.1),
-      );
+      expect(tester.getRect(dock).top, closeTo(expandedRect.top, 0.1));
+      expect(tester.getRect(add), addRect);
 
-      await tester.tap(active);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 12));
-      final expandingDock = tester.getRect(dockFinder);
-      final expandingActive = tester.getRect(active);
-      expect(expandingDock.width, greaterThan(compactDock.width));
-      expect(expandingDock.width, lessThan(expandedWidth));
-      expect(expandingDock.left, closeTo(compactDock.left, 0.1));
-      expect(expandingActive.center.dx, closeTo(activeRect.center.dx, 0.1));
-      expect(tester.getRect(addFinder).right, closeTo(addRight, 0.1));
+      final scrollable = find
+          .descendant(
+            of: find.byKey(_fixtureTabs),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.drag(scrollable, const Offset(0, -100));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(dock).top, greaterThanOrEqualTo(size.height));
+      expect(add.hitTestable(), findsOneWidget);
+      await tester.drag(scrollable, const Offset(0, 80));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(dock).top, closeTo(expandedRect.top, 0.1));
+
+      _dispatchScrollUpdate(
+        tester,
+        find.byKey(_fixtureTabs),
+        direction: ScrollDirection.reverse,
+        delta: 12,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getRect(dock).top, greaterThanOrEqualTo(size.height));
+      router.go('/home');
+      await tester.pumpAndSettle();
+      expect(tester.getRect(dock).top, closeTo(expandedRect.top, 0.1));
       expect(
-        find.descendant(of: dockFinder, matching: find.byType(Icon)),
+        find.byKey(const ValueKey('navigation-create-tab')),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
-      await tester.pumpAndSettle();
-      final restoredDock = tester.getRect(dockFinder);
-      expect(restoredDock.width, closeTo(expandedWidth, 0.1));
-      expect(restoredDock.left, closeTo(expandedDock.left, 0.1));
-      expect(tester.getRect(addFinder).right, closeTo(addRight, 0.1));
-      expect(
-        tester.getRect(addFinder).left - restoredDock.right,
-        closeTo(8, 0.1),
-      );
-      expect(_dockLabel('My Tabs'), findsOneWidget);
+    },
+  );
 
-      await tester.dragFrom(const Offset(160, 260), const Offset(0, -160));
+  testWidgets(
+    'programmatic, nested, overscroll and offstage notifications do not hide the dock',
+    (tester) async {
+      await _setSurface(tester, const Size(400, 800));
+      final router = _router();
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        _host(Router.withConfig(config: router), animate: false),
+      );
       await tester.pumpAndSettle();
-      expect(find.byKey(_tabKey('My Tabs')).hitTestable(), findsOneWidget);
-      await tester.dragFrom(const Offset(160, 170), const Offset(0, 150));
+
+      router.go('/tabs');
       await tester.pumpAndSettle();
-      expect(tester.getRect(dockFinder).width, closeTo(expandedWidth, 0.1));
-      expect(_dockLabel('My Tabs'), findsOneWidget);
+      final source = find.byKey(_fixtureTabs);
+      final dock = find.byKey(_dockKey);
+      final expandedTop = tester.getRect(dock).top;
+
+      _dispatchScrollUpdate(tester, source, delta: 12);
+      _dispatchScrollUpdate(
+        tester,
+        source,
+        direction: ScrollDirection.reverse,
+        delta: 12,
+        axisDirection: AxisDirection.right,
+      );
+      _dispatchScrollUpdate(
+        tester,
+        source,
+        direction: ScrollDirection.reverse,
+        delta: 12,
+        depth: 1,
+      );
+      _dispatchScrollUpdate(
+        tester,
+        source,
+        direction: ScrollDirection.reverse,
+        delta: 12,
+        pixels: 501,
+      );
+      _dispatchScrollUpdate(
+        tester,
+        find.byKey(_fixtureHome, skipOffstage: false),
+        direction: ScrollDirection.reverse,
+        delta: 12,
+      );
+      await tester.pump();
+      expect(tester.getRect(dock).top, closeTo(expandedTop, 0.1));
+      expect(dock.hitTestable(), findsOneWidget);
+
+      _dispatchScrollUpdate(
+        tester,
+        source,
+        direction: ScrollDirection.reverse,
+        delta: 12,
+      );
+      await tester.pump();
+      expect(tester.getRect(dock).top, greaterThan(expandedTop));
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'keyboard hides the overlay while reduced motion skips the slide',
+    (tester) async {
+      const size = Size(400, 800);
+      await _setSurface(tester, size);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 260);
+      addTearDown(tester.view.resetViewInsets);
+      final router = _router(initial: '/tabs');
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        _host(Router.withConfig(config: router), animate: false),
+      );
+      await tester.pumpAndSettle();
+
+      final dock = find.byKey(_dockKey);
+      final add = find.byKey(const ValueKey('navigation-create-tab'));
+      expect(dock, findsNothing);
+      expect(add, findsNothing);
+
+      tester.view.resetViewInsets();
+      await tester.pumpAndSettle();
+      expect(dock.hitTestable(), findsOneWidget);
+      expect(add.hitTestable(), findsOneWidget);
+
+      _dispatchScrollUpdate(
+        tester,
+        find.byKey(_fixtureTabs),
+        direction: ScrollDirection.reverse,
+        delta: 12,
+      );
+      await tester.pump();
+      expect(tester.getRect(dock).top, greaterThanOrEqualTo(size.height));
+      expect(add.hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'tab controls yield to a branch bottom sheet and return on close',
+    (tester) async {
+      await _setSurface(tester, const Size(400, 800));
+      final router = _router(initial: '/tabs');
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        _host(Router.withConfig(config: router), animate: false),
+      );
+      await tester.pumpAndSettle();
+
+      final dock = find.byKey(_dockKey);
+      final add = find.byKey(const ValueKey('navigation-create-tab'));
+      expect(dock.hitTestable(), findsOneWidget);
+      expect(add.hitTestable(), findsOneWidget);
+
+      final page = tester.element(find.byKey(_fixtureTabs));
+      unawaited(
+        showModalBottomSheet<void>(
+          context: page,
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close branch sheet'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(dock, findsNothing);
+      expect(add, findsNothing);
+      final close = find.text('Close branch sheet');
+      expect(close.hitTestable(), findsOneWidget);
+      await tester.tap(close);
+      await tester.pumpAndSettle();
+      expect(dock.hitTestable(), findsOneWidget);
+      expect(add.hitTestable(), findsOneWidget);
     },
   );
 
@@ -468,10 +680,11 @@ void main() {
     },
   );
 
-  testWidgets('reduced motion applies selection and collapse immediately', (
+  testWidgets('reduced motion skips the dock slide and selection animations', (
     tester,
   ) async {
-    await _setSurface(tester, const Size(400, 420));
+    const size = Size(400, 420);
+    await _setSurface(tester, size);
     final router = _router(initial: '/tabs');
     addTearDown(router.dispose);
     await tester.pumpWidget(
@@ -480,21 +693,28 @@ void main() {
     await tester.pumpAndSettle();
 
     final dockFinder = find.byKey(_dockKey);
-    final expandedWidth = tester.getRect(dockFinder).width;
-    await tester.dragFrom(const Offset(200, 260), const Offset(0, -160));
+    final expandedRect = tester.getRect(dockFinder);
+    _dispatchScrollUpdate(
+      tester,
+      find.byKey(_fixtureTabs),
+      direction: ScrollDirection.reverse,
+      delta: 12,
+    );
     await tester.pump();
-    expect(tester.getRect(dockFinder).width, closeTo(64, 0.1));
-    expect(_dockLabel('My Tabs'), findsNothing);
-    expect(find.byKey(_tabKey('My Tabs')).hitTestable(), findsOneWidget);
-
-    await tester.tap(find.byKey(_tabKey('My Tabs')));
-    await tester.pump();
-    expect(tester.getRect(dockFinder).width, closeTo(expandedWidth, 0.1));
+    final hiddenRect = tester.getRect(dockFinder);
+    expect(hiddenRect.top, greaterThanOrEqualTo(size.height));
+    expect(hiddenRect.width, closeTo(expandedRect.width, 0.1));
     expect(_dockLabel('My Tabs'), findsOneWidget);
+    expect(find.byKey(_tabKey('My Tabs')).hitTestable(), findsNothing);
+    expect(
+      find.byKey(const ValueKey('navigation-create-tab')).hitTestable(),
+      findsOneWidget,
+    );
 
-    await tester.tap(find.byKey(_tabKey('Profile')));
+    router.go('/home');
     await tester.pump();
-    expect(_dockLabel('Profile'), findsOneWidget);
+    expect(tester.getRect(dockFinder).top, closeTo(expandedRect.top, 0.1));
+    expect(_dockLabel('Home'), findsOneWidget);
     expect(_dockLabel('My Tabs'), findsNothing);
     expect(tester.takeException(), isNull);
   });

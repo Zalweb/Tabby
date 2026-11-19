@@ -103,11 +103,8 @@ void main() {
     expect(find.textContaining('250.00'), findsWidgets);
 
     // 6. Navigate to My Tabs and verify Alex tab exists
-    final showTabs = find.byTooltip('Show tabs').hitTestable();
-    if (showTabs.evaluate().isNotEmpty) {
-      await tester.tap(showTabs);
-      await tester.pumpAndSettle();
-    }
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, 120));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('navigation-tab-my-tabs')));
     await tester.pumpAndSettle();
     expect(find.text('Alex'), findsOneWidget);

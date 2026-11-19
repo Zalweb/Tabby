@@ -117,3 +117,7 @@ The owner restored the six-screen carousel in A look inside. The Home, welcome a
 ## Transparent responsive bottom navigation
 
 The active destination shows its label in an expanding pill. Add is at the lower right on Home and My Tabs. Downward scroll compacts navigation to the active icon at the lower left. Tapping that icon or scrolling up restores navigation. Use a transparent dock background with a visible outline and active highlight in both states. Search stays in My Tabs. [QA-052](../progress/tasks/QA-052.md).
+
+## Scroll-away bottom navigation
+
+Place the dock over full-height page content without a shared fill, outline or footer band. Slide it down after 12 logical pixels of downward scroll and restore it at the first upward movement. Add stays on the right. The page controls yield to the keyboard and any pushed branch route. Hidden tabs are excluded from focus, pointer and accessibility. [QA-053](../progress/tasks/QA-053.md).
