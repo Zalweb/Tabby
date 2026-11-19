@@ -9,7 +9,7 @@ Generated from task metadata by `node scripts/check-project-memory.cjs --write`.
 | M0 | 1 / 1 | 1 / 1 | 1 / 1 |
 | M1 | 68 / 69 | 1 / 69 | 1 / 69 |
 | M2 | 4 / 4 | 0 / 4 | 0 / 4 |
-| M3 | 16 / 22 | 3 / 22 | 2 / 22 |
+| M3 | 16 / 22 | 4 / 22 | 3 / 22 |
 
 Implementation coverage counts source work; complete additionally requires every acceptance, review and integration gate. Local fixtures never establish live backend or real-device acceptance.
 
@@ -142,7 +142,7 @@ M3 candidate/device/deployment verification remains a release gate even before a
 | [WEB-003](tasks/WEB-003.md) � Let visitors switch landing page screenshots | M3 | P2 | implemented | Codex root / delegated Worker | WEB-001; read task handoff |
 | [WEB-004](tasks/WEB-004.md) � Scroll-responsive landing feature marquee | M3 | P2 | complete | Codex root / Luna worker | none; see verification |
 | [WEB-005](tasks/WEB-005.md) � Restore the A look inside screenshots carousel | M3 | P2 | verified | Codex root / delegated worker | WEB-004; read task handoff |
-| [WEB-006](tasks/WEB-006.md) � Keep the live download and legal layouts within narrow viewports | M3 | P2 | implemented | Codex root / Hermes implementation | WEB-001; read task handoff |
+| [WEB-006](tasks/WEB-006.md) � Keep the live download and legal layouts within narrow viewports | M3 | P2 | complete | Codex root / Hermes implementation | WEB-004; see verification |
 
 ## Open release gates
 

@@ -4,12 +4,12 @@
 {
   "id": "VER-WEB-006-DOWNLOAD-LAYOUT",
   "task_ids": ["WEB-006"],
-  "timestamp": "2026-11-19T13:32:45+08:00",
-  "tested_commit": "f2890afa71d6dc4f66c556c529af40f491b17897",
-  "dirty_tree": true,
+  "timestamp": "2026-11-19T13:34:45+08:00",
+  "tested_commit": "42f61ef3f1dd567df1e7248d0a03fe6a8e800670",
+  "dirty_tree": false,
   "environment": "Windows, Node 26, headless Brave Chromium and local static serving of the landing worktree, live Vercel baseline",
   "commands": ["node --test test/web_landing_test.js", "Chromium geometry audit at 320x640, 390x844, 800x1024 and 1440x900", "Full public APK and IPA downloads with SHA-256 comparison to release notes"],
-  "checks": [{"category": "regression", "outcome": "passed"}, {"category": "ui-review", "outcome": "passed"}, {"category": "live-deployment", "outcome": "unverified"}]
+  "checks": [{"category": "regression", "outcome": "passed"}, {"category": "ui-review", "outcome": "passed"}, {"category": "live-deployment", "outcome": "passed"}]
 }
 ```
 
@@ -25,4 +25,8 @@ The local candidate has zero horizontal document overflow on the landing and bot
 
 ## Limits and next action
 
-Confirm that the deployed production styles match the reviewed commit and repeat the browser checks on the live alias. This is Chromium layout evidence. Native mobile browser accessibility has not been verified.
+This is Chromium layout evidence. Native mobile browser accessibility has not been verified.
+
+## Production confirmation
+
+2026-11-19T13:34:45+08:00 — The live CSS equals the integrated style bytes with SHA-256 `9059ae07b487f70031105c1d0bc0694ca13fe26bdf16cd7664982215f4b2b429`. Strict Chromium reruns on the production alias passed at 320, 390, 800 and 1440px. The landing and both legal pages had zero horizontal document overflow throughout. Both visible download actions retained their correct destinations. GitHub still reports `v1.0.4+24` as latest.
