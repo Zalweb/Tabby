@@ -71,3 +71,7 @@ The current user directive/DEC-014 extends welcome/introduction cream, amber and
 ## First-use mascot introduction - 2026-11-19T14:16:50+08:00
 
 The owner directed that the introduction appear on fresh signed-out launches before the existing Google welcome. Its completion belongs to the installation. Restored authenticated accounts bypass it. An unfinished authenticated profile proceeds directly to required setup and retains retry on unknown server status. The cold-start animation honors reduced motion and releases real initialization errors promptly. This supersedes the introduction order in the 2026-11-17 checkpoint. [Task](../progress/tasks/QA-051.md) and [verification](../verification/VER-QA-051-FIRST-LAUNCH.md).
+
+## Swipeable first-launch tour
+
+The three illustrated pages track horizontal drags. The indicator elongates toward the adjacent page as the user drags and announces the selected step. Next advances from pages one and two. Get started on page three saves the existing local acknowledgment and opens Google sign-in. Back moves to the previous page and Skip remains available. Each page can scroll vertically when text or viewport height requires it. System Reduce Motion removes the animation from button-driven page changes. [QA-054](../progress/tasks/QA-054.md).
