@@ -28,3 +28,14 @@ No secrets or private user data in Git or evidence. Use sanitized fixtures. Depl
 ## Live website deployment preference
 
 2026-11-18T19:58:27+08:00 — Explicit owner instruction: always deploy completed website and landing-page changes to the live production site. After relevant tests and browser verification pass, publish through the existing Vercel production path as part of delivery without asking for the same approval again; a local build, preview URL or unmerged branch is not delivery. Record the production URL, deployment commit and any unverified checks. Backend deployment, app release and signing gates are unchanged.
+
+## Standing test and delivery rule
+
+2026-11-19T12:53:18+08:00 - The owner directs Tabby to test every completed change before delivery, then push the scoped, reviewed changes. Project verification comes first.
+
+- **App changes** ? Run the relevant regression checks and build the tested source. Verify package identity, signature and version. Upgrade the normal app on the owner's tablet in place, retaining the account session, unsynced records, drafts and app data. Verify the installed version and successful launch.
+- **Public app downloads** ? Take the tested release through the established exact-candidate checks and publication workflow. The landing download aliases follow the latest public GitHub release. After publication, verify the live version and download targets.
+- **Landing changes** ? Run the relevant tests and browser verification, push the reviewed change, and verify deployment through the existing Vercel production path.
+- **Handoff** ? Record the tests, pushed commit, build version, tablet result and live release or site deployment that apply. Record any concrete blocker and remaining delivery step when a check, release prerequisite or device connection prevents delivery.
+
+This is standing authorization to perform the applicable delivery flow for verified changes. The project release, signing, backend and data-preservation checks apply.

@@ -19,6 +19,7 @@
 - Verify Git status at handoff; describe remaining changes, never erase other agents' changes to obtain a clean tree. Conventional commits and `codex/` branches are defaults.
 - Existing session authorization governs actions. This file adds no redundant permission flow; live deployment and public releases follow task/session authorization and release gates.
 - Deploy completed and verified website/landing changes to the live production site as part of delivery. Follow the [standing website deployment preference](docs/project/INSTRUCTIONS.md#live-website-deployment-preference); a local build or preview is not delivery.
+- For each completed change, run the relevant tests before pushing the scoped changes. For app changes, build the verified candidate, upgrade the tablet in place and verify the public landing download after eligible release publication. Follow the [standing test and delivery rule](docs/project/INSTRUCTIONS.md#standing-test-and-delivery-rule).
 
 ## Documentation authority
 

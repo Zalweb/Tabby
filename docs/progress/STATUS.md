@@ -9,7 +9,7 @@ Generated from task metadata by `node scripts/check-project-memory.cjs --write`.
 | M0 | 1 / 1 | 1 / 1 | 1 / 1 |
 | M1 | 68 / 69 | 1 / 69 | 1 / 69 |
 | M2 | 4 / 4 | 0 / 4 | 0 / 4 |
-| M3 | 14 / 20 | 3 / 20 | 2 / 20 |
+| M3 | 15 / 21 | 3 / 21 | 2 / 21 |
 
 Implementation coverage counts source work; complete additionally requires every acceptance, review and integration gate. Local fixtures never establish live backend or real-device acceptance.
 
@@ -65,6 +65,7 @@ M3 candidate/device/deployment verification remains a release gate even before a
 | [CAP-005](tasks/CAP-005.md) � Acknowledgment, proposals and disputes | M2 | P2 | implemented | Codex root | LED-003, PAY-001; read task handoff |
 | [CAP-006](tasks/CAP-006.md) � Audited corrections and cancellation | M1 | P2 | implemented | Codex desktop corrections | LED-003, PAY-001; read task handoff |
 | [DOC-001](tasks/DOC-001.md) � Establish modular project memory and audit implementation backlog | M0 | P1 | complete | Codex root | none; see verification |
+| [DOC-002](tasks/DOC-002.md) � Record the standing test and delivery rule | M3 | P2 | implemented | Codex root | DOC-001; read task handoff |
 | [GRP-001](tasks/GRP-001.md) � Group payments change uninvolved balances | M1 | P1 | implemented | Codex root | LED-001, LED-003; read task handoff |
 | [GRP-002](tasks/GRP-002.md) � Group shares and payer selection are incomplete | M1 | P1 | implemented | Codex root | LED-001, LED-003; read task handoff |
 | [GRP-003](tasks/GRP-003.md) � Group settlement treats a group as a person | M1 | P1 | implemented | Codex root | LED-001, LED-003; read task handoff |
