@@ -24,3 +24,7 @@ All 46 selected tests passed. They cover the new opening animation, first-use to
 ## Limits and next action
 
 Review and reconcile the branch with pending app changes. Build a clean signed candidate, verify the actual upgrade and complete Google and iOS device acceptance before publishing. The physical Lenovo debugging transport was unavailable during this check. Current public download remains `v1.0.4+24`.
+
+## Responsive refinement
+
+2026-11-19T14:55:13+08:00 — On the isolated first-launch branch, 50 focused Flutter cases passed across startup, install marker and profile routing, Google-only login, narrow and landscape access, 200% text, and the refined tour. The 390×844 light and dark checks confirm matched Skip placement and primary button bounds across all three steps. The bottom edge is stable when the final action takes a second line. The active progress segment reaches at least 3:1 contrast against its track. The private macOS workflow passed the simulator smoke step for the prior exact review commit `0b55bb91bf60031da939615b2635aaa26eea13a3`. Its archive is still building. Physical device acceptance remains open.

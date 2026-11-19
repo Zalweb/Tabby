@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/config/app_state.dart';
 import '../../../core/theme/motion_preferences.dart';
+import '../../../core/theme/tabby_palette.dart';
 import '../../auth/presentation/auth_welcome_widgets.dart';
 import '../application/first_launch_tour.dart';
 
@@ -21,20 +22,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _slides = [
     (
       title: 'One tab for every friend.',
-      body:
-          'Hi, I’m Tabby — your friendly tab keeper. Add a shared meal or any cost you split, and I’ll keep a clear record of who paid and who owes what.',
+      body: 'Hi, I’m Tabby — your friendly tab keeper. Add a shared meal or any cost you split, and I’ll keep a clear record of who paid and who owes what.',
       art: 'assets/branding/tabby-welcome-v3.png',
     ),
     (
       title: 'Balances and receipts, together.',
-      body:
-          'Each tab keeps a running balance. Attach receipts to expenses so everyone on that tab can see the same record.',
+      body: 'Each tab keeps a running balance. Attach receipts to expenses so everyone on that tab can see the same record.',
       art: 'assets/branding/tabby-notebook-v3.png',
     ),
     (
       title: 'Settle up, stay friends.',
-      body:
-          'Pay with your usual wallet, bank, or cash. Record it in Tabby; your friend confirms when it arrives.',
+      body: 'Pay with your usual wallet, bank, or cash. Record it in Tabby. Your friend confirms when it arrives.',
       art: 'assets/branding/tabby-welcome-v3.png',
     ),
   ];
@@ -99,175 +97,187 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             builder: (context, constraints) => SingleChildScrollView(
               controller: _scroll,
               padding: const EdgeInsets.all(28),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: (constraints.maxHeight - 56).clamp(
-                    0.0,
-                    double.infinity,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 460,
+                    minHeight: (constraints.maxHeight - 56).clamp(
+                      0.0,
+                      double.infinity,
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 460),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Semantics(
-                                label: 'Step ${_step + 1} of 3',
-                                child: LinearProgressIndicator(
-                                  value: (_step + 1) / 3,
-                                  minHeight: 4,
-                                  borderRadius: BorderRadius.circular(8),
-                                  color: WelcomeColors.amber,
-                                  backgroundColor: WelcomeColors.amber
-                                      .withValues(alpha: 0.18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Semantics(
+                              label: 'Step ${_step + 1} of 3',
+                              child: LinearProgressIndicator(
+                                value: (_step + 1) / 3,
+                                minHeight: 4,
+                                borderRadius: BorderRadius.circular(8),
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? WelcomeColors.amber
+                                    : TabbyPalette.of(context).link,
+                                backgroundColor: WelcomeColors.amber.withValues(
+                                  alpha: 0.18,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 24),
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                minimumSize: const Size(48, 48),
-                              ),
-                              onPressed: _saving ? null : _acknowledge,
-                              child: Text(
-                                'Skip',
-                                style: TextStyle(
-                                  color: WelcomeColors.muted(context),
-                                ),
-                              ),
+                          ),
+                          const SizedBox(width: 24),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(48, 48),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 28),
-                        AnimatedSwitcher(
-                          duration: TabbyMotion.duration(
-                            context,
-                            const Duration(milliseconds: 200),
-                          ),
-                          child: Column(
-                            key: ValueKey<int>(_step),
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Center(
-                                child: WelcomeMascot(
-                                  asset: slide.art,
-                                  size: constraints.maxHeight < 600
-                                      ? 190
-                                      : 290,
-                                ),
-                              ),
-                              const SizedBox(height: 28),
-                              Text(
-                                slide.title,
-                                style: TextStyle(
-                                  color: WelcomeColors.ink(context),
-                                  fontSize: 30,
-                                  height: 1.15,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.8,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              Text(
-                                slide.body,
-                                style: TextStyle(
-                                  color: WelcomeColors.muted(context),
-                                  fontSize: 16,
-                                  height: 1.6,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 16),
-                          Semantics(
-                            liveRegion: true,
+                            onPressed: _saving ? null : _acknowledge,
                             child: Text(
-                              _error!,
+                              'Skip',
                               style: TextStyle(
-                                color: WelcomeColors.ink(context),
+                                color: WelcomeColors.muted(context),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  minimumSize: const Size(48, 48),
-                                ),
-                                onPressed: _saving ? null : _acknowledge,
-                                child: const Text('Retry'),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: TextButton(
-                                  style: TextButton.styleFrom(
-                                    minimumSize: const Size(48, 48),
-                                  ),
-                                  onPressed: _saving ? null : _continueForNow,
-                                  child: const Text(
-                                    'Continue to sign in for now',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         ],
-                        const SizedBox(height: 40),
-                        Row(
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 28, bottom: 40),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                minimumSize: const Size(48, 48),
+                            AnimatedSwitcher(
+                              duration: TabbyMotion.duration(
+                                context,
+                                const Duration(milliseconds: 200),
                               ),
-                              onPressed: _step == 0 || _saving
-                                  ? null
-                                  : () => _goToStep(_step - 1),
-                              child: const Text('Back'),
+                              child: Column(
+                                key: ValueKey<int>(_step),
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Center(
+                                    child: WelcomeMascot(
+                                      asset: slide.art,
+                                      size: (constraints.maxHeight * 0.29)
+                                          .clamp(170.0, 290.0),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 28),
+                                  Text(
+                                    slide.title,
+                                    style: TextStyle(
+                                      color: WelcomeColors.ink(context),
+                                      fontSize: 30,
+                                      height: 1.15,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.8,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    slide.body,
+                                    style: TextStyle(
+                                      color: WelcomeColors.muted(context),
+                                      fontSize: 16,
+                                      height: 1.6,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: WelcomeColors.amber,
-                                  foregroundColor: const Color(0xFF292321),
-                                  minimumSize: const Size(0, 54),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(18),
-                                  ),
-                                ),
-                                onPressed: _saving
-                                    ? null
-                                    : _step < 2
-                                    ? () => _goToStep(_step + 1)
-                                    : _acknowledge,
+                            if (_error != null) ...[
+                              const SizedBox(height: 16),
+                              Semantics(
+                                liveRegion: true,
                                 child: Text(
-                                  _saving
-                                      ? 'Saving…'
-                                      : _step < 2
-                                      ? 'Next'
-                                      : 'Continue to sign in',
-                                  textAlign: TextAlign.center,
+                                  _error!,
+                                  style: TextStyle(
+                                    color: WelcomeColors.ink(context),
+                                  ),
                                 ),
                               ),
-                            ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      minimumSize: const Size(48, 48),
+                                    ),
+                                    onPressed: _saving ? null : _acknowledge,
+                                    child: const Text('Retry'),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: TextButton(
+                                      style: TextButton.styleFrom(
+                                        minimumSize: const Size(48, 48),
+                                      ),
+                                      onPressed: _saving
+                                          ? null
+                                          : _continueForNow,
+                                      child: const Text(
+                                        'Continue to sign in for now',
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      Row(
+                        children: [
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(48, 48),
+                            ),
+                            onPressed: _step == 0 || _saving
+                                ? null
+                                : () => _goToStep(_step - 1),
+                            child: const Text('Back'),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: WelcomeColors.amber,
+                                foregroundColor: const Color(0xFF292321),
+                                minimumSize: const Size(0, 54),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                              onPressed: _saving
+                                  ? null
+                                  : _step < 2
+                                  ? () => _goToStep(_step + 1)
+                                  : _acknowledge,
+                              child: Text(
+                                _saving
+                                    ? 'Saving…'
+                                    : _step < 2
+                                    ? 'Next'
+                                    : 'Continue to sign in',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
