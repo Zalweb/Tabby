@@ -9,7 +9,7 @@ Generated from task metadata by `node scripts/check-project-memory.cjs --write`.
 | M0 | 1 / 1 | 1 / 1 | 1 / 1 |
 | M1 | 68 / 69 | 1 / 69 | 1 / 69 |
 | M2 | 4 / 4 | 0 / 4 | 0 / 4 |
-| M3 | 16 / 22 | 4 / 22 | 3 / 22 |
+| M3 | 17 / 23 | 4 / 23 | 3 / 23 |
 
 Implementation coverage counts source work; complete additionally requires every acceptance, review and integration gate. Local fixtures never establish live backend or real-device acceptance.
 
@@ -124,6 +124,7 @@ M3 candidate/device/deployment verification remains a release gate even before a
 | [QA-032](tasks/QA-032.md) � Recognize shared tabs, warn about duplicate expenses and support custom amounts | M1 | P1 | implemented | Codex root expense-entry session | INT-001, LED-003, PAY-001, CAP-002; read task handoff |
 | [QA-033](tasks/QA-033.md) � Add matching eye, tail and paw animation frames to situation mascots | M1 | P2 | implemented | Codex root mascot | INT-001, QA-031; read task handoff |
 | [QA-034](tasks/QA-034.md) � Review Android/iOS feature parity and build an unsigned sideload IPA | M3 | P2 | in_progress | Codex root iOS | INT-001, QA-033; read task handoff |
+| [QA-052](tasks/QA-052.md) � Use a transparent dock with right-side Add | M3 | P2 | implemented | Codex root | QA-029; read task handoff |
 | [QR-001](tasks/QR-001.md) � Account-string QR is presented as a payment QR | M1 | P1 | implemented | Codex root | SEC-002; read task handoff |
 | [QR-002](tasks/QR-002.md) � Debtor storage authorization may reject private QR reads | M1 | P1 | implemented | Codex root | SEC-002; read task handoff |
 | [QR-003](tasks/QR-003.md) � Saved QR has no edit/replacement flow | M1 | P2 | implemented | Codex root | SEC-002; read task handoff |

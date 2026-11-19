@@ -48,20 +48,18 @@ void main() {
       final createTabButton = find.byKey(
         const ValueKey('navigation-create-tab'),
       );
-      final homeX = tester.getCenter(find.text('Home')).dx;
-      final tabsX = tester.getCenter(find.text('My Tabs')).dx;
-      final profileX = tester.getCenter(find.text('Profile')).dx;
-      expect(tabsX - homeX, closeTo(profileX - tabsX, 1));
-      expect(tabsX, closeTo(270, 1));
-      expect(tester.getCenter(createTabButton).dx, greaterThan(460));
-      expect(
-        tester.getBottomRight(createTabButton).dy,
-        lessThan(tester.getTopLeft(find.text('Profile')).dy),
+      final dock = tester.getRect(
+        find.byKey(const ValueKey('tabby-navigation-dock')),
       );
-      await tester.tap(find.text('Profile'));
+      final addRect = tester.getRect(createTabButton);
+      expect(dock.left, closeTo(16, 1));
+      expect(addRect.right, closeTo(540 - 16, 1));
+      expect(addRect.left, closeTo(dock.right + 8, 1));
+      expect(addRect.center.dy, closeTo(dock.center.dy, 1));
+      await tester.tap(find.byKey(const ValueKey('navigation-tab-profile')));
       await tester.pumpAndSettle();
       expect(find.byType(FloatingActionButton), findsNothing);
-      await tester.tap(find.text('My Tabs'));
+      await tester.tap(find.byKey(const ValueKey('navigation-tab-my-tabs')));
       await tester.pumpAndSettle();
       expect(createTabButton.hitTestable(), findsOneWidget);
       await tester.ensureVisible(createTabButton);

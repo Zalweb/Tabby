@@ -25,7 +25,7 @@ void main() {
     expect(find.byKey(const ValueKey('navigation-create-tab')), findsOneWidget);
 
     // Tap on 'My Tabs' navigation item
-    await tester.tap(find.text('My Tabs'));
+    await tester.tap(find.byKey(const ValueKey('navigation-tab-my-tabs')));
     await tester.pumpAndSettle();
 
     // Verify My Tabs screen headers (one in top bar, one in bottom navigation)
@@ -33,7 +33,7 @@ void main() {
     expect(find.text('No Active Tabs'), findsOneWidget);
 
     // Tap on 'Profile' navigation item
-    await tester.tap(find.text('Profile'));
+    await tester.tap(find.byKey(const ValueKey('navigation-tab-profile')));
     await tester.pumpAndSettle();
 
     // Verify Profile screen elements

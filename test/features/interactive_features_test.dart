@@ -126,7 +126,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Navigate to Profile
-      await tester.tap(find.text('Profile'));
+      await tester.tap(find.byKey(const ValueKey('navigation-tab-profile')));
       await tester.pumpAndSettle();
 
       // 1. Edit Profile

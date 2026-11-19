@@ -113,3 +113,7 @@ The Screens section uses visitor-controlled Home, Tab details and Dark mode opti
 ## Screens carousel restoration - 2026-11-19T10:03:39+08:00
 
 The owner restored the six-screen carousel in A look inside. The Home, welcome and tab-detail screenshots appear in light and dark. Reduced-motion visitors can scroll the single static row. This supersedes the WEB-003 tabs for that section. [WEB-005](../progress/tasks/WEB-005.md).
+
+## Transparent responsive bottom navigation
+
+The active destination shows its label in an expanding pill. Add is at the lower right on Home and My Tabs. Downward scroll compacts navigation to the active icon at the lower left. Tapping that icon or scrolling up restores navigation. Use a transparent dock background with a visible outline and active highlight in both states. Search stays in My Tabs. [QA-052](../progress/tasks/QA-052.md).

@@ -260,10 +260,13 @@ void main() {
       final screenWidth =
           tester.view.physicalSize.width / tester.view.devicePixelRatio;
       expect(tester.getCenter(add).dx, greaterThan(screenWidth / 2));
-      final homeX = tester.getCenter(find.text('Home')).dx;
-      final tabsX = tester.getCenter(find.text('My Tabs')).dx;
-      final profileX = tester.getCenter(find.text('Profile')).dx;
-      expect(tabsX - homeX, closeTo(profileX - tabsX, 1));
+      final dock = tester.getRect(
+        find.byKey(const ValueKey('tabby-navigation-dock')),
+      );
+      final addRect = tester.getRect(add);
+      expect(dock.left, closeTo(16, 1));
+      expect(addRect.right, closeTo(screenWidth - 16, 1));
+      expect(addRect.left, closeTo(dock.right + 8, 1));
       await tester.tap(add);
       await tester.pumpAndSettle();
       expect(

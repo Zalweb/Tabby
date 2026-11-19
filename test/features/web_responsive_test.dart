@@ -41,13 +41,13 @@ void main() {
       expect(find.byKey(const ValueKey('navigation-create-tab')), findsOneWidget);
 
       // Navigate to My Tabs
-      await tester.tap(find.text('My Tabs'));
+      await tester.tap(find.byKey(const ValueKey('navigation-tab-my-tabs')));
       await tester.pumpAndSettle();
       expect(find.text('My Tabs'), findsNWidgets(2));
       expect(find.text('No Active Tabs'), findsOneWidget);
 
       // Navigate to Profile
-      await tester.tap(find.text('Profile'));
+      await tester.tap(find.byKey(const ValueKey('navigation-tab-profile')));
       await tester.pumpAndSettle();
       expect(find.text('Profile & Settings'), findsOneWidget);
       expect(find.text('Payment Methods'), findsOneWidget);
@@ -93,12 +93,12 @@ void main() {
       expect(find.text('Received'), findsOneWidget);
 
       // Interactivity within desktop frame: tap My Tabs
-      await tester.tap(find.text('My Tabs'));
+      await tester.tap(find.byKey(const ValueKey('navigation-tab-my-tabs')));
       await tester.pumpAndSettle();
       expect(find.text('My Tabs'), findsNWidgets(2));
 
       // Tap Profile
-      await tester.tap(find.text('Profile'));
+      await tester.tap(find.byKey(const ValueKey('navigation-tab-profile')));
       await tester.pumpAndSettle();
       expect(find.text('Profile & Settings'), findsOneWidget);
 

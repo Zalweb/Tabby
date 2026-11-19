@@ -43,12 +43,12 @@ void main() {
         findsOneWidget);
 
     // 2. Verify My Tabs empty state
-    await tester.tap(find.text('My Tabs'));
+    await tester.tap(find.byKey(const ValueKey('navigation-tab-my-tabs')));
     await tester.pumpAndSettle();
     expect(find.text('No Active Tabs'), findsOneWidget);
 
     // 3. Verify Profile empty state
-    await tester.tap(find.text('Profile'));
+    await tester.tap(find.byKey(const ValueKey('navigation-tab-profile')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Manage Friends'));
     await tester.pumpAndSettle();
@@ -57,7 +57,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 4. Open Add Expense Modal
-    await tester.tap(find.text('Home'));
+    await tester.tap(find.byKey(const ValueKey('navigation-tab-home')));
     await tester.pumpAndSettle();
     final createTabButton = find.byKey(const ValueKey('navigation-create-tab'));
     await tester.drag(
@@ -103,13 +103,18 @@ void main() {
     expect(find.textContaining('250.00'), findsWidgets);
 
     // 6. Navigate to My Tabs and verify Alex tab exists
-    await tester.tap(find.text('My Tabs'));
+    final showTabs = find.byTooltip('Show tabs').hitTestable();
+    if (showTabs.evaluate().isNotEmpty) {
+      await tester.tap(showTabs);
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.byKey(const ValueKey('navigation-tab-my-tabs')));
     await tester.pumpAndSettle();
     expect(find.text('Alex'), findsOneWidget);
     expect(find.text('Open'), findsOneWidget);
 
     // 7. Navigate to Profile and verify an unregistered participant is not a Friend
-    await tester.tap(find.text('Profile'));
+    await tester.tap(find.byKey(const ValueKey('navigation-tab-profile')));
     await tester.pumpAndSettle();
     expect(find.text('Alex'), findsNothing);
     await tester.tap(find.text('Manage Friends'));
